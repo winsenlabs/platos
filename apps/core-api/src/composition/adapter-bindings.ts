@@ -154,6 +154,11 @@ import type { ModelRouterProvidersAdapter } from "@platos/adapter-model-router-p
 import { createModelRouterProvidersAdapter } from "@platos/adapter-model-router-providers";
 import type { ChannelSlackAdapter } from "@platos/adapter-channel-slack";
 import { createChannelSlackAdapter } from "@platos/adapter-channel-slack";
+// WIN-271 (M4.5), D10 — the SECOND channel runtime, constructed from its own
+// configuration group and satisfying the same two `channels` ports as the Slack
+// one. It is here and nowhere else under `apps/core-api` for rule (C1)'s reason.
+import type { ChannelDiscordAdapter } from "@platos/adapter-channel-discord";
+import { createChannelDiscordAdapter } from "@platos/adapter-channel-discord";
 import type { NotifierEmailAdapter } from "@platos/adapter-notifier-email";
 import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
 import type { KeyringEnvelopeAdapter } from "@platos/adapter-keyring-envelope";
@@ -204,6 +209,10 @@ export interface AdapterInstances {
   readonly "redis-streams": RedisStreamsAdapter;
   readonly "model-router-providers": ModelRouterProvidersAdapter;
   readonly "channel-slack": ChannelSlackAdapter;
+  // WIN-271 (M4.5), D10 — the SIXTEENTH slot: a second provider behind the same
+  // port pair as `channel-slack`, and a slot rather than a row on it because §15
+  // consolidates ONE vendor client and Discord is a different vendor.
+  readonly "channel-discord": ChannelDiscordAdapter;
   readonly "notifier-email": NotifierEmailAdapter;
   readonly "notifier-webhook": NotifierWebhookAdapter;
   // WIN-259 M2.4 — the THIRTEENTH slot, and the first one added since this table
@@ -578,6 +587,11 @@ interface PortSatisfaction {
   // through a property, because `send`, `describePrincipal`, `verifyCredential`
   // and `verifyInbound` are four names with no collision.
   readonly "channel-slack:ChannelRuntime": Satisfies<ChannelSlackAdapter, ChannelRuntime>;
+  // WIN-271 (M4.5), D10. The two obligations of the second runtime, stated as two
+  // for the reason `channel-slack`'s are. Proven against the ADAPTER: its extra
+  // `sendFollowup` collides with no port member, so no property indirection.
+  readonly "channel-discord:ChannelAdapter": Satisfies<ChannelDiscordAdapter, ChannelAdapter>;
+  readonly "channel-discord:ChannelRuntime": Satisfies<ChannelDiscordAdapter, ChannelRuntime>;
   readonly "notifier-email:Notifier": Satisfies<NotifierEmailAdapter, Notifier>;
   readonly "notifier-webhook:Notifier": Satisfies<NotifierWebhookAdapter, Notifier>;
   // WIN-259 M2.4. `secrets`' THREE cryptography ports, every one proven against
@@ -675,6 +689,8 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "model-router-providers:ModelRouter": true,
   "channel-slack:ChannelAdapter": true,
   "channel-slack:ChannelRuntime": true,
+  "channel-discord:ChannelAdapter": true,
+  "channel-discord:ChannelRuntime": true,
   "notifier-email:Notifier": true,
   "notifier-webhook:Notifier": true,
   "keyring-envelope:KeyRing": true,
@@ -1171,6 +1187,14 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // holds. Its owner is `kernel`, which this directory already had, so
   // `EXPECTED_EDGE_COUNT` does not move.
   Object.freeze({ adapter: "redis-streams", port: "StreamJournal", owner: "kernel" }),
+  // WIN-271 (M4.5), D10. The SIXTY-FIRST and SIXTY-SECOND bindings, appended at
+  // the END for the reason every row above was: every ordinal already written
+  // stays true. `channels:ChannelAdapter`
+  // and `channels:ChannelRuntime` now have TWO homes each, which is the registry
+  // shape the port header designed for; `MULTI_HOME_PORTS` in the generator says
+  // so, and `selfCheck` fails if either stops having two.
+  Object.freeze({ adapter: "channel-discord", port: "ChannelAdapter", owner: "channels" }),
+  Object.freeze({ adapter: "channel-discord", port: "ChannelRuntime", owner: "channels" }),
 ] as const satisfies readonly AdapterBinding[]);
 
 /**
@@ -1562,6 +1586,23 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
     // bounded to 1..3600 seconds.
     adapters["channel-slack"] = createChannelSlackAdapter({
       requestMaxAgeSeconds: input.channels.slack.requestMaxAgeSeconds,
+    });
+  }
+
+  // WIN-271 (M4.5), D10. THE SAME SHAPE AS SLACK'S ARM, ANCHORED THE SAME WAY: on
+  // the verification material (a public key) and never on a bot token, so "the
+  // channel is wired" and "the channel can refuse a forged interaction" are one
+  // statement. Total over its options — the key travels per delivery on the
+  // command, the bot token per send — so no `faults` row is possible.
+  if (input.channels.discord === null) {
+    decline(
+      "channel-discord",
+      "configuration",
+      "PLATOS_CHANNELS_DISCORD_PUBLIC_KEY is not set, so the channels.discord group is undeclared",
+    );
+  } else {
+    adapters["channel-discord"] = createChannelDiscordAdapter({
+      requestMaxAgeSeconds: input.channels.discord.requestMaxAgeSeconds,
     });
   }
 

@@ -789,8 +789,19 @@ export const VIOLATION_CODES = Object.freeze({
  * own single frozen `{ ...process.env }` and hands the values in; a helper that read
  * `process.env` itself would be a door this gate could not attribute to the suite
  * that walked through it. Two files landed, thirty-two reads stayed thirty-two.
+ *
+ * WIN-271 (M4.5), D10: 1701 + 18 = 1719, and NO DOOR OPENED. Eighteen files under
+ * `packages/adapters/channel-discord/src` — thirteen modules and five suites — and
+ * not one reads the environment. The public key arrives per delivery on the
+ * command and the bot token per send, exactly as `channel-slack`'s secret and token
+ * do; the REST base, the deadline and the `fetch` are construction options whose
+ * doc comments say why they must NOT be operator-settable (an outbound host from
+ * the environment is an exfiltration primitive); and the far side binds an
+ * ephemeral loopback port rather than reading one. Its two configuration
+ * variables are declared in `apps/core-api/src/config/channels.ts`, the one place
+ * this deployable is entitled to read a variable, and read through its loader.
  */
-export const EXPECTED_FILE_COUNT = 1701;
+export const EXPECTED_FILE_COUNT = 1719;
 
 function listSourceFiles(root) {
   const found = [];

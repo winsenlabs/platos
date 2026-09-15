@@ -541,6 +541,26 @@ export const ADAPTERS = [
     additional: [{ port: "TotpCodeVerifier", owner: "identity-access" }],
     note: "the credential randomness and the RFC 6238 keyed hash over one base32 alphabet",
   },
+  // WIN-271 (M4.5), D10. THE SIXTEENTH DIRECTORY, and the first SECOND home for a
+  // port that was not designed as a multi-home port from the start. It is a
+  // directory and not a row on `channel-slack` because §15 is a rule about ONE
+  // VENDOR CLIENT, and Discord is a different vendor with a different client —
+  // here, no client library at all: `node:crypto` verifies its Ed25519
+  // signatures and `fetch` speaks its REST routes. A row on `channel-slack` would
+  // put Discord inside the one directory `chat-sdk-only` homes the chat SDK in.
+  //
+  // TWO BINDINGS FOR THE REASON `channel-slack` HAS TWO: `ChannelRuntime` extends
+  // `ChannelAdapter`, one object satisfies both, and `PORT_SATISFACTION` proves
+  // each so the compiler notices the day either changes shape. Its only owner is
+  // `channels`, so it brings exactly the two edges every adapter directory
+  // brings and no more.
+  {
+    dir: "channel-discord",
+    port: "ChannelAdapter",
+    owner: "channels",
+    additional: [{ port: "ChannelRuntime", owner: "channels" }],
+    note: "Discord interactions: Ed25519 inbound, REST outbound",
+  },
 ];
 
 /**
@@ -847,8 +867,15 @@ export function adapterOwnerPackages(adapter) {
 // would have been a second chat SDK install for the same provider, which is
 // exactly the arrangement §15 exists to refuse. This run is SERIAL, so the pin
 // moves once, to the value this tree produces.
-export const EXPECTED_ADAPTER_COUNT = 15;
-export const EXPECTED_BINDING_COUNT = 60;
+//
+// WIN-271 (M4.5), D10: 15 -> 16 directories and 60 -> 62 bindings.
+// `packages/adapters/channel-discord` is the SECOND `ChannelRuntime`, and it
+// takes both of `channels`' channel ports with it for the reason
+// `channel-slack` holds both. Both pins move, by one and by two. This is a
+// PARALLEL lane: the integrator re-measures against the merged tree rather than
+// adding this branch's totals to another's.
+export const EXPECTED_ADAPTER_COUNT = 16;
+export const EXPECTED_BINDING_COUNT = 62;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -858,7 +885,14 @@ export const EXPECTED_BINDING_COUNT = 60;
  * Every other port has exactly one home, and `selfCheck` fails both ways — an
  * unlisted port with two homes, and a listed port that has stopped having two.
  */
-export const MULTI_HOME_PORTS = ["cost-monitoring:Notifier"];
+//
+// WIN-271 (M4.5), D10: `channels:ChannelAdapter` and `channels:ChannelRuntime`
+// JOIN, and they are the case the context's own port header predicted —
+// "one provider, one directory, one object, both halves", with a REGISTRY
+// (`ChannelRuntimeRegistry`, `ChannelAdapterRegistry`) choosing among homes by
+// provider. `channel-slack` and `channel-discord` are two providers behind one
+// port pair, which is the design and not a collision.
+export const MULTI_HOME_PORTS = ["cost-monitoring:Notifier", "channels:ChannelAdapter", "channels:ChannelRuntime"];
 
 export const TRANSPORTS = ["rest", "mcp", "ws", "webhook", "channels-ingress", "bff"];
 
@@ -887,7 +921,10 @@ export const ROOT_SOLUTION_PATH = "tsconfig.json";
 // own tsconfig and its own package the composition root could not reference it
 // and `identity-access`'s `TokenMinter` and `TotpCodeVerifier` would have stayed
 // where `context-ports.ts` found them — "satisfied by no adapter directory".
-export const EXPECTED_PROJECT_COUNT = 35;
+// 35 -> 36 (WIN-271 (M4.5), D10). `packages/adapters/channel-discord`, the
+// sixteenth adapter directory, a PROJECT for the reason every adapter is one:
+// ADR M0.3 §2 lets only an adapter package implement a driven port.
+export const EXPECTED_PROJECT_COUNT = 36;
 // 94 -> 95 (WIN-297): apps/core-api -> packages/kernel. The composition root
 // binds twelve adapters to the ports they implement and three of those ports
 // (OutboxWriter, DurableRuntime, EventBus) are kernel-hosted, so without this
@@ -1097,7 +1134,12 @@ export const EXPECTED_PROJECT_COUNT = 35;
 //
 // READ BACK from `gen-v1-skeleton --check` rather than trusted from this
 // arithmetic, and carried independently in `scripts/arch/v1-project-graph.mjs`.
-export const EXPECTED_EDGE_COUNT = 122;
+//
+// WIN-271 (M4.5), D10: 122 + 2 = 124 -- `packages/adapters/channel-discord` ->
+// `packages/contexts/channels` (its one owner, carrying TWO ports in ONE
+// reference) and `apps/core-api` -> `packages/adapters/channel-discord` (the
+// composition-root edge every adapter gets). READ BACK, as above.
+export const EXPECTED_EDGE_COUNT = 124;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -1117,7 +1159,9 @@ export const SCAFFOLDING_BASENAMES = ["package.json", "tsconfig.json", "README.m
 // brings the same three, for the same reason.
 // 100 -> 103 (WIN-267 A2). The fourteenth directory brings the three files every
 // project brings: 34 projects x 3 files + 1 = 103.
-export const EXPECTED_SCAFFOLDING_FILE_COUNT = 106;
+// 106 -> 109 (WIN-271 (M4.5), D10). The sixteenth directory brings the three
+// files every project brings: 36 projects x 3 files + 1 = 109.
+export const EXPECTED_SCAFFOLDING_FILE_COUNT = 109;
 
 // Declaration-only source placeholders in a fully unadopted skeleton:
 // kernel 3 + contexts 17x4 + adapters 13x2 + core-api 8 + mcp-stdio 1.
@@ -1154,7 +1198,11 @@ export const EXPECTED_SCAFFOLDING_FILE_COUNT = 106;
 // the check refuses a placeholder count above this number, so removing the
 // adoption entry while the real source is on disk makes both files reappear as
 // MISSING.
-export const EXPECTED_PLACEHOLDER_FILE_COUNT = 110;
+// 110 -> 112 (WIN-271 (M4.5), D10). The sixteenth directory's `src/index.ts` and
+// `src/adapter.ts`, emitted for an unadopted project and released by the
+// adoption below in the same run; the CEILING rises so un-adoption still fails
+// closed.
+export const EXPECTED_PLACEHOLDER_FILE_COUNT = 112;
 
 // ---------------------------------------------------------------------------
 // ADOPTED PROJECTS (WIN-256). Append-only, one project path per entry, each with
@@ -1200,6 +1248,7 @@ export const ADOPTED_PROJECTS = [
   "packages/adapters/channel-slack", // WIN-271 (M4.5) — the channels ChannelRuntime: Slack's own published request-verification vector, three distinguishable refusals over the exact received octets, and the outbound deadline that separates "did not land" from "do not know"
   "packages/adapters/redis-ratelimit", // WIN-267 A3 — the identity-access RateLimiter over ONE Lua script: the last token of a window is unshareable, the clock is the caller's, and a dead Redis refuses rather than inventing a bucket
   "packages/adapters/redis-streams", // WIN-272 (M4.6) — the kernel EventBus and StreamJournal over ONE Redis Streams client: the producer's own sequence IS the server-enforced entry id, a trimmed resume position is REFUSED rather than answered with a gap, and a bus that reconnects joins the live end because it is a fan-out seam and not a queue
+  "packages/adapters/channel-discord", // WIN-271 (M4.5), D10 — the SECOND channels ChannelRuntime: Ed25519 over `timestamp + body` joined to RFC 8032 and to Discord's own helper library, the PING handshake, rate-limit windows that refuse before a socket opens, and a far side that records what it CREATED as well as what it received
 ];
 
 // ---------------------------------------------------------------------------
@@ -1904,6 +1953,22 @@ const ADAPTER_DEV_DEPENDENCIES = {
   // answers, with a negative control proving the comparison can fail.
   "channel-slack": {
     "@chat-adapter/slack-audited": "npm:@chat-adapter/slack@4.34.0",
+  },
+  // WIN-271 (M4.5), D10. DISCORD'S OWN HELPER LIBRARY, as the ORACLE for its
+  // signature construction, and nothing the adapter runs. `developers/interactions/
+  // overview.mdx` states the construction in prose and three code samples;
+  // `discord-interactions` is the executable form Discord publishes
+  // (github.com/discord/discord-interactions-js), and `discord-signature.test.ts`
+  // requires it and this adapter to accept and refuse the same deliveries. The
+  // adapter verifies with `node:crypto` and imports none of it.
+  //
+  // EXACT, NOT A RANGE, AND ALREADY IN THE LOCKFILE. 4.4.0 is the version
+  // `@chat-adapter/discord@4.34.0` — which `apps/agent` ships — resolves, so this
+  // opens no new resolution; and an oracle that floats to whatever was published
+  // last is not an oracle. A DEV dependency for the reason the rows above are: it
+  // must not reach the production image or its SBOM.
+  "channel-discord": {
+    "discord-interactions": "4.4.0",
   },
   // WIN-272 (M4.6). The Redis container the journal's conservation and the bus's
   // at-least-once redelivery are proved against. A DEV dependency for the reason

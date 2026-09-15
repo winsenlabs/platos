@@ -66,6 +66,7 @@ describe("a process with nothing wired", () => {
     });
     expect(outcome.value.providers.modelRouter).toBeNull();
     expect(outcome.value.channels.slack).toBeNull();
+    expect(outcome.value.channels.discord).toBeNull();
     expect(outcome.value.durable.durableRuntime).toBeNull();
     expect(outcome.value.security.session).toBeNull();
     expect(outcome.value.declaredGroups).toEqual([]);
@@ -367,6 +368,7 @@ describe("a fully wired install", () => {
     PLATOS_STORE_OBJECT_SECRET_ACCESS_KEY: "platos-minio-password",
     PLATOS_PROVIDERS_DEFAULT_MODEL: "anthropic:claude-haiku-4-5-20251001",
     PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(32),
+    PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
     PLATOS_CHANNELS_EMAIL_SMTP_URL: "smtps://relay.internal:465",
     PLATOS_CHANNELS_EMAIL_FROM: "alerts@platos.example",
     PLATOS_CHANNELS_WEBHOOK_SIGNING_KEY: "w".repeat(32),
@@ -388,6 +390,7 @@ describe("a fully wired install", () => {
       "stores.objectstore",
       "providers.modelRouter",
       "channels.slack",
+      "channels.discord",
       "channels.emailNotifier",
       "channels.webhookNotifier",
       "durableRuntime.durableRuntime",

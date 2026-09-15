@@ -24,9 +24,21 @@ const COMMANDS = {
     "pnpm --filter @platos/context-channels build && pnpm --filter @platos/adapter-channel-slack exec vitest run src/signed-admission.test.ts",
   channelsBuilt:
     "pnpm --filter @platos/context-channels build && pnpm --filter @platos/context-channels exec vitest run",
+  // WIN-271 (M4.5), D10 — the second runtime's sweep. Same driver, its own plan
+  // and its own results file, named on the command line.
+  discord: "pnpm --filter @platos/adapter-channel-discord exec vitest run",
+  discordSig: "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-signature.test.ts src/rfc8032.test.ts",
+  discordNorm: "pnpm --filter @platos/adapter-channel-discord exec vitest run src/normalize.test.ts",
+  discordTx: "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+  discordAdmit: "pnpm --filter @platos/adapter-channel-discord exec vitest run src/signed-admission.test.ts",
 };
 
-const MUTATIONS = JSON.parse(readFileSync(new URL("./win271-mutation-plan.json", import.meta.url), "utf8"));
+// `node scripts/run-win271-mutations.mjs [plan] [results]`. With no arguments it
+// is exactly the Slack sweep it was written for.
+const PLAN_PATH = process.argv[2] ?? "scripts/win271-mutation-plan.json";
+const RESULTS_PATH = process.argv[3] ?? "scripts/win271-mutation-results.json";
+
+const MUTATIONS = JSON.parse(readFileSync(PLAN_PATH, "utf8"));
 
 const results = [];
 for (const mutation of MUTATIONS) {
@@ -103,5 +115,5 @@ for (const mutation of MUTATIONS) {
   for (const name of failedNames.slice(0, 4)) process.stdout.write(`             -> ${name}\n`);
 }
 
-writeFileSync("scripts/win271-mutation-results.json", `${JSON.stringify(results, null, 2)}\n`);
+writeFileSync(RESULTS_PATH, `${JSON.stringify(results, null, 2)}\n`);
 process.stdout.write(`\n${results.filter((r) => r.outcome === "killed").length}/${results.length} killed\n`);

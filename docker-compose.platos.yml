@@ -743,6 +743,8 @@ services:
       PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "${PLATOS_SECURITY_ENCRYPTION_KEY_VERSION:-}"
       # channels.slack — the inbound signing secret; blank leaves it unwired.
       PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "${PLATOS_CHANNELS_SLACK_SIGNING_SECRET:-}"
+      # channels.discord — the application public key; blank leaves it unwired.
+      PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "${PLATOS_CHANNELS_DISCORD_PUBLIC_KEY:-}"
       # Gates the detailed /readyz body; blank keeps the detail off entirely.
       PLATOS_CORE_API_ADMIN_HEALTH_TOKEN: "${PLATOS_CORE_API_ADMIN_HEALTH_TOKEN:-}"
     healthcheck:

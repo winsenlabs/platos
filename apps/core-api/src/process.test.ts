@@ -235,6 +235,7 @@ describe("the built binary refuses to start on a bad section", () => {
       PLATOS_STORE_OBJECT_SECRET_ACCESS_KEY: "platos-minio-password",
       PLATOS_PROVIDERS_DEFAULT_MODEL: "anthropic:claude-haiku-4-5-20251001",
       PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(32),
+      PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
       PLATOS_DURABLE_RUNTIME_API_URL: "https://durable.internal",
       PLATOS_DURABLE_RUNTIME_SECRET_KEY: "d".repeat(24),
       PLATOS_SECURITY_SESSION_SECRET: "s".repeat(32),
@@ -309,6 +310,10 @@ describe("the built binary starts, serves and stops", () => {
       // real socket on a real spawned binary, and an install that declared
       // everything BUT the channel would be reporting a different fact.
       PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(64),
+      // WIN-271 (M4.5), D10. The second channel group's anchor, for the reason the
+      // Slack one is here: a fully declared install declares both runtimes. RFC
+      // 8032 §7.1 TEST 1's public key, a real Ed25519 point.
+      PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
     });
     const port = await awaitListening(spawned);
 
@@ -335,8 +340,8 @@ describe("the built binary starts, serves and stops", () => {
         unwiredAdapters: { adapter: string; cause: string }[];
       };
     };
-    expect(body.detail.declaredBindings).toBe(60);
-    expect(body.detail.satisfiedBindings).toHaveLength(55);
+    expect(body.detail.declaredBindings).toBe(62);
+    expect(body.detail.satisfiedBindings).toHaveLength(57);
     // WIN-267 A1 + A2: 41 -> 45 of 49 -> 53. Both new directories need no
     // configuration, so all four of their bindings are satisfied in every
     // install and the EIGHT that remain are the same eight generated interfaces.
@@ -365,7 +370,11 @@ describe("the built binary starts, serves and stops", () => {
     // skeleton was generated. Declared moves by one and satisfied by two, and the
     // unsatisfied remainder falls from six to FIVE: `redis-streams` is the THIRD
     // directory ever to leave `UNIMPLEMENTED_ADAPTERS`.
-    expect(body.reason).toBe("55 of 60 adapter bindings are satisfied; 5 are not");
+    // WIN-271 (M4.5), D10: 55/60 -> 57/62, and this time the two figures move by
+    // the SAME amount. `channel-discord` is a new directory that arrived WITH a
+    // constructor, so both rows it declares are satisfied from its first commit
+    // and the unsatisfied remainder stays at FIVE.
+    expect(body.reason).toBe("57 of 62 adapter bindings are satisfied; 5 are not");
     // THE CONTEXTS THIS PROCESS ACTUALLY BUILT, read back OFF THE RUNNING
     // BINARY rather than computed. `tenancy` was the first composed over a REAL
     // PostgreSQL adapter rather than over a bundle an install had to hand in;
@@ -419,7 +428,7 @@ describe("the built binary starts, serves and stops", () => {
 
     // The startup log carries the same figure, so an operator with no token can
     // still read it off stdout.
-    expect(spawned.stdout()).toContain("55/60 adapter bindings satisfied");
+    expect(spawned.stdout()).toContain("57/62 adapter bindings satisfied");
 
     spawned.child.kill("SIGTERM");
     const { code, signal } = await spawned.exited;
@@ -501,7 +510,10 @@ describe("the built binary starts, serves and stops", () => {
       // constructed `channel-slack` would not — it opens no socket and holds no
       // timer between calls — but proving that is a different case, and the
       // instrument stays sharpest with exactly one adapter under observation.
-      `  channels: { slack: null, emailNotifier: null, webhookNotifier: null },`,
+      // WIN-271 (M4.5), D10: `discord` absent too, and it MUST be spelled: this
+      // script is JavaScript, so an omitted group is `undefined`, which is not
+      // `null`, and the constructor would try to build a Discord runtime from it.
+      `  channels: { slack: null, discord: null, emailNotifier: null, webhookNotifier: null },`,
       `  clock: { now: () => new Date() },`,
       `  correlation: null,`,
       `});`,

@@ -227,9 +227,14 @@ describe("the declared binding table", () => {
     // and it is satisfied by the SAME object holding the SAME Redis client. A
     // sixteenth directory for the resumable half would have been a second Redis
     // client for one Redis. Directories unmoved at 15.
-    expect(ADAPTER_BINDINGS).toHaveLength(60);
-    expect(DECLARED_BINDING_COUNT).toBe(60);
-    expect(ADAPTER_NAMES).toHaveLength(15);
+    //
+    // WIN-271 (M4.5), D10 ADDS TWO ROWS AND ONE DIRECTORY, 60 -> 62 and 15 -> 16,
+    // and it is the case §15 does NOT consolidate: Discord is a different vendor,
+    // so its runtime is a directory of its own rather than a third row on
+    // `channel-slack` — and it takes both of `channels`' channel ports with it.
+    expect(ADAPTER_BINDINGS).toHaveLength(62);
+    expect(DECLARED_BINDING_COUNT).toBe(62);
+    expect(ADAPTER_NAMES).toHaveLength(16);
     expect(
       ADAPTER_BINDINGS.filter((binding) => binding.adapter === "tokenmint-totp").map(
         (binding) => binding.port,
@@ -296,7 +301,11 @@ describe("the declared binding table", () => {
     // absorbing it, which is what naming the list rather than counting it buys.
     // Its shape is `tokenmint-totp`'s: multi-PORT without being multi-OWNER, both
     // rows owned by `kernel`.
+    //
+    // SIX -> SEVEN (WIN-271 (M4.5), D10). `channel-discord` joins in
+    // `channel-slack`'s exact shape: two ports, one owner, one object.
     expect(multiPort.sort()).toEqual([
+      "channel-discord",
       "channel-slack",
       "keyring-envelope",
       "postgres-tenancy",
@@ -436,9 +445,9 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when a caller supplies nothing at all", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(60);
+    expect(report.unsatisfied).toHaveLength(62);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/60 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/62 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
     // list `postgres-tenancy` once and say 12/12 while TWENTY of the ports it
     // carries were unserved, which is a readiness endpoint that lies about what
@@ -465,7 +474,7 @@ describe("adapter supply validation", () => {
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
     expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(report.unsatisfied).toHaveLength(59);
+    expect(report.unsatisfied).toHaveLength(61);
 
     expect(report.faults).toEqual([]);
   });
@@ -488,14 +497,14 @@ describe("adapter supply validation", () => {
 
   it("rejects an adapter name that is not one of the declared bindings", () => {
     const report = reportAdapterSupply({ "redis-queue": adapterDouble("redis-queue") } as SuppliedAdapters);
-    expect(report.faults[0]).toContain("is not one of the 15 declared adapters");
+    expect(report.faults[0]).toContain("is not one of the 16 declared adapters");
   });
 });
 
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(60);
+    expect(app.bindings.unsatisfied).toHaveLength(62);
 
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
@@ -536,7 +545,7 @@ describe("composing the application", () => {
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(app.bindings.unsatisfied).toHaveLength(59);
+    expect(app.bindings.unsatisfied).toHaveLength(61);
 
   });
 

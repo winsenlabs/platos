@@ -1,0 +1,362 @@
+[
+  {
+    "name": "D01 the replay window becomes one-sided",
+    "guards": "a capture replayed with a FUTURE timestamp is refused too",
+    "file": "packages/adapters/channel-discord/src/verify.ts",
+    "from": "if (Math.abs(receivedSeconds - Number(timestamp)) > maxAgeSeconds) {",
+    "to": "if (receivedSeconds - Number(timestamp) > maxAgeSeconds) {",
+    "command": "discordSig"
+  },
+  {
+    "name": "D02 the window edge moves by one second",
+    "guards": "exactly maxAgeSeconds is accepted and one past it is refused",
+    "file": "packages/adapters/channel-discord/src/verify.ts",
+    "from": "Number(timestamp)) > maxAgeSeconds",
+    "to": "Number(timestamp)) >= maxAgeSeconds",
+    "command": "discordSig"
+  },
+  {
+    "name": "D03 the signed message is body + timestamp",
+    "guards": "the construction is Discord's order, joined to Discord's own library rather than to this adapter's signer",
+    "file": "packages/adapters/channel-discord/src/verify.ts",
+    "from": "return Buffer.concat([Buffer.from(timestamp, \"utf8\"), Buffer.from(rawBody, \"utf8\")]);",
+    "to": "return Buffer.concat([Buffer.from(rawBody, \"utf8\"), Buffer.from(timestamp, \"utf8\")]);",
+    "command": "discordSig"
+  },
+  {
+    "name": "D04 the timestamp is left out of the signed message",
+    "guards": "the timestamp is SIGNED, so moving it inside the window is refused by cryptography",
+    "file": "packages/adapters/channel-discord/src/verify.ts",
+    "from": "return Buffer.concat([Buffer.from(timestamp, \"utf8\"), Buffer.from(rawBody, \"utf8\")]);",
+    "to": "return Buffer.from(rawBody, \"utf8\");",
+    "command": "discordSig"
+  },
+  {
+    "name": "D05 an unparseable timestamp is reported INVALID",
+    "guards": "STALE and INVALID stay two operator actions",
+    "file": "packages/adapters/channel-discord/src/verify.ts",
+    "from": "if (!/^\\d{1,15}$/u.test(timestamp)) return err(signatureStale(DISCORD_PROVIDER));",
+    "to": "if (!/^\\d{1,15}$/u.test(timestamp)) return err(signatureInvalid(DISCORD_PROVIDER));",
+    "command": "discordSig"
+  },
+  {
+    "name": "D06 a blank header counts as present",
+    "guards": "a whitespace-only signature header is ABSENT, not a malformed signature",
+    "file": "packages/adapters/channel-discord/src/verify.ts",
+    "from": "return typeof value === \"string\" && value.trim() !== \"\" ? value : null;",
+    "to": "return typeof value === \"string\" && value !== \"\" ? value : null;",
+    "command": "discordSig"
+  },
+  {
+    "name": "D07 the parsed-key cache ignores which key it holds",
+    "guards": "a rotated key takes effect on the next delivery",
+    "file": "packages/adapters/channel-discord/src/verify.ts",
+    "from": "if (this.last?.hex !== publicKeyHex) {",
+    "to": "if (this.last === null) {",
+    "command": "discordSig"
+  },
+  {
+    "name": "D08 the signature grammar check is removed",
+    "guards": "trailing garbage after a genuine signature is refused, not truncated away by Buffer.from",
+    "file": "packages/adapters/channel-discord/src/ed25519.ts",
+    "from": "  if (!isSignatureHex(signatureHex)) return false;\n",
+    "to": "",
+    "command": "discordSig"
+  },
+  {
+    "name": "D09 the public-key grammar check is removed",
+    "guards": "a configured key with a trailing typo is not silently truncated into the genuine key",
+    "file": "packages/adapters/channel-discord/src/ed25519.ts",
+    "from": "  if (!PUBLIC_KEY_HEX.test(publicKeyHex)) return null;\n",
+    "to": "",
+    "command": "discordSig"
+  },
+  {
+    "name": "D10 the SPKI prefix names a different key length",
+    "guards": "the raw-key wrapping is proven by RFC 8032 rather than by a second copy of itself",
+    "file": "packages/adapters/channel-discord/src/ed25519.ts",
+    "from": "export const ED25519_SPKI_PREFIX_HEX = \"302a300506032b6570032100\";",
+    "to": "export const ED25519_SPKI_PREFIX_HEX = \"302a300506032b6570032000\";",
+    "command": "discordSig"
+  },
+  {
+    "name": "D11 the PING is answered with the wrong callback type",
+    "guards": "the handshake echo is exactly PONG",
+    "file": "packages/adapters/channel-discord/src/normalize.ts",
+    "from": "export const DISCORD_PONG_BODY = JSON.stringify({ type: DISCORD_CALLBACK_TYPE.PONG });",
+    "to": "export const DISCORD_PONG_BODY = JSON.stringify({ type: DISCORD_CALLBACK_TYPE.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE });",
+    "command": "discord"
+  },
+  {
+    "name": "D12 PONG is mistranscribed in vendor.ts",
+    "guards": "the vendor numbers are joined to Discord's own library enums",
+    "file": "packages/adapters/channel-discord/src/vendor.ts",
+    "from": "  PONG: 1,\n",
+    "to": "  PONG: 6,\n",
+    "command": "discord"
+  },
+  {
+    "name": "D13 the PING arm is deleted",
+    "guards": "a PING is a handshake, never an ignorable delivery",
+    "file": "packages/adapters/channel-discord/src/normalize.ts",
+    "from": "  if (type === DISCORD_INTERACTION_TYPE.PING) return ok(shape(\"handshake\", verifiedBody, DISCORD_PONG_BODY));\n",
+    "to": "",
+    "command": "discord"
+  },
+  {
+    "name": "D14 a thread is keyed on itself",
+    "guards": "a channel routing rule for the parent matches inside its threads",
+    "file": "packages/adapters/channel-discord/src/normalize.ts",
+    "from": "    return { channelId: parent, threadId: channelId };",
+    "to": "    return { channelId, threadId: null };",
+    "command": "discordNorm"
+  },
+  {
+    "name": "D15 announcement threads stop being threads",
+    "guards": "all three documented thread channel types key under their parent",
+    "file": "packages/adapters/channel-discord/src/vendor.ts",
+    "from": "new Set([10, 11, 12])",
+    "to": "new Set([11, 12])",
+    "command": "discordNorm"
+  },
+  {
+    "name": "D16 the bot guard is deleted",
+    "guards": "a bot-invoked command never starts a turn",
+    "file": "packages/adapters/channel-discord/src/normalize.ts",
+    "from": "  if (invokedByBot(interaction)) return ok(shape(\"ignorable\", verifiedBody, null));\n",
+    "to": "",
+    "command": "discordNorm"
+  },
+  {
+    "name": "D17 a command with no id is admitted",
+    "guards": "no inbox row without the provider's idempotency key",
+    "file": "packages/adapters/channel-discord/src/normalize.ts",
+    "from": "  if (!isSnowflake(id)) {",
+    "to": "  if (id === null) {",
+    "command": "discordNorm"
+  },
+  {
+    "name": "D18 a non-snowflake channel id becomes an address",
+    "guards": "a hostile channel id never becomes a key segment",
+    "file": "packages/adapters/channel-discord/src/normalize.ts",
+    "from": "  if (!isSnowflake(channelId)) return null;",
+    "to": "  if (typeof channelId !== \"string\") return null;",
+    "command": "discordNorm"
+  },
+  {
+    "name": "D19 command text stops descending into sub-commands",
+    "guards": "a sub-command's option values are the text",
+    "file": "packages/adapters/channel-discord/src/normalize.ts",
+    "from": "      collect(option[\"options\"]);\n",
+    "to": "",
+    "command": "discordNorm"
+  },
+  {
+    "name": "D20 context-menu commands start turns",
+    "guards": "only CHAT_INPUT commands are messages",
+    "file": "packages/adapters/channel-discord/src/normalize.ts",
+    "from": "  if (data?.[\"type\"] !== DISCORD_APPLICATION_COMMAND_TYPE.CHAT_INPUT) {",
+    "to": "  if (data === null) {",
+    "command": "discordNorm"
+  },
+  {
+    "name": "D21 the snowflake grammar admits any segment",
+    "guards": "nothing that is not a snowflake becomes a REST path segment",
+    "file": "packages/adapters/channel-discord/src/provider.ts",
+    "from": "const SNOWFLAKE = /^\\d{1,20}$/u;",
+    "to": "const SNOWFLAKE = /^[^:]{1,40}$/u;",
+    "command": "discord"
+  },
+  {
+    "name": "D22 a thread reply is posted to the parent channel",
+    "guards": "a Discord thread is a channel and the reply goes into it",
+    "file": "packages/adapters/channel-discord/src/provider.ts",
+    "from": "  return address.threadId ?? address.channelId;",
+    "to": "  return address.channelId;",
+    "command": "discordTx"
+  },
+  {
+    "name": "D23 a reset socket is treated as never connected",
+    "guards": "a connection lost AFTER the far side read the request is INDETERMINATE",
+    "file": "packages/adapters/channel-discord/src/failure.ts",
+    "from": "  \"ENETUNREACH\",\n]);",
+    "to": "  \"ENETUNREACH\",\n  \"UND_ERR_SOCKET\",\n]);",
+    "command": "discordTx"
+  },
+  {
+    "name": "D24 403 is reported as a dead credential",
+    "guards": "Missing Permissions on one channel does not send the refresh fence to re-authorize",
+    "file": "packages/adapters/channel-discord/src/failure.ts",
+    "from": "  if (status === 401) return adapterUnauthorized(DISCORD_PROVIDER, reason);",
+    "to": "  if (status === 401 || status === 403) return adapterUnauthorized(DISCORD_PROVIDER, reason);",
+    "command": "discordTx"
+  },
+  {
+    "name": "D25 a 5xx on a write is retried",
+    "guards": "a write the far side may have performed is RECONCILE",
+    "file": "packages/adapters/channel-discord/src/failure.ts",
+    "from": "  if (status >= 500) {\n    return operation === \"write\"",
+    "to": "  if (status >= 500) {\n    return operation !== \"write\"",
+    "command": "discordTx"
+  },
+  {
+    "name": "D26 a timed-out write is retried",
+    "guards": "a request written and never answered is INDETERMINATE",
+    "file": "packages/adapters/channel-discord/src/failure.ts",
+    "from": "  if (!timedOut && code !== null && NEVER_CONNECTED.has(code)) {",
+    "to": "  if (timedOut || (code !== null && NEVER_CONNECTED.has(code))) {",
+    "command": "discordTx"
+  },
+  {
+    "name": "D27 a 429 forgets the wait Discord asked for",
+    "guards": "retryAfterSeconds carries Discord's Retry-After / retry_after",
+    "file": "packages/adapters/channel-discord/src/failure.ts",
+    "from": "  if (status === 429) return adapterUnavailable(DISCORD_PROVIDER, reason, retryAfterSeconds);",
+    "to": "  if (status === 429) return adapterUnavailable(DISCORD_PROVIDER, reason);",
+    "command": "discordTx"
+  },
+  {
+    "name": "D28 the bucket gate never refuses",
+    "guards": "a request on an exhausted bucket never leaves the process",
+    "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+    "from": "    if (until > at) {\n      return { admitted: false, retryAfterSeconds: wholeSeconds(until - at), reason: \"bucket exhausted\" };",
+    "to": "    if (until < 0) {\n      return { admitted: false, retryAfterSeconds: wholeSeconds(until - at), reason: \"bucket exhausted\" };",
+    "command": "discordTx"
+  },
+  {
+    "name": "D29 the shorter of two waits wins",
+    "guards": "the LATER of Retry-After and retry_after is honoured",
+    "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+    "from": "  if (waits.length > 0) return Math.max(...waits);",
+    "to": "  if (waits.length > 0) return Math.min(...waits);",
+    "command": "discordTx"
+  },
+  {
+    "name": "D30 a bucket is not split by top-level resource",
+    "guards": "one busy channel does not silence another",
+    "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+    "from": "    return `${route.identity} ${bucket} ${route.resource}`;",
+    "to": "    return `${route.identity} ${bucket}`;",
+    "command": "discordTx"
+  },
+  {
+    "name": "D31 X-RateLimit-Remaining: 0 on a success is ignored",
+    "guards": "the client stops before Discord has to refuse",
+    "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+    "from": "    if (named !== null && remaining === 0 && resetAfter !== null) {",
+    "to": "    if (named !== null && remaining === -1 && resetAfter !== null) {",
+    "command": "discordTx"
+  },
+  {
+    "name": "D32 a global 429 is treated as an ordinary bucket 429",
+    "guards": "a GLOBAL limit holds every route for that bot, not only the route that was refused",
+    "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+    "from": "    if (global) this.globalResetAt.set(route.identity, at + wait * 1000);",
+    "to": "    if (global && route.resource === \"never\") this.globalResetAt.set(route.identity, at + wait * 1000);",
+    "command": "discordTx"
+  },
+  {
+    "name": "D33 every credential shares one rate-limit identity",
+    "guards": "two bots never throttle each other",
+    "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+    "from": "  return createHash(\"sha256\").update(secret, \"utf8\").digest(\"hex\").slice(0, 32);",
+    "to": "  return \"one-bot\";",
+    "command": "discordTx"
+  },
+  {
+    "name": "D34 a followup presents the bot authorization scheme",
+    "guards": "the interaction token in the path is the only authorization a followup sends",
+    "file": "packages/adapters/channel-discord/src/adapter.ts",
+    "from": "      authorization: null,\n",
+    "to": "      authorization: botAuthorization(reply.interactionToken),\n",
+    "command": "discordTx"
+  },
+  {
+    "name": "D35 the deadline timer is not cleared",
+    "guards": "no per-call timer outlives its call",
+    "file": "packages/adapters/channel-discord/src/send.ts",
+    "from": "    clearTimeout(timer);\n",
+    "to": "",
+    "command": "discordTx"
+  },
+  {
+    "name": "D36 mention parsing is left on",
+    "guards": "an echoed @everyone notifies nobody",
+    "file": "packages/adapters/channel-discord/src/send.ts",
+    "from": "  return { content: text, allowed_mentions: DISCORD_NO_MENTIONS };",
+    "to": "  return { content: text };",
+    "command": "discordTx"
+  },
+  {
+    "name": "D37 wait=true is dropped from a followup create",
+    "guards": "a followup answers with the created message so it can be edited",
+    "file": "packages/adapters/channel-discord/src/adapter.ts",
+    "from": "      path: edit === null ? `${base}?wait=true` : `${base}/messages/${edit}`,",
+    "to": "      path: edit === null ? base : `${base}/messages/${edit}`,",
+    "command": "discordTx"
+  },
+  {
+    "name": "D38 an unreadable success body is treated as success",
+    "guards": "a proxy's 200 HTML page on a read is not Discord confirming the token",
+    "file": "packages/adapters/channel-discord/src/send.ts",
+    "from": "    if (answer === null) return err(classifyUnreadableAnswer(response.status, call.operation));\n",
+    "to": "",
+    "command": "discordTx"
+  },
+  {
+    "name": "D39 deliveredAt is the wall clock",
+    "guards": "the delivered instant is the one Discord's snowflake encodes",
+    "file": "packages/adapters/channel-discord/src/send.ts",
+    "from": "  return new Date(Number((BigInt(snowflake) >> 22n) + DISCORD_EPOCH_MS));",
+    "to": "  return new Date();",
+    "command": "discordTx"
+  },
+  {
+    "name": "D40 the documented User-Agent is not sent",
+    "guards": "Discord's HTTP API requires DiscordBot ($url, $versionNumber)",
+    "file": "packages/adapters/channel-discord/src/send.ts",
+    "from": "    const headers: Record<string, string> = { \"user-agent\": DISCORD_USER_AGENT };",
+    "to": "    const headers: Record<string, string> = {};",
+    "command": "discordTx"
+  },
+  {
+    "name": "D41 an edit is sent as a new post",
+    "guards": "streaming a turn edits one message instead of flooding the channel",
+    "file": "packages/adapters/channel-discord/src/adapter.ts",
+    "from": "      method: edit === null ? \"POST\" : \"PATCH\",\n      path: edit === null ? `channels/",
+    "to": "      method: \"POST\",\n      path: edit === null ? `channels/",
+    "command": "discordTx"
+  },
+  {
+    "name": "D42 a non-snowflake message id reaches the path",
+    "guards": "an edit id is refused before a socket opens",
+    "file": "packages/adapters/channel-discord/src/adapter.ts",
+    "from": "    if (edit !== null && !isSnowflake(edit)) {",
+    "to": "    if (edit === \"never\") {",
+    "command": "discordTx"
+  },
+  {
+    "name": "D43 the REST base drops to v9",
+    "guards": "every route is under /api/v10/",
+    "file": "packages/adapters/channel-discord/src/vendor.ts",
+    "from": "export const DISCORD_API_URL = \"https://discord.com/api/v10/\";",
+    "to": "export const DISCORD_API_URL = \"https://discord.com/api/v9/\";",
+    "command": "discordTx"
+  },
+  {
+    "name": "D44 a bot token is presented as Bearer",
+    "guards": "Discord's bot scheme is Bot, and Bearer is refused 401",
+    "file": "packages/adapters/channel-discord/src/vendor.ts",
+    "from": "export const DISCORD_BOT_AUTHORIZATION_SCHEME = \"Bot\";",
+    "to": "export const DISCORD_BOT_AUTHORIZATION_SCHEME = \"Bearer\";",
+    "command": "discordTx"
+  },
+  {
+    "name": "D45 verification is skipped for well-formed bodies",
+    "guards": "verification runs before anything reads the body, so an unsigned body is refused in the use case",
+    "file": "packages/adapters/channel-discord/src/adapter.ts",
+    "from": "    if (!verified.ok) return err(verified.error);\n",
+    "to": "",
+    "command": "discordAdmit"
+  }
+]

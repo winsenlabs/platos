@@ -3234,6 +3234,22 @@
   },
   "uniformGuards": [
     {
+      "file": "packages/adapters/channel-discord/src/verify.ts",
+      "function": "verifyDiscordDelivery",
+      "code": "CHANNELS_SIGNATURE_INVALID",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "Two guards, ONE fact for the caller: nothing presented verifies as Discord's signature over these bytes. One refuses when the CONFIGURED public key is not a raw Ed25519 key at all and the other when a well-formed key does not verify the signature, and they MUST be indistinguishable -- an endpoint that answered a forger differently for a misconfigured key would announce that every forgery is currently equally good. The operator repair is read off the boot diagnostic, not the refusal: PLATOS_CHANNELS_DISCORD_PUBLIC_KEY is refused at load unless it is exactly sixty-four hex digits, so the first guard is the second line of defence and the common cause of the second is a key copied from the wrong application."
+    },
+    {
+      "file": "packages/adapters/channel-discord/src/verify.ts",
+      "function": "verifyDiscordDelivery",
+      "code": "CHANNELS_SIGNATURE_STALE",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "Two guards, ONE fact for the caller, exactly as in channel-slack's verifier: the instant this interaction claims is not one this process will act on. One refuses a timestamp that is not a decimal integer and the other one whose distance from receipt exceeds the replay window; telling a caller which would hand a forger a probe for the window's width. The repair is the same after both: check the clock, or widen PLATOS_CHANNELS_DISCORD_REQUEST_MAX_AGE_S deliberately."
+    },
+    {
       "file": "packages/adapters/channel-slack/src/verify.ts",
       "function": "verifySlackDelivery",
       "code": "CHANNELS_SIGNATURE_STALE",

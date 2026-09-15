@@ -277,6 +277,9 @@ importers:
       '@nestjs/platform-express':
         specifier: ^11.0.0
         version: 11.1.18(@nestjs/common@11.1.18(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.18)
+      '@platos/adapter-channel-discord':
+        specifier: workspace:*
+        version: link:../../packages/adapters/channel-discord
       '@platos/adapter-channel-slack':
         specifier: workspace:*
         version: link:../../packages/adapters/channel-slack
@@ -1012,6 +1015,16 @@ importers:
       '@types/pg':
         specifier: 8.6.6
         version: 8.6.6
+
+  packages/adapters/channel-discord:
+    dependencies:
+      '@platos/context-channels':
+        specifier: workspace:*
+        version: link:../../contexts/channels
+    devDependencies:
+      discord-interactions:
+        specifier: 4.4.0
+        version: 4.4.0
 
   packages/adapters/channel-slack:
     dependencies:

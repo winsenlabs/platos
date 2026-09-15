@@ -125,9 +125,10 @@ What composes depends on the security variables, which `.env.example` leaves uns
 
 | Set in `.env` | `/readyz` bindings | `composedContexts` |
 |---|---|---|
-| `PLATOS_ENVIRONMENT` only | 49 of 60 | `tenancy` |
-| plus `PLATOS_SECURITY_SESSION_SECRET`, `PLATOS_SECURITY_ENCRYPTION_KEY`, `PLATOS_SECURITY_ENCRYPTION_KEY_VERSION` | 53 of 60 | `identityAccess`, `tenancy`, `secrets`, `providers`, `tools` |
-| plus `PLATOS_CHANNELS_SLACK_SIGNING_SECRET` | 55 of 60 | the same five |
+| `PLATOS_ENVIRONMENT` only | 49 of 62 | `tenancy` |
+| plus `PLATOS_SECURITY_SESSION_SECRET`, `PLATOS_SECURITY_ENCRYPTION_KEY`, `PLATOS_SECURITY_ENCRYPTION_KEY_VERSION` | 53 of 62 | `identityAccess`, `tenancy`, `secrets`, `providers`, `tools` |
+| plus `PLATOS_CHANNELS_SLACK_SIGNING_SECRET` | 55 of 62 | the same five |
+| plus `PLATOS_CHANNELS_DISCORD_PUBLIC_KEY` | 57 of 62 | the same five |
 
 Operator authentication, secrets, providers and tools are therefore not running until the three security variables are set. Generate the session secret and the encryption key with `openssl rand -hex 32`, independently of every other key in `.env`.
 

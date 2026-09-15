@@ -106,6 +106,7 @@ describe("the anchor contract platform.ts decides with", () => {
       PLATOS_STORE_POSTGRES_URL: "postgresql://u:p@db.internal:5432/platos",
       PLATOS_STORE_REDIS_URL: "redis://cache.internal:6379",
       PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(32),
+      PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
       PLATOS_CHANNELS_WEBHOOK_SIGNING_KEY: "w".repeat(32),
       PLATOS_PROVIDERS_DEFAULT_MODEL: "anthropic:claude-haiku-4-5-20251001",
       PLATOS_SECURITY_SESSION_SECRET: "s".repeat(32),
@@ -116,6 +117,7 @@ describe("the anchor contract platform.ts decides with", () => {
     expect(outcome.value.stores.postgres?.schema).toBe("public");
     expect(outcome.value.stores.redis?.keyPrefix).toBe("platos");
     expect(outcome.value.channels.slack?.requestMaxAgeSeconds).toBe(300);
+    expect(outcome.value.channels.discord?.requestMaxAgeSeconds).toBe(300);
     expect(outcome.value.channels.webhookNotifier?.timeoutMs).toBe(10000);
     expect(outcome.value.providers.modelRouter?.requestTimeoutMs).toBe(120000);
     expect(outcome.value.providers.modelRouter?.maxRetries).toBe(2);
@@ -133,6 +135,10 @@ describe("the redaction classification, joined to what the loader actually print
       // both files say so where the field is declared.
       "PLATOS_STORE_OBJECT_ENDPOINT",
       "PLATOS_DURABLE_RUNTIME_API_URL",
+      // WIN-271 (M4.5), D10. A PUBLIC key: Discord shows it on the developer
+      // portal and it can only VERIFY a signature. `config/channels.ts` says why
+      // redacting it would hide the one value an operator compares against.
+      "PLATOS_CHANNELS_DISCORD_PUBLIC_KEY",
     ]);
     for (const field of everyField()) {
       if (!bearsCredential.test(field.name) || openByDesign.has(field.name)) continue;
@@ -149,6 +155,27 @@ describe("the redaction classification, joined to what the loader actually print
       if (outcome.ok) continue;
       for (const entry of outcome.diagnostics) expect(entry.shownValue).not.toBe(value);
     }
+  });
+
+  it("refuses a Discord public key that is not exactly a raw Ed25519 key, and names it", () => {
+    // WIN-271 (M4.5), D10. THE LONGER VALUE IS THE DANGEROUS ONE. Sixty-four genuine
+    // digits followed by anything decode, through `Buffer.from(x, "hex")`, to the
+    // genuine key — so a pasted value with a stray suffix would boot and verify.
+    // The field's anchored grammar refuses it at boot instead, with the variable
+    // named and, the key being public, the value shown rather than redacted.
+    const genuine = "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a";
+    for (const value of [`${genuine}zz`, genuine.slice(0, 63), `${genuine.slice(0, 63)}g`]) {
+      const outcome = loadPlatformConfiguration({ ...MINIMAL, PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: value });
+      expect(outcome.ok, value).toBe(false);
+      if (outcome.ok) continue;
+      const entry = outcome.diagnostics.find((row) => row.field === "PLATOS_CHANNELS_DISCORD_PUBLIC_KEY");
+      // Shown, not redacted — the loader abbreviates a long value, so the head is
+      // what is compared.
+      expect(entry?.redacted).toBe(false);
+      expect(entry?.shownValue?.startsWith(value.slice(0, 16))).toBe(true);
+    }
+    const accepted = loadPlatformConfiguration({ ...MINIMAL, PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: genuine });
+    expect(accepted.ok && accepted.value.channels.discord?.publicKey).toBe(genuine);
   });
 
   it("proves the OPPOSITE half too: a non-secret's rejected value IS echoed", () => {
