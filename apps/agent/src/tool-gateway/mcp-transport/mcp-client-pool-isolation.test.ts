@@ -363,20 +363,40 @@ describe("WIN-269 — a remote server restarted mid-session recovers on the next
     const credentials = new McpCredentialService({} as never);
     const pool = new McpConnectionPool(credentials);
     pools.push(pool);
-    // `attemptToolsList` is the one pass that talks to the server; everything
-    // around it reads and stamps rows, which is not the subject here.
-    const discovery = new EntityMcpDiscoveryService(null, credentials, pool, null as never) as unknown as {
-      attemptToolsList(entityId: string, client: unknown, scope: unknown): Promise<{ kind: string; reason?: string }>;
+    // The rows around the server round-trip are in-memory answers; the subject is
+    // the round-trip and what the pool keeps after it fails.
+    const prisma = {
+      entity: {
+        findFirst: async () => ({
+          id: "entity-notes",
+          externalId: "notes",
+          projectId: SCOPE.projectId,
+          connectionKind: "mcp",
+          project: { organizationId: SCOPE.organizationId },
+          mcpClient: { transport: "remote-http", url: server.url, headersTemplate: {}, credential: null },
+        }),
+        update: async () => ({}),
+      },
+      environment: { findMany: async () => [{ id: SCOPE.environmentId }] },
+      entityMcpClient: { update: async () => ({}) },
     };
-    const client = { transport: "remote-http", url: server.url, headersTemplate: {}, credential: null };
-    const scope = { organizationId: SCOPE.organizationId, projectId: SCOPE.projectId, environmentId: SCOPE.environmentId };
+    const registry = {
+      registerTools: async (_scope: unknown, tools: unknown[]) => ({
+        registered: tools.length,
+        updated: 0,
+        newTools: 0,
+        removed: 0,
+      }),
+      setEntityDispatchable: () => 0,
+    };
+    const discovery = new EntityMcpDiscoveryService(prisma, credentials, pool, registry as never);
 
-    expect((await discovery.attemptToolsList("entity-notes", client, scope)).kind).toBe("contacted");
+    expect(await discovery.discover("entity-notes")).toMatchObject({ contacted: 1, failed: 0 });
     await server.restart();
-    const stale = await discovery.attemptToolsList("entity-notes", client, scope);
-    expect(stale.kind).toBe("failed");
-    expect(String(stale.reason)).toMatch(STALE_SESSION_FAILURE);
-    expect((await discovery.attemptToolsList("entity-notes", client, scope)).kind).toBe("contacted");
+    const stale = await discovery.discover("entity-notes");
+    expect(stale).toMatchObject({ contacted: 0, failed: 1 });
+    expect(String(stale.error)).toMatch(STALE_SESSION_FAILURE);
+    expect(await discovery.discover("entity-notes")).toMatchObject({ contacted: 1, failed: 0 });
     expect(server.initializes).toBe(1);
   }, 30_000);
 });
