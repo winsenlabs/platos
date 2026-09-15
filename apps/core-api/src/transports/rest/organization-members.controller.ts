@@ -1,4 +1,4 @@
-// /api/v1/organizations/:organizationId/members — THE TEAM PAGE, AND THE ROLE
+// /organizations/:organizationId/members — THE TEAM PAGE, AND THE ROLE
 // CHANGE ON IT.
 //
 // `settings.team` is one of the Remix routes T8 deletes, and it did two things

@@ -1,4 +1,4 @@
-// /api/v1/environments/:environmentId/variables — THE ENVIRONMENT'S CONFIGURATION,
+// /environments/:environmentId/variables — THE ENVIRONMENT'S CONFIGURATION,
 // LISTED AS METADATA AND WRITTEN AS WRITE-ONLY INPUT.
 //
 // WIN-259's scope clause: "remove direct webapp writes of environment variables".

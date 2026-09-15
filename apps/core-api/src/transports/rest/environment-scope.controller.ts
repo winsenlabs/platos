@@ -1,4 +1,4 @@
-// GET /api/v1/environments/by-slugs — THE SCOPE A DASHBOARD URL NAMES.
+// GET /environments/by-slugs — THE SCOPE A DASHBOARD URL NAMES.
 //
 // Every page under `/orgs/:organizationSlug/projects/:projectParam/env/:envParam`
 // opens with `requireEnvironmentScope` (`apps/webapp/app/services/auth.server.ts`,
@@ -28,11 +28,14 @@
 //
 // `requireEnvironmentScope` takes `access` ("metadata" | "secret:mutate",
 // defaulting to "metadata") and refuses at the level asked for. The webapp asks
-// for `secret:mutate` before it calls apps/agent — `m4Mutation.server.ts` and the
-// agent-tools, agents.$agentId.tools, agents.$agentId.canary, apikeys and
-// environment-variables.new routes — and apps/agent trusts the workload token
-// the webapp mints for that tenant (`platosAgent.server.ts`), so for those calls
-// the operator-level gate 4 exists ONLY in this resolver. A route that could
+// for `secret:mutate` in `m4Mutation.server.ts` and in the agent-tools,
+// agents.$agentId.tools, agents.$agentId.canary, apikeys and
+// environment-variables.new routes. All but the last then call apps/agent, which
+// trusts the workload token the webapp mints for that tenant
+// (`platosAgent.server.ts`), so for those calls the operator-level gate 4 exists
+// ONLY in this resolver. (The last writes the table directly; its replacement,
+// `PUT /environments/:id/variables/:key`, authorizes `secret:mutate` itself.)
+// A route that could
 // answer "may this operator see it" but not "may this operator mutate it" would
 // leave the T8 cutover two bad options: drop the gate, or copy the four-gate
 // policy into the webapp from the roles this resource exposes. So the level is

@@ -1,4 +1,4 @@
-// /api/v1/organizations/:organizationId/invitations and /api/v1/invitations/accept
+// /organizations/:organizationId/invitations and /invitations/accept
 // — WHO MAY INVITE (D1), AND SPENDING AN INVITATION.
 //
 // D1 (2026-09-15): "Only an ACTIVE member with the role OWNER or ADMIN of the

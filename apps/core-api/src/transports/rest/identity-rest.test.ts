@@ -331,7 +331,7 @@ describe("WIN-267 R1 — the finding that no V1 REST route could spend an authen
     //
     // IT WENT RED A FIFTH TIME FOR D20 (2026-09-15), AND THIS TIME THE ANSWER IS
     // YES. `startMagicLinkLogin` and `completeMagicLinkLogin` are published, the
-    // start spends the LOGIN budget, and `POST /api/v1/bff/magic-link` reaches it —
+    // start spends the LOGIN budget, and `POST /bff/magic-link` reaches it —
     // so RATE_LIMITED, and under D3 RATE_LIMIT_FAILED_CLOSED, CAN now truthfully
     // reach this surface. The finding is withdrawn for LOGIN. For INVITE_ACCEPT it
     // is withdrawn by the next case, which measures the accept route spending it;

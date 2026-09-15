@@ -1,4 +1,4 @@
-// /api/v1/bff/magic-link — SIGNING IN WITHOUT A PASSWORD, AND WITHOUT A TOKEN IN
+// /bff/magic-link — SIGNING IN WITHOUT A PASSWORD, AND WITHOUT A TOKEN IN
 // ANY RESPONSE.
 //
 // The webapp's `login._index` and `magic.tsx` are two of the flows T8 deletes

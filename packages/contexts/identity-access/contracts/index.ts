@@ -506,7 +506,7 @@ export interface IdentityAccessContract {
    * in the outcome type because it is what the domain reports if the policy is
    * ever set back to `allow`; no install produces it today.
    *
-   * `POST /api/v1/invitations/accept` spends `INVITE_ACCEPT` through this method
+   * `POST /invitations/accept` spends `INVITE_ACCEPT` through this method
    * before tenancy looks at the token, as the oracle's `acceptInvitation` spends
    * it before its transaction.
    */
