@@ -54,7 +54,7 @@
       "buildInputs": [
         {
           "file": "apps/webapp/Dockerfile.platos",
-          "sha256": "e8c83f399085dcf44cc8c2a57d8e342e094556ea3ab46ea490d6c11ddcb14057"
+          "sha256": "9a4f8f0a784474ec29ffe3b450c61de3fa6649ab3864cef1a4772b7d0e47a3a5"
         },
         {
           "file": "apps/webapp/package.json",
@@ -89,7 +89,7 @@
           "sha256": "360b978afaf1d522a5b98479b5ab6f44e6b007e6cb71655f5c6ae55178f9fff7"
         }
       ],
-      "buildInputsSha256": "069a9214e41b093d34f23b8ebf41034261a63e5e2c2aa573558977dc2b390e5d"
+      "buildInputsSha256": "15f66f1d2e5c1dc3e2188c21cfb88a94b3fb9d2d1529036c5da7ca680dc12c37"
     },
     "core-api": {
       "file": "docs/audits/sbom/platos-core-api.cdx.json",

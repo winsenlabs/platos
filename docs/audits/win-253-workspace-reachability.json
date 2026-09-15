@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "2ee8fc3695a67a09f8de1e38389e54856973251c734cc591eb3dadbe6b3e6bdd",
+  "evidenceSha256": "438a591e321be20ae935366cd7ec581d205412c492a6c380258d082ef7cfc9a0",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "b2899a5dce1c90e02b6a8bcf873f376382af4827f78d8b0dcd90ae0898e9f60a",
+    "aggregateSha256": "3af95aef24e2489dff8a1092653efbe03681f6869070cac80e33078a2d6dc4ec",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -235,7 +235,7 @@
       },
       {
         "path": ".env.example",
-        "sha256": "9cc9784933ac0f3e0b5f4da190e150140a35dcdcb576c12819730dc463ea3724"
+        "sha256": "5f15162638c8b69145775df642a4f65b05a4eff162a5b067f52accd4a325fcdf"
       },
       {
         "path": ".github/FUNDING.yml",
@@ -2979,7 +2979,7 @@
       },
       {
         "path": "apps/webapp/Dockerfile.platos",
-        "sha256": "e8c83f399085dcf44cc8c2a57d8e342e094556ea3ab46ea490d6c11ddcb14057"
+        "sha256": "9a4f8f0a784474ec29ffe3b450c61de3fa6649ab3864cef1a4772b7d0e47a3a5"
       },
       {
         "path": "apps/webapp/README.md",
@@ -4296,6 +4296,10 @@
       {
         "path": "docs/adr/M0.4-contract-versioning.md",
         "sha256": "0516203edc42766de013725b7583f7eab6e0ede4dc902682d38d616a3bfc7681"
+      },
+      {
+        "path": "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
+        "sha256": "1101ac1ea0b4089b5ba7349fd829ca085c9d3f7760b833f38b1a36b8c5897fdb"
       },
       {
         "path": "docs/agent-worktrees.md",
@@ -6479,7 +6483,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "61df4710fd58f3cb12c45e21518208605603dc522ab9db39e00da4f81bf91390"
+        "sha256": "028f28a72084fe0f21f451d2e827423095009fe46aa36316b22e04e32e9de41a"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -6499,7 +6503,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "ff2ffc7505d8ec21ee86d0ecba23ba168bf993813bcc5c13638fa3077cfef289"
+        "sha256": "cd923d6c7caca3b4c48c11dfa41eb241c76be6cc287cbc5f339ecc95f2d33a18"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -20447,7 +20451,7 @@
       },
       {
         "path": "scripts/audit-platos-build.mjs",
-        "sha256": "f411ce28365a27e5f3c988bde08a485083d47ca0a5bcbe686b7ac49db65d95cc"
+        "sha256": "624724567571152cf36d7afd25e8cf6f038e4b95a9855298193ef4195488856c"
       },
       {
         "path": "scripts/audit-sbom.mjs",
@@ -20527,7 +20531,7 @@
       },
       {
         "path": "scripts/docs-examples.test.mjs",
-        "sha256": "1579bba6e64e6279b137046b001b1e1eb97bc42bc25571b82405ec862e687955"
+        "sha256": "3e2e8f11666802e004c81b349e3a63cc570c10aec2c2bdf5ff9b02b0f6451d95"
       },
       {
         "path": "scripts/docs-link-integrity.mjs",
@@ -20535,7 +20539,7 @@
       },
       {
         "path": "scripts/docs-link-integrity.test.mjs",
-        "sha256": "22991033928e92c481eef040731eb38b84995758de3fc6a3f0fb3bbdf2e478be"
+        "sha256": "a09f5e9133e42940f86422fd8916d35e0b1e0dd926baecdeac75bdb710371246"
       },
       {
         "path": "scripts/error-taxonomy.mjs",
@@ -20679,7 +20683,7 @@
       },
       {
         "path": "scripts/protected-paths.mjs",
-        "sha256": "54a83cbc5c49473ec1617a5f3753272d71cf4e73449d4c0fb30ddbdf8c54998b"
+        "sha256": "7c4ffd0cfc59b3250c4ffc6bed532b6df18e7801fed3edb96a739349ec10e8f2"
       },
       {
         "path": "scripts/protected-paths.test.mjs",
@@ -20767,7 +20771,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "ecb6a41f56bda58103e3db2e61466d95a5d7442cfb3f8dcbbd82132619890f1f"
+        "sha256": "28b55120b2e57c9fee604e46c64896f2a91d7409c38ccb3b2059dbcb777483c2"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -20815,7 +20819,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "4886a5f3a27fedaa2a0a3f039311d0495e0cc2aff5d754a23b0c2d1eb4828d05"
+        "sha256": "40a2faa7e502f200a2939d34cbfeb24e36734aa8fc138b5430d1f83fde41d9ac"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
@@ -22163,6 +22167,11 @@
               "line": 3
             },
             {
+              "from": "apps/webapp/Dockerfile.platos",
+              "kind": "reference",
+              "line": 3
+            },
+            {
               "from": "docker-compose.platos.yml",
               "kind": "reference",
               "line": 323
@@ -22182,6 +22191,10 @@
               "apps/core-api/Dockerfile"
             ],
             [
+              "apps/webapp/Dockerfile.platos",
+              "apps/webapp/Dockerfile.platos"
+            ],
+            [
               "docker-compose.platos.yml",
               "docker-compose.platos.yml"
             ]
@@ -22190,6 +22203,7 @@
             ".dockerignore",
             "apps/agent/Dockerfile",
             "apps/core-api/Dockerfile",
+            "apps/webapp/Dockerfile.platos",
             "docker-compose.platos.yml"
           ]
         },
@@ -22290,6 +22304,11 @@
               "from": "docs/adr/M0.4-contract-versioning.md",
               "kind": "reference",
               "line": 165
+            },
+            {
+              "from": "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
+              "kind": "reference",
+              "line": 15
             },
             {
               "from": "docs/ai-sdk-v7-upgrade-plan.md",
@@ -22675,6 +22694,10 @@
               "docs/adr/M0.4-contract-versioning.md"
             ],
             [
+              "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
+              "docs/adr/M2-M4-delegated-decisions-2026-09-15.md"
+            ],
+            [
               "docs/ai-sdk-v7-upgrade-plan.md",
               "docs/ai-sdk-v7-upgrade-plan.md"
             ],
@@ -22941,6 +22964,7 @@
             "content/docs/sdks.md",
             "docs/adr/M0.3-bounded-contexts.md",
             "docs/adr/M0.4-contract-versioning.md",
+            "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
             "docs/ai-sdk-v7-upgrade-plan.md",
             "docs/architecture.md",
             "docs/architecture/INTEGRATIONS_AUDIT.md",
@@ -26249,7 +26273,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "2db1940ffa67c9bd3dd54deaf2b1b045ce0f99eb31c10bbc1276940ee099ec2e",
+      "evidenceSha256": "e82077134c09833d5f10e2a81a0405f6fd0324d39791002549c9a5487febfd99",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -26426,6 +26450,11 @@
               "line": 57
             },
             {
+              "from": "apps/webapp/Dockerfile.platos",
+              "kind": "reference",
+              "line": 11
+            },
+            {
               "from": "docker-compose.platos.yml",
               "kind": "reference",
               "line": 671
@@ -26441,6 +26470,10 @@
               "apps/core-api/Dockerfile"
             ],
             [
+              "apps/webapp/Dockerfile.platos",
+              "apps/webapp/Dockerfile.platos"
+            ],
+            [
               "docker-compose.platos.yml",
               "docker-compose.platos.yml"
             ]
@@ -26448,6 +26481,7 @@
           "roots": [
             ".dockerignore",
             "apps/core-api/Dockerfile",
+            "apps/webapp/Dockerfile.platos",
             "docker-compose.platos.yml"
           ]
         },
@@ -27869,7 +27903,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "b70e3f8758521b4d27985ee0af98cae7ff31cd7f5f00e97ae4e64bae94f2e087",
+      "evidenceSha256": "e5d899b4d0f24bd8f82fcbca0953c2e5337d5bd83c11bdfd9c22f0e7f933ac69",
       "manifestSha256": "5d89045f4a7df5dcc6c2590c1767bfe663e7cbf79c82ca10531129ef0a0133f4",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -28564,7 +28598,7 @@
             {
               "from": "apps/webapp/Dockerfile.platos",
               "kind": "workspace-owned-file",
-              "line": 42
+              "line": 60
             },
             {
               "from": "docker-compose.deploy.yml",
@@ -28709,6 +28743,11 @@
               "from": "docs/adr/M0.4-contract-versioning.md",
               "kind": "reference",
               "line": 68
+            },
+            {
+              "from": "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
+              "kind": "reference",
+              "line": 94
             },
             {
               "from": "docs/ai-sdk-v7-upgrade-plan.md",
@@ -29113,6 +29152,10 @@
               "docs/adr/M0.4-contract-versioning.md"
             ],
             [
+              "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
+              "docs/adr/M2-M4-delegated-decisions-2026-09-15.md"
+            ],
+            [
               "docs/ai-sdk-v7-upgrade-plan.md",
               "docs/ai-sdk-v7-upgrade-plan.md"
             ],
@@ -29394,6 +29437,7 @@
             "docs/DESIGN_TOKENS.md",
             "docs/adr/M0.3-bounded-contexts.md",
             "docs/adr/M0.4-contract-versioning.md",
+            "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
             "docs/ai-sdk-v7-upgrade-plan.md",
             "docs/architecture.md",
             "docs/architecture/INTEGRATIONS_AUDIT.md",
@@ -30087,7 +30131,7 @@
             {
               "from": "scripts/docs-examples.test.mjs",
               "kind": "reference",
-              "line": 130
+              "line": 185
             },
             {
               "from": "scripts/evidence-lifecycle.test.mjs",
@@ -30713,7 +30757,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "7daf5b6a97dab718a3fceef30170d9d4fea89a3dd74a3ae45b842a4c8121be8c",
+      "evidenceSha256": "abe67fe2a6dd0ec719df82a8939a37c7f66102175aa369604a526f86e96b8808",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -30863,7 +30907,7 @@
             {
               "from": "apps/webapp/Dockerfile.platos",
               "kind": "reference",
-              "line": 150
+              "line": 168
             },
             {
               "from": "docker-compose.platos.yml",
@@ -31218,6 +31262,11 @@
               "from": "docs/adr/M0.4-contract-versioning.md",
               "kind": "workspace-owned-file",
               "line": 165
+            },
+            {
+              "from": "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
+              "kind": "workspace-owned-file",
+              "line": 7
             },
             {
               "from": "docs/agent-worktrees.md",
@@ -33696,6 +33745,10 @@
               "docs/adr/M0.4-contract-versioning.md"
             ],
             [
+              "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
+              "docs/adr/M2-M4-delegated-decisions-2026-09-15.md"
+            ],
+            [
               "docs/agent-worktrees.md",
               "docs/agent-worktrees.md"
             ],
@@ -35547,6 +35600,7 @@
             "docs/README.md",
             "docs/adr/M0.3-bounded-contexts.md",
             "docs/adr/M0.4-contract-versioning.md",
+            "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
             "docs/agent-worktrees.md",
             "docs/ai-sdk-v7-upgrade-plan.md",
             "docs/apikeys.mdx",
@@ -36946,7 +37000,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "72ea6321c9b15c6db61e2fcbc30defc5006c8c47445b56391c82191fe3d6c14e",
+      "evidenceSha256": "3c87eee6da88918dadefccb72369c36043d356d7b4e68449c1095013e88cc930",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -40201,7 +40255,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2732
+              "line": 2742
             }
           ],
           "reversePaths": [
@@ -40226,7 +40280,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "32be9213fa8fd3e5089f450840c2af8d4c11457e2be8fbc8e5c41e8d0fff9c6f",
+      "evidenceSha256": "5202fcc1f799053d5d24f2763808b068bde21f35da3ab14413644627e24144dc",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -41367,7 +41421,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2731
+              "line": 2741
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -41592,7 +41646,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "1e4ed426a3d5ab74230260a967d41e92e4fb4e6c9536b4a6cfdeb771e5f166ed",
+      "evidenceSha256": "11bda105fd2f9d009b1f490f6343aff105c548fb8e1105d2bc0d5f69647d4a92",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -42163,7 +42217,7 @@
             {
               "from": "apps/webapp/Dockerfile.platos",
               "kind": "reference",
-              "line": 55
+              "line": 73
             },
             {
               "from": "docker-compose.platos.yml",
@@ -44490,7 +44544,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "6acf6d71925633349c03e014cc9aa32f46326edceae5006dc1b1080c19587f04",
+      "evidenceSha256": "b5ef259183f8ec08769c099701248861eb617ac8228c83af34b11c012c6e465e",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -48567,6 +48621,11 @@
               "line": 190
             },
             {
+              "from": "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
+              "kind": "reference",
+              "line": 90
+            },
+            {
               "from": "packages/adapters/durable-runtime/README.md",
               "kind": "workspace-owned-file",
               "line": 1
@@ -48578,12 +48637,17 @@
               "docs/adr/M0.3-bounded-contexts.md"
             ],
             [
+              "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
+              "docs/adr/M2-M4-delegated-decisions-2026-09-15.md"
+            ],
+            [
               "packages/adapters/durable-runtime/README.md",
               "packages/adapters/durable-runtime/README.md"
             ]
           ],
           "roots": [
             "docs/adr/M0.3-bounded-contexts.md",
+            "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
             "packages/adapters/durable-runtime/README.md"
           ]
         },
@@ -48871,7 +48935,7 @@
           "packages/adapters/durable-runtime"
         ]
       },
-      "evidenceSha256": "fc5396c7094bbaa405c23a5730c033fbeef89896756c8d4bf10827c597fd5908",
+      "evidenceSha256": "59c7de112762441b691aade58e89d769bf5652216a74c2b17fdbe1d795259690",
       "manifestSha256": "1291fd9c446a27a02ca32d3da2adb9193c903e0af03fecc1d397d85f051e26d6",
       "name": "@platos/adapter-durable-runtime",
       "ociImageClosure": {
@@ -84445,6 +84509,11 @@
               "line": 212
             },
             {
+              "from": "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
+              "kind": "reference",
+              "line": 85
+            },
+            {
               "from": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
               "kind": "reference",
               "line": 55
@@ -84489,6 +84558,10 @@
               "docs/adr/M0.4-contract-versioning.md"
             ],
             [
+              "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
+              "docs/adr/M2-M4-delegated-decisions-2026-09-15.md"
+            ],
+            [
               "docs/audits/M2.5-transaction-outbox-clock-retry.md",
               "docs/audits/M2.5-transaction-outbox-clock-retry.md"
             ],
@@ -84517,6 +84590,7 @@
             "ai/references/repo.md",
             "docs/adr/M0.3-bounded-contexts.md",
             "docs/adr/M0.4-contract-versioning.md",
+            "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
             "docs/audits/M2.5-transaction-outbox-clock-retry.md",
             "docs/audits/M4.6-stream-vocabulary.json",
             "docs/env-vars.md",
@@ -95175,7 +95249,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "d8c86452d1a0779df896e204ea62d66187f03d807e3d27dc860b5f76dff6aa00",
+      "evidenceSha256": "9afbd839abc5ec9bcd7901e9e64c43c475f77b2e05f5ab58cf7e283692595b4d",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
@@ -96637,7 +96711,7 @@
             {
               "from": "scripts/docs-examples.test.mjs",
               "kind": "reference",
-              "line": 116
+              "line": 171
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -96767,7 +96841,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "784e57ff52e59224d83e609ed7639c0b9fd3170d1f0d93d93df56c9130d20992",
+      "evidenceSha256": "85a0d9ad4af583ecdde35e9e12564949e2355d85653b2743a8b0df898232b60f",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {
