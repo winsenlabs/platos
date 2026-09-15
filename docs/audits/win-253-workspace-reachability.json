@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d5ab4d54efe9988f9ee7820e86048e34d7342b0a59a9d4f8b1a839fad969df7d",
+  "evidenceSha256": "e829d9357ef1318e8faae9574c412b57d55f8282cd9959c6bb342e1237d95135",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "3445608de76e85e8e4fc563cadccf726fdbc4c3032b3038601f6ef2fb46f65a3",
+    "aggregateSha256": "57bdfd9a8eb5fbcd6447f7059289577263c1a0d1abbf9e11d5abaf888d577424",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4467,7 +4467,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "081ceb94d79bb656f4d033b7d679f121d9031d69f6cdc477a13c280f0de72fb2"
+        "sha256": "b75fdb2b3171c5ee24360f3d23aa8804b09c1f490ea08319cece0f50265e9fa3"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -4475,7 +4475,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "e843ef59ddd3571da9c2de40b146c4d4ec7577a96087f29a55aebe52a7ce3acb"
+        "sha256": "589ea64f3eabc02ea73726e8f6f644f7684b1974408a8cb91028f034e09506eb"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -4575,7 +4575,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "3ef69588ac95543bba15bf28027c05c1d3bd678b91b8ccdd8473ee7117359a4e"
+        "sha256": "411e48d9ce5d97b0e4ecbaf64866236f2b764c869aaef221bb5a27f3922f3a1c"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -6511,7 +6511,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "028f28a72084fe0f21f451d2e827423095009fe46aa36316b22e04e32e9de41a"
+        "sha256": "dd1e072cdadd0ac37fb752907576baf93afa3688f7c118dd2b8f5380ae0f4c6f"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -20579,11 +20579,11 @@
       },
       {
         "path": "scripts/evidence-lifecycle.mjs",
-        "sha256": "5cd8cf9cf4501c8ce1589ab7df483d0eb2c49d5565071843ecc8a2626aeb2279"
+        "sha256": "347b0fa92bc205dbd840f0a98219b31ef377a8aad94848d6c195acfdfe0c13b6"
       },
       {
         "path": "scripts/evidence-lifecycle.test.mjs",
-        "sha256": "feeb3e36283e719f77e569995b6bbdfa528a82d1a8f266cc7b39d54faccc051e"
+        "sha256": "07f926ea18ffcfeb87b74ade96b29ff67cdf4bfbc38489e69b11dc61efb65dcb"
       },
       {
         "path": "scripts/hook-policy.mjs",
@@ -20719,7 +20719,7 @@
       },
       {
         "path": "scripts/protected-paths.mjs",
-        "sha256": "7c4ffd0cfc59b3250c4ffc6bed532b6df18e7801fed3edb96a739349ec10e8f2"
+        "sha256": "6886dae029ac4f5859e0f1a71c32b1a967890a0a12e7516eb7e70c427a8964a8"
       },
       {
         "path": "scripts/protected-paths.test.mjs",
