@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "fa2c5b0af626b12abcb6f92b10392cb72587a4aa0ae553ec8c03260e1f63bbb4",
+  "evidenceSha256": "f3a3632a35a9b12f687f75dec2426ac685975bc5ba48039216cc23d6b2161013",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "df63c436a18e07f7d91920384463f7f2279878e40feec19048d4f47ee0087504",
+    "aggregateSha256": "4925f276680050ff593c0c508ca09e13749a67d0beda0542fcc3e8bb98f2c91e",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4547,7 +4547,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "3ef69588ac95543bba15bf28027c05c1d3bd678b91b8ccdd8473ee7117359a4e"
+        "sha256": "06c6c3a5a737c0d05e207bf333332ea061fa20c202d7ca2b54daf5bbe550ca31"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
