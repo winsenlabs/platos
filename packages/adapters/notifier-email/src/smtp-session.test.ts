@@ -21,6 +21,14 @@ let transcript: string[] = [];
 async function relay(greeting: string | null, script: Script): Promise<number> {
   transcript = [];
   server = createServer((socket) => {
+    // THE CLIENT HANGS UP WITHOUT WAITING, BY DESIGN: `sendOverSmtp` writes QUIT
+    // and destroys its socket at once (see its banner). When this relay's answer
+    // to QUIT is already in the client's receive buffer, that close is a TCP RST,
+    // and without a listener the relay's `read ECONNRESET` is an UNCAUGHT
+    // exception that fails the run after every case has passed — measured at 5 of
+    // 12 runs of this file. The relay's own socket errors are not what any case
+    // here asserts, so they are observed and dropped.
+    socket.on("error", () => undefined);
     if (greeting !== null) socket.write(`${greeting}\r\n`);
     let buffer = "";
     socket.on("data", (chunk) => {
