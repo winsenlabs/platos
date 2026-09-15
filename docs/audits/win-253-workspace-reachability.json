@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "e8551189436e0ed1eb5ff20f58e741e778e2480483ed7828ec693f2e134082a3",
+  "evidenceSha256": "7467cc60cff464029513d3ff78c0fc61bf102ec4cc2aa8c4be638221fb1d2f03",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "052e5b1d4b5188baeee5c521950847591ec5a4b736dbafd5313030ef3fba4cf9",
+    "aggregateSha256": "3bba44ccb4edce5003680253ecb1093600e12430dbd202ff8c4bffc4fefbe4f6",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2287,7 +2287,7 @@
       },
       {
         "path": "apps/agent/src/tool-gateway/mcp-transport/mcp-client-pool-isolation.test.ts",
-        "sha256": "9a1aee452817fb4f3f9aa07207da95caf4943894d07235672571f08bf7797c18"
+        "sha256": "102c1ff7fc2fc77a9c9fdab045ae3748b12bd8e5e319080d8bf157a9642685a9"
       },
       {
         "path": "apps/agent/src/tool-gateway/mcp-transport/mcp-client-pool.service.ts",
