@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "c774508f6ad871ccd99d0475c6a50f4eaf006af87a89374875c22b3d36cf1ad4",
+  "evidenceSha256": "12bbf3a62c0b416dd074c00ee28cc438d82c5276a21bd02b53387c107ad61c74",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "09ab9bbb588e89986479cdde38b44035f84a5d02427fccb0e417a46193e62349",
+    "aggregateSha256": "6f73fd7748f85c106d330aa41c5e96d9375cf26f1bd12ee71a43e15b0ab58352",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -267,7 +267,7 @@
       },
       {
         "path": ".github/workflows/build-images.yml",
-        "sha256": "1940c8865188383f748a586ac5ed7e366be1905c974d51562cc8ddf1b4211869"
+        "sha256": "546c6db20012e29e0dcff4ba9a95263a13c687825b3b3a5d2c09157d36024043"
       },
       {
         "path": ".github/workflows/ci.yml",
@@ -275,7 +275,7 @@
       },
       {
         "path": ".github/workflows/publish-images.yml",
-        "sha256": "5cdcc0486bec6f198689579da9cbe4a4207be150bbd06f6e56daa849dca40eac"
+        "sha256": "a827b667c23c97af3be609cefaa75aed4d4fd14a0c5d5287ab563debe3a5ffef"
       },
       {
         "path": ".github/workflows/trigger-deploy.yml",
@@ -20475,7 +20475,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "ea02edaa26757f0e425afec402d1b06ebbcdc0e773be4a1874072e4d9e967cdd"
+        "sha256": "7bcdd38d5a823b9d05bbc3d9b837e7c6fa45bfcc0c9df5789a366be6d169a244"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -20579,7 +20579,7 @@
       },
       {
         "path": "scripts/license-distribution.test.mjs",
-        "sha256": "110747291b92d914ebf2d753ea86e2376479c1afaa11741883721fb01cf9f5a5"
+        "sha256": "5ee8af20819758312de193ddf66d2ef52359a10f91568ea59d5f67b868a7d1e9"
       },
       {
         "path": "scripts/mutations-win267-a3.json",
@@ -21047,7 +21047,7 @@
       },
       {
         "path": "tests/persisted-state-gate/prepare-candidate-images.sh",
-        "sha256": "66fc584a18d432c8257dd6c864ac9ffcb6b372730f530698361f90fb576d4258"
+        "sha256": "6155b2da0f103c4c1ffe11a364d869dbd902cfcdb1cd3f4c909b49e57522420a"
       },
       {
         "path": "tests/persisted-state-gate/release-authorization-contract.test.mjs",
@@ -21547,6 +21547,10 @@
         ],
         "apps/core-api": [
           {
+            "from": "apps/core-api/Dockerfile",
+            "kind": "ci-image-build-entrypoint"
+          },
+          {
             "from": "apps/core-api/package.json",
             "kind": "executable-manifest"
           },
@@ -21898,6 +21902,7 @@
     ],
     "ociImageRoots": [
       "apps/agent",
+      "apps/core-api",
       "apps/webapp",
       "internal-packages/tenancy-database/migration-image"
     ],
@@ -21968,6 +21973,7 @@
     ],
     "shippingDockerfiles": {
       "apps/agent/Dockerfile": "apps/agent",
+      "apps/core-api/Dockerfile": "apps/core-api",
       "apps/webapp/Dockerfile.platos": "apps/webapp",
       "internal-packages/tenancy-database/Dockerfile.migrations": "internal-packages/tenancy-database/migration-image"
     }
@@ -21994,11 +22000,11 @@
       "webapp": 335
     },
     "installTraversalWorkspaceCount": 63,
-    "ociImageWorkspaceCount": 6,
+    "ociImageWorkspaceCount": 40,
     "publicBoundaryCount": 8,
     "reconciledPatchCount": 5,
     "registeredWorkspaceCount": 63,
-    "repositoryDevWorkspaceCount": 10,
+    "repositoryDevWorkspaceCount": 44,
     "reviewCandidateCount": 22
   },
   "workspaces": [
@@ -26288,6 +26294,10 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -26318,7 +26328,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -26327,6 +26337,11 @@
             {
               "from": ".github/workflows/build-images.yml",
               "kind": "workspace-wide-install"
+            },
+            {
+              "from": ".github/workflows/build-images.yml",
+              "kind": "reference",
+              "line": 50
             },
             {
               "from": ".github/workflows/ci.yml",
@@ -26847,7 +26862,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 46
+              "line": 44
             }
           ],
           "reversePaths": [
@@ -27319,7 +27334,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 365
+              "line": 100
             },
             {
               "from": "scripts/differential-coverage.test.mjs",
@@ -27334,7 +27349,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 46
+              "line": 44
             },
             {
               "from": "scripts/openapi-compat.test.mjs",
@@ -27752,6 +27767,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -27771,22 +27794,69 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "c6aadee9932ba3c35f1382194d5c58aa848760e71ea5d2982f62055bac2bc3e9",
+      "evidenceSha256": "265a143734c4e16ca8e1b1d17bab1496a87c268cbff7b22bebdf0f799d1410dc",
       "manifestSha256": "5d89045f4a7df5dcc6c2590c1767bfe663e7cbf79c82ca10531129ef0a0133f4",
       "name": "@platos/core-api",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "apps/core-api",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -28159,7 +28229,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 628
+              "line": 646
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -28281,7 +28351,7 @@
           "apps/mcp-stdio"
         ]
       },
-      "evidenceSha256": "43bafdf40da552b188574824f59e86c7fa08738f46a294251549bcd826a31418",
+      "evidenceSha256": "384dcd65ba830caa17520a733a8c599c1be178e1766507616bb9ee584dc73403",
       "manifestSha256": "c9bb318e0946a79c6a4572d2c852f7ac414cb361c6dab2e34c5543dcefcc00a3",
       "name": "@platos/mcp-stdio",
       "ociImageClosure": {
@@ -28371,7 +28441,7 @@
             {
               "from": ".github/workflows/publish-images.yml",
               "kind": "reference",
-              "line": 101
+              "line": 108
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -30558,7 +30628,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "a38c3d2530619a7671dacbb25044e03313e21c6d452db1f327fe2f50500225ff",
+      "evidenceSha256": "eb4d1f3a2f4b934f2ac32757c15bed4e7f1a819b02be69f218d7bb464a4b2324",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -36341,7 +36411,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 163
+              "line": 186
             },
             {
               "from": "scripts/clickhouse-split-audit.test.mjs",
@@ -36791,7 +36861,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "f603e9580eb3bbb6121fb720badb9e764be42d7529e585e737162d2a2fa09305",
+      "evidenceSha256": "4d90faba46277f5e1fcb500e4cf23474be4158510be8e9ed63e55cfa14542c40",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -38827,7 +38897,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 361
+              "line": 384
             }
           ],
           "reversePaths": [
@@ -38939,7 +39009,7 @@
           "internal-packages/docs"
         ]
       },
-      "evidenceSha256": "7521890b44bf61a49b4080da994c59a288328d96927e1dafb414e8d406c7169d",
+      "evidenceSha256": "aa030890a82524fb37b4d536ba472559f55efb68ee26181b5882df7be0a661b9",
       "manifestSha256": "e94891f0e15acb19983a7c5bd1ac41fa15ea5a4e15ecbfc5800f1c501b85f52d",
       "name": "@internal/docs",
       "ociImageClosure": {
@@ -41837,6 +41907,10 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -41957,7 +42031,7 @@
             {
               "from": ".github/workflows/build-images.yml",
               "kind": "reference",
-              "line": 217
+              "line": 221
             },
             {
               "from": ".github/workflows/ci.yml",
@@ -43466,7 +43540,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 305
+              "line": 328
             },
             {
               "from": "scripts/deploy-platos.test.mjs",
@@ -44213,6 +44287,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -44313,7 +44395,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "40a2d19624ca3ec1c1171deba646e29967095d224925127361901f51981ef7fa",
+      "evidenceSha256": "3f07824d42f1667ed791fae45dbf53e8235867c3c22b25a321d29517d619b70e",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -44342,6 +44424,24 @@
               "optionalDependencies"
             ],
             "path": [
+              "apps/core-api",
+              "packages/adapters/postgres-tenancy",
+              "internal-packages/tenancy-database"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "apps/webapp",
               "internal-packages/tenancy-database"
             ],
@@ -44360,12 +44460,18 @@
             "internal-packages/tenancy-database"
           ],
           [
+            "apps/core-api",
+            "packages/adapters/postgres-tenancy",
+            "internal-packages/tenancy-database"
+          ],
+          [
             "apps/webapp",
             "internal-packages/tenancy-database"
           ]
         ],
         "roots": [
           "apps/agent",
+          "apps/core-api",
           "apps/webapp"
         ]
       },
@@ -44399,6 +44505,25 @@
               "devDependencies"
             ],
             "path": [
+              "apps/core-api",
+              "packages/adapters/postgres-tenancy",
+              "internal-packages/tenancy-database"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
               "apps/webapp",
               "internal-packages/tenancy-database"
             ],
@@ -44417,12 +44542,18 @@
             "internal-packages/tenancy-database"
           ],
           [
+            "apps/core-api",
+            "packages/adapters/postgres-tenancy",
+            "internal-packages/tenancy-database"
+          ],
+          [
             "apps/webapp",
             "internal-packages/tenancy-database"
           ]
         ],
         "roots": [
           "apps/agent",
+          "apps/core-api",
           "apps/webapp"
         ]
       }
@@ -46381,7 +46512,7 @@
             {
               "from": ".github/workflows/build-images.yml",
               "kind": "reference",
-              "line": 217
+              "line": 221
             },
             {
               "from": ".github/workflows/ci.yml",
@@ -46664,7 +46795,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 2970
+              "line": 2990
             },
             {
               "from": "scripts/image-package-inventory.test.mjs",
@@ -46831,7 +46962,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "fcb6e72cccb592fce973080102684776a9282985e3e74e2c6095b94708584fae",
+      "evidenceSha256": "98d527ae0a45921b8742c9b6dbe3910bbaaaab78c7771a9cdeae83ce0b7aa39b",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
@@ -47189,6 +47320,10 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -47240,7 +47375,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -47364,7 +47499,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 316
+              "line": 312
             }
           ],
           "reversePaths": [
@@ -47533,7 +47668,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 316
+              "line": 312
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -47637,6 +47772,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -47677,22 +47820,73 @@
           "packages/adapters/channel-slack"
         ]
       },
-      "evidenceSha256": "8fa72a1fb32d62027aad75d13aaabcf7dbc639bfe4d996f13b32bba4869684a9",
+      "evidenceSha256": "20122eda20056219c1655a67ebf2a188eb8d66801613defd8bf6224d139a460e",
       "manifestSha256": "602133cd6f0a158f3dd4764775171821935d6905555f731042114748187eaa04",
       "name": "@platos/adapter-channel-slack",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/channel-slack"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/channel-slack"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/channel-slack",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/channel-slack"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/channel-slack"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -47710,6 +47904,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -47762,7 +47960,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -48032,6 +48230,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -48072,22 +48278,73 @@
           "packages/adapters/clickhouse-observability"
         ]
       },
-      "evidenceSha256": "75742d2f2a388b35bafeb80a3978f58af04129dadeabd990adacc8c342744201",
+      "evidenceSha256": "fda9e209c1616d4c7af7cb16268bec93603232769ba6764e6059a78e0bdc993a",
       "manifestSha256": "40bd79d6088e4c71073e849ecff745f0dfa79e7add5ff2ae33406f67a3f01acf",
       "name": "@platos/adapter-clickhouse-observability",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/clickhouse-observability"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/clickhouse-observability"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/clickhouse-observability",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/clickhouse-observability"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/clickhouse-observability"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -48105,6 +48362,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -48157,7 +48418,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -48467,6 +48728,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -48507,22 +48776,73 @@
           "packages/adapters/durable-runtime"
         ]
       },
-      "evidenceSha256": "95d3808e9e99402b3927fff5f86d79de1b6cfb9efc182e1e23543a5a7447623e",
+      "evidenceSha256": "ffe788fd962c0d1c9c22303072570c671a1869b8212ee33f46f978d7593006d8",
       "manifestSha256": "1291fd9c446a27a02ca32d3da2adb9193c903e0af03fecc1d397d85f051e26d6",
       "name": "@platos/adapter-durable-runtime",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/durable-runtime"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/durable-runtime"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/durable-runtime",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/durable-runtime"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/durable-runtime"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -48540,6 +48860,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -48592,7 +48916,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -49029,6 +49353,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -49069,22 +49401,73 @@
           "packages/adapters/keyring-envelope"
         ]
       },
-      "evidenceSha256": "ae6aa4b95f8cefe51c6c39b90739d2f7910d0b324b74f23bab2a6f19257d48b2",
+      "evidenceSha256": "3db5e007f1de64ad55215338b1191f89d7c21ed9b0db9f939036920c087dbf86",
       "manifestSha256": "ae371bc6b627e6693e9a7b45f6a789d1df3f4489f8b93db1ed61c9c2fefdd854",
       "name": "@platos/adapter-keyring-envelope",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/keyring-envelope"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/keyring-envelope"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/keyring-envelope",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/keyring-envelope"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/keyring-envelope"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -49102,6 +49485,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -49154,7 +49541,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -49621,6 +50008,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -49661,22 +50056,73 @@
           "packages/adapters/model-router-providers"
         ]
       },
-      "evidenceSha256": "d25ac90f69d51b2b62ed5447650911de2532f8dd7892928eef7208818b97c2f5",
+      "evidenceSha256": "d39ad4283cdff346b18f7bae7a0290fc32d9aa3aae874b5c818a9ab7455ef85e",
       "manifestSha256": "eaa4ecedce49dc05224e2c4b7982274d371f8fb27a60a9783fa643a8f6defcbd",
       "name": "@platos/adapter-model-router-providers",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/model-router-providers"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/model-router-providers"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/model-router-providers",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/model-router-providers"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/model-router-providers"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -49694,6 +50140,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -49746,7 +50196,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -50082,6 +50532,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -50122,22 +50580,73 @@
           "packages/adapters/node-crypto-digest"
         ]
       },
-      "evidenceSha256": "6bd3772f82e9be7c71a1dff200bdf25ccc7157da049c771ce83ceb4106ad8d5b",
+      "evidenceSha256": "2ab9b3222d2b9aa2f3ce2fedfb818be252b03f37c54d52555fea7f44e5b18e1b",
       "manifestSha256": "229fe0120b22a0df9fb190c46ea80e762a3efc68e6e509531147796557ea58ce",
       "name": "@platos/adapter-node-crypto-digest",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/node-crypto-digest"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/node-crypto-digest"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/node-crypto-digest",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/node-crypto-digest"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/node-crypto-digest"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -50155,6 +50664,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -50207,7 +50720,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -50444,6 +50957,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -50484,22 +51005,73 @@
           "packages/adapters/notifier-email"
         ]
       },
-      "evidenceSha256": "99eab195b91415ea53790f445b4c9b56e1dc3171ec8741d18c97ffe1daa1867f",
+      "evidenceSha256": "396e305a788ac53554f025cd1fc8e13a66b83480e93ff7913ea64286be62ca1f",
       "manifestSha256": "d588b586308cc20ed7e78f71ca261ad5de04772b80eaf54ce1d0601908361f66",
       "name": "@platos/adapter-notifier-email",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/notifier-email"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/notifier-email"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/notifier-email",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/notifier-email"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/notifier-email"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -50517,6 +51089,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -50569,7 +51145,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -50819,6 +51395,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -50859,22 +51443,73 @@
           "packages/adapters/notifier-webhook"
         ]
       },
-      "evidenceSha256": "3504230bb64c2b6636c05a9df76399af8e23848205b02dc56b2aaf47b524d77e",
+      "evidenceSha256": "e6b47c260c4f79d400b9d3d09d4b184af69c84675b88a104ffb2add5f3fb2158",
       "manifestSha256": "a5c1fd70b86c907c02a4fc57d582bc8c3b654208fedc056c2761b248ea1683cd",
       "name": "@platos/adapter-notifier-webhook",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/notifier-webhook"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/notifier-webhook"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/notifier-webhook",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/notifier-webhook"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/notifier-webhook"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -50892,6 +51527,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -50944,7 +51583,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -51204,6 +51843,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -51244,22 +51891,73 @@
           "packages/adapters/objectstore-minio"
         ]
       },
-      "evidenceSha256": "774521fcea3ba393699b811605669caaa6870b9ca4d8fe2a8bf149aae69770b0",
+      "evidenceSha256": "10b7bb6241015a7c1163cca5f16a3d8adf37c1947158918b433f6abc815b2e66",
       "manifestSha256": "8e1920de7ae2081a0fdd6854c321467200fa8b07d67b3503449c10ec385c6077",
       "name": "@platos/adapter-objectstore-minio",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/objectstore-minio"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/objectstore-minio"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/objectstore-minio",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/objectstore-minio"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/objectstore-minio"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -51277,6 +51975,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -51329,7 +52031,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -51736,6 +52438,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -51776,22 +52486,73 @@
           "packages/adapters/outbox"
         ]
       },
-      "evidenceSha256": "12b3c9bd71516585c7f4ef714927e6cc90e3679a834e5ca9a8af2ef78906af6c",
+      "evidenceSha256": "e5370b9688428fe254457ec48cd8d55c79ffb1766ea712c5544719e7933e0f31",
       "manifestSha256": "83a45d455aac9f0e888c1045ad4b91d9111960486ba77a4a087018299d5941b2",
       "name": "@platos/adapter-outbox",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/outbox"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/outbox"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/outbox",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/outbox"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/outbox"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -51809,6 +52570,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -51861,7 +52626,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -53843,6 +54608,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -53883,22 +54656,73 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "a8b395555059ba796f4135fb638106f1b41e11758f457d889b8c68861c4bbb4a",
+      "evidenceSha256": "29e84f63c0acc0e8c4ee3fa458e71f3d325a0984b4b29e70b683f0641d1b5698",
       "manifestSha256": "c3c49b3941820594e187dcbb86c78001443c58add67ce25009e535c3f1374927",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/postgres-tenancy"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/postgres-tenancy"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/postgres-tenancy",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/postgres-tenancy"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/postgres-tenancy"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -53916,6 +54740,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -53968,7 +54796,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -54292,7 +55120,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 5343
+              "line": 5364
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -54416,6 +55244,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -54456,22 +55292,73 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "798e39ec6944e16d4dd7366c54c52a268baf03b0be041597f0aaccfa040d1e9d",
+      "evidenceSha256": "d9dcf48c4fd2705b8f8b0237d680cd2469386339bb4bba05f6e2d59f6a0a4caa",
       "manifestSha256": "28d8382e77863b7c6b09e45dbccdcb4dd2e5d292e3dcdef574a37a2e21dac28d",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/redis-cache"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/redis-cache"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/redis-cache",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/redis-cache"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/redis-cache"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -54489,6 +55376,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -54541,7 +55432,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -54884,6 +55775,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -54924,22 +55823,73 @@
           "packages/adapters/redis-ratelimit"
         ]
       },
-      "evidenceSha256": "85febd7c5a9f4c229b59329407b7dfa4e3182e19c1b12763dba9897d33d9dde9",
+      "evidenceSha256": "f0a32c373f7fb437ad9cb43f7b904402163e36a5af136698b74c914ca58c54d4",
       "manifestSha256": "c34050bbafd7dbb339e9a1a8dabffc4ab2ab84203fc1f1739d9045c883563955",
       "name": "@platos/adapter-redis-ratelimit",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/redis-ratelimit"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/redis-ratelimit"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/redis-ratelimit",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/redis-ratelimit"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/redis-ratelimit"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -54957,6 +55907,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -55009,7 +55963,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -55367,6 +56321,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -55407,22 +56369,73 @@
           "packages/adapters/redis-streams"
         ]
       },
-      "evidenceSha256": "2897b58b5b281cb487638ccc4119b03ba84b978abf26fb1554b1d98a89c0db1b",
+      "evidenceSha256": "3e1119acc5c8ae8d4cd99cbe75980136728f238af009663c6e821f5b680d1663",
       "manifestSha256": "0b7ad7cf97137ad450d2033aed4deafc061f743a4fab118a56f7effe5b6031d8",
       "name": "@platos/adapter-redis-streams",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/redis-streams"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/redis-streams"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/redis-streams",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/redis-streams"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/redis-streams"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -55440,6 +56453,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -55492,7 +56509,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -55839,6 +56856,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -55879,22 +56904,73 @@
           "packages/adapters/tokenmint-totp"
         ]
       },
-      "evidenceSha256": "bb8e20d92420060d92d285c353a7c41ccf0b32f4ebec22cdc13e9024e0e054ed",
+      "evidenceSha256": "04407296d4accbc5c5f35fadb4a2b14e02cafb3d9bbbeb631e7a21703ca7781d",
       "manifestSha256": "6786de357df47e9fb13ec8d4c69ca91bb24c9ee6c47ebc7aa5565fa77883979b",
       "name": "@platos/adapter-tokenmint-totp",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/tokenmint-totp"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/tokenmint-totp"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/adapters/tokenmint-totp",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/tokenmint-totp"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/tokenmint-totp"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -55912,6 +56988,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -56030,7 +57110,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -56159,7 +57239,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 315
+              "line": 311
             }
           ],
           "reversePaths": [
@@ -56674,7 +57754,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 315
+              "line": 311
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -56903,6 +57983,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -57009,22 +58097,73 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "b7de65d2dcc8ddaaa27f4aa7757cb93010d58ee175fb78ee050eab198d6f26b1",
+      "evidenceSha256": "8347062040372f4ea316650b2fdf804278456f5f91592c16d48a04bbb5ceee2d",
       "manifestSha256": "e43db9efa534960ba5ade2f86cf89a88453e7575222d56297d6b6ccfe816a8f3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/agents"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/agents"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/agents",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/agents"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/agents"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -57042,6 +58181,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -57138,7 +58281,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -57950,6 +59093,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -58034,22 +59185,73 @@
           "packages/contexts/channels"
         ]
       },
-      "evidenceSha256": "fc73460996ad55fe02e6081710242010743b5da71f991d23b6c77b3d49f5e5ae",
+      "evidenceSha256": "f7594c9f731ba05f736ee6ad8551362afcb58adc93623008da17bae231149005",
       "manifestSha256": "83395ffe4b76070f9efb7bd1bb4b49d7228aea090069f569a5eec747aa98ab74",
       "name": "@platos/context-channels",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/channels"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/channels"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/channels",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/channels"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/channels"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -58067,6 +59269,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -58141,7 +59347,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -59000,6 +60206,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -59062,22 +60276,73 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "a04c8e6c86b6474ee2e3813c2bbfc5b1489fbc4f182218663a9d93b06b63f096",
+      "evidenceSha256": "0129920a97042d1a629bf80ce09a527f207ee69ef67f7a210532bf964ca3da55",
       "manifestSha256": "218c32b5c5b423bdf39bf215d6365c07bbd746fca291a1b0609da87e2cebd4d8",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/conversations"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/conversations"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/conversations",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/conversations"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/conversations"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -59095,6 +60360,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -59235,7 +60504,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -60027,6 +61296,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -60155,22 +61432,73 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "ca519624c721c5112266ae6c7c06385b1e9aae95ba36ba6159f4951caf38386a",
+      "evidenceSha256": "42f43a9585156583f124ec8c75ea6f93cc80f6670ddb4c23b44a989f91ebde16",
       "manifestSha256": "2e327d74bea9a17116d859d643836bc142e0977bd86d3a96567638fb75c7b3bb",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/cost-monitoring"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/cost-monitoring"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/cost-monitoring",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/cost-monitoring"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/cost-monitoring"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -60188,6 +61516,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -60262,7 +61594,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -60949,6 +62281,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -61011,22 +62351,73 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "c353c7775f9bfabbd09322b953e5218ed5f7a4b2b4b36d9780039bd5fe71f76e",
+      "evidenceSha256": "7a8b7b3344d057163884a93d2a4beb8d40202e16a77c48e1d9bbb5b5e700c6ce",
       "manifestSha256": "57c1d00c9dc67970acaec3dc30138bbd18273e9d303ea3804f6a13ab6a2d012a",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/eventing"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/eventing"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/eventing",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/eventing"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/eventing"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -61044,6 +62435,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -61234,7 +62629,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -62024,6 +63419,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -62202,22 +63605,73 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "3beb8e8cf5d426fbad4ff7e44f9eff9e40a549fb15e57ae4889ac81f5c93fefe",
+      "evidenceSha256": "efc4e12955f0b4c6c98f71d2e72963ad0944514d7a216354a08d6614478e9f30",
       "manifestSha256": "39fe0424b871775bb785e2d759c32cd0e833a9cf71c9934313d397ca699950ca",
       "name": "@platos/context-files",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/files"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/files"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/files",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/files"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/files"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -62235,6 +63689,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -62309,7 +63767,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -63366,6 +64824,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -63428,22 +64894,73 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "48edf9069202f7da038c663fea1c328bd1cd2e29b6191dd688c4dcb20350fd99",
+      "evidenceSha256": "847ad0a60d388a5f38b7da4d9b50d53a541e3447ea00965bc5086d7073b98678",
       "manifestSha256": "2e4c46079d53cec680be1e27cbc15aed896688935706c604462aef1db775b330",
       "name": "@platos/context-governance",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/governance"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/governance"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/governance",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/governance"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/governance"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -63461,6 +64978,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -64197,7 +65718,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -65271,7 +66792,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 337
+              "line": 360
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -65564,6 +67085,14 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -66289,22 +67818,73 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "14af676d75455910edd9bf8b71f08992470046816cfec4c0193315a2b556ab15",
+      "evidenceSha256": "a907af289b0c017a35f495e68907c17d14969e632af899b99ac7ef3435721743",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/identity-access"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/identity-access"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/identity-access",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/identity-access"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/identity-access"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -66322,6 +67902,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -66440,7 +68024,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -67260,6 +68844,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -67366,22 +68958,73 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "418fd8760efef7b4dbdb5d92f8273306cf04a152158cc98a64ef4fe7013b51b8",
+      "evidenceSha256": "a47aa609b0cdfd08ced6c6362e1628e180f8fb4073951152de9a47a1c5f4d9fa",
       "manifestSha256": "da3cc481236d02e85484094c0def2d6fc84c838c3c285f44efe4619a6c26e08c",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/jobs"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/jobs"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/jobs",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/jobs"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/jobs"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -67399,6 +69042,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -67517,7 +69164,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -68470,6 +70117,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -68576,22 +70231,73 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "df4b7cc6c5544558d296a6c8cb15b38467e10288db48e538cdfc29b680291ebf",
+      "evidenceSha256": "412ff670410e8439d895430c9049ddee6804bd6071e16c7a1148787b429baa74",
       "manifestSha256": "d596af2fb68e3e6c3622cf1cfb1683e20f46b5fac434d3f8cd6bf37df74d5b28",
       "name": "@platos/context-memory",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/memory"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/memory"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/memory",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/memory"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/memory"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -68609,6 +70315,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -68705,7 +70415,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -69315,6 +71025,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -69399,22 +71117,73 @@
           "packages/contexts/observability"
         ]
       },
-      "evidenceSha256": "3afca9ad2ecbba3a96e820e2d1325f172cb70cf8049665796f97bfe529938569",
+      "evidenceSha256": "379df2dddf810f13cd058152b95d3a2681abc20e585c57d9d5bb953e4ae48b3e",
       "manifestSha256": "09d858b658a326451d6bdd026af44df9ba5d1b195ce0c71deffc0cb972afc6d7",
       "name": "@platos/context-observability",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/observability"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/observability"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/observability",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/observability"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/observability"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -69432,6 +71201,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -69506,7 +71279,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -70167,6 +71940,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -70229,22 +72010,73 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "751078e13eaa5eebbef89f17a573e8e025277383eea2549bbb667bc3ddd87e78",
+      "evidenceSha256": "23d9aa9d71500101a8ea0c96f7af1417537381f37b4e6f423c7a0b6c68f63aa5",
       "manifestSha256": "8d9032044280327b5d3d795c13039f78e41ca275c9d6bce9f093b794a97473f1",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/privacy"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/privacy"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/privacy",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/privacy"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/privacy"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -70262,6 +72094,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -70596,7 +72432,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -71936,6 +73772,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -72258,22 +74102,73 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "08ae3acd2f34ba1b98da7a96fb4e3463403d7e9faab32df0ad94615785bdeec1",
+      "evidenceSha256": "9504b56ce48d5f46e8980ece5b2474ed0421ae58f32288bbfdd8af21fc53819d",
       "manifestSha256": "7462dcd3934c960646a6d3528915863411b9e195545de995cb54d10e6c43da83",
       "name": "@platos/context-providers",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/providers"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/providers"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/providers",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/providers"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/providers"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -72291,6 +74186,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -72685,7 +74584,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -73896,6 +75795,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -74278,22 +76185,73 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "da4b344eec853d4ca303cfe0be396b095adb4c80f3f1e9dae60120d180680d2c",
+      "evidenceSha256": "5ad2137cbe17c60954e661dc59d7b18f5333230d706d49a9e969f99b8d65f0e3",
       "manifestSha256": "03739f55f9812a44e47b5c9175c9ebb610f9448ba48bf906432c70796ecc3c03",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/secrets"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/secrets"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/secrets",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/secrets"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/secrets"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -74311,6 +76269,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -74453,7 +76415,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -75254,6 +77216,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -75384,22 +77354,73 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "a0dbee294672696130c70ebdf50f0c967c16dddcc01f0bcf90ae0fdd3919d1d0",
+      "evidenceSha256": "87d1650b8cd7687b3f3ea3e8675e2b9049955558919734c5c6be4266d7378932",
       "manifestSha256": "f1e56a67ae6b3d846f0887d8a17048ad19d4e0356bf7f38d1056b58507a2e7e2",
       "name": "@platos/context-skills",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/skills"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/skills"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/skills",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/skills"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/skills"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -75417,6 +77438,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -76001,7 +78026,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -77694,6 +79719,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -78266,22 +80299,73 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "80b48f280e92933abc236d3875bac89b276e73351442805cae98510e6312b962",
+      "evidenceSha256": "26ae49ab9560ce186ac5ac54b707fa92cbe2f7629441270490807d7c53715573",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/tenancy"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/tenancy"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/tenancy",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/tenancy"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/tenancy"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -78299,6 +80383,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -78427,7 +80515,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -79227,7 +81315,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 353
+              "line": 376
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -79461,6 +81549,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -79577,22 +81673,73 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "1fe98f5ac3798fa1930d94333b174715730bf15a4414d2b256bda3d631b4c879",
+      "evidenceSha256": "e2d4bc62f7a884185a95dba29b10b2be82ffc9c9b784861f2ba0d6aeec721b44",
       "manifestSha256": "164953cbfdcf1a718a65f058aa90a6b74be609a0c2c7ede9f88c30ed277fb8b7",
       "name": "@platos/context-tools",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/tools"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/tools"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/contexts/tools",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/contexts/tools"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/contexts/tools"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -79909,7 +82056,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 49
+              "line": 50
             }
           ],
           "reversePaths": [
@@ -80943,12 +83090,12 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 365
+              "line": 100
             },
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 49
+              "line": 50
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -81258,7 +83405,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "af785b0b41b03ce6b442ad8c7c89311cf3fa9fe8dca33e3502f05e15ab62580d",
+      "evidenceSha256": "0bf368d7ac2e508f2864253c55891e94173afe80e0f59312c1c756db4bbcf6c8",
       "manifestSha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -81319,6 +83466,10 @@
             ],
             "root": "apps/core-api",
             "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
               {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
@@ -82135,7 +84286,7 @@
         "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
         "deletionAuthorized": false,
         "reviewCandidate": false,
-        "status": "retain-application-deployable"
+        "status": "retain-oci-image"
       },
       "channels": {
         "ci": {
@@ -90713,7 +92864,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 627
+              "line": 645
             },
             {
               "from": "scripts/error-taxonomy.test.mjs",
@@ -92117,6 +94268,14 @@
             "root": "apps/core-api",
             "rootReasons": [
               {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
@@ -92921,22 +95080,73 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "38d2d92875f9f9c28c9430b410b2944dcea092cb6bc23862adff5638a36967bf",
+      "evidenceSha256": "95904713213a2fb4931015ccda67438bde37dbef2ab32b663d1931aa6234a559",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/kernel"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/kernel"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       },
       "path": "packages/kernel",
       "private": true,
       "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/kernel"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/kernel"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
       }
     },
     {
@@ -93263,7 +95473,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 50
+              "line": 51
             }
           ],
           "reversePaths": [
@@ -93473,7 +95683,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 50
+              "line": 51
             },
             {
               "from": "scripts/vendored-build-audit.test.mjs",
@@ -93578,7 +95788,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "92b654450b67d2968501e759f6744aaf6881dcec9be9a6480852babba93f5997",
+      "evidenceSha256": "9768f688410ceec5225f4c49112696bdcbb3393214be4b8767297dade5f3da84",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {
@@ -94076,7 +96286,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 51
+              "line": 52
             }
           ],
           "reversePaths": [
@@ -94327,7 +96537,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 623
+              "line": 641
             },
             {
               "from": "scripts/docs-examples.test.mjs",
@@ -94337,7 +96547,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 51
+              "line": 52
             },
             {
               "from": "scripts/sdk/v1-contract.test.mjs",
@@ -94462,7 +96672,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "94660a50e2c64f97dea28b9427c9ec5f3a5cc96b8d549a33fe2e438b29b8b234",
+      "evidenceSha256": "fd40dee936512231886e49f22cc88f6fbe4b002ed65bb9ce74f81dae770407ed",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {
@@ -94638,7 +96848,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 52
+              "line": 53
             }
           ],
           "reversePaths": [
@@ -94764,12 +96974,12 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 624
+              "line": 642
             },
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 52
+              "line": 53
             }
           ],
           "reversePaths": [
@@ -94804,7 +97014,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "2b908e9a3fc9c1d3a26e141be179c1c70de1598eb8cf74a3d3b13eee3da203c5",
+      "evidenceSha256": "70095386203ebf5183be978e8ed1aceb440f296278ac0a2c253b8d14f2440e43",
       "manifestSha256": "b892e563338f333035fef02ca96b5d203a438d3adbb15afc3a77106122e98f26",
       "name": "@platosdev/embed",
       "ociImageClosure": {
@@ -94970,7 +97180,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 53
+              "line": 54
             }
           ],
           "reversePaths": [
@@ -95130,12 +97340,12 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 624
+              "line": 642
             },
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 53
+              "line": 54
             }
           ],
           "reversePaths": [
@@ -95175,7 +97385,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "e33785ebe051308f9412350acc386b1bc0be42bb3f12bfd3358e4838e4a6cd45",
+      "evidenceSha256": "6d68f663778cdfbc01071a31cd8c9e4e07245c523a36ff30f247358ad590d690",
       "manifestSha256": "85f69f0d46b2932f65eb45f41c9714a097ceae7d5a006e1a51656e830d8ac6a8",
       "name": "@platosdev/react-widget",
       "ociImageClosure": {
@@ -95441,7 +97651,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 54
+              "line": 55
             }
           ],
           "reversePaths": [
@@ -95596,12 +97806,12 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 625
+              "line": 643
             },
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 54
+              "line": 55
             },
             {
               "from": "scripts/vocabulary-boundary.test.mjs",
@@ -95661,7 +97871,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "cb2db65346f2e3965567f9ec4b95c018888a19db947f7386f5d43a0204ca45b4",
+      "evidenceSha256": "275d10aec6f9166d83aa2c91539a198254bd875432027765b7e73d9541d21144",
       "manifestSha256": "41a33c2dfbf68f8484c8edc61f4490d1467d92783932dc10c91413b30c210162",
       "name": "@platosdev/token-mint",
       "ociImageClosure": {
@@ -96033,7 +98243,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 55
+              "line": 56
             }
           ],
           "reversePaths": [
@@ -96185,7 +98395,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 55
+              "line": 56
             }
           ],
           "reversePaths": [
@@ -96205,7 +98415,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "fee1d49404f8a380509d59f28106795ea20ba77f91bca20a3e956afdd8513165",
+      "evidenceSha256": "e7d6b6269f0582f5417694894b12f08ac7d467d1dd4d43409439f0d957eae185",
       "manifestSha256": "9e88758002295b4e87f4bd0e2ba50586b0ffa4141d0694d2f14e5eab3b016e28",
       "name": "@platos/react-hooks",
       "ociImageClosure": {
@@ -96371,7 +98581,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 56
+              "line": 57
             }
           ],
           "reversePaths": [
@@ -96656,7 +98866,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 56
+              "line": 57
             }
           ],
           "reversePaths": [
@@ -96746,7 +98956,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "03bab2f2bf6e78c20530bbcfe8d5f896d0dd7bc0d37adbfe3e46c0536840b9a9",
+      "evidenceSha256": "63eea109cbc580bdb656068d4edd4789f22d55a16bce8164f5ced4f05d420f0e",
       "manifestSha256": "ef514ac499b1a401341cdaeed75e735f1b90b64989f1dd77b791966f0ab45c7e",
       "name": "@platos/redis-worker",
       "ociImageClosure": {
