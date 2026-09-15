@@ -295,7 +295,7 @@ test("removing a root solution reference fails independently", () => {
   const root = fixture();
   mutateJson(root, "tsconfig.json", (config) => config.references.pop());
   const result = checkV1ProjectGraph(root);
-  assert.ok(errorIncludes(result, "root references must list the exact 35 projects"));
+  assert.ok(errorIncludes(result, "root references must list the exact 36 projects"));
 });
 
 test("removing a project reference fails even when source and dependencies still declare the edge", () => {
@@ -367,7 +367,7 @@ test("an extra discovered project fails the exact project-count contract", () =>
   writeFileSync(join(root, rogue, "tsconfig.json"), '{"compilerOptions":{"composite":true},"include":["src/**/*.ts"],"references":[]}\n');
   mutateJson(root, "tsconfig.json", (config) => config.references.push({ path: `./${rogue}` }));
   const result = checkV1ProjectGraph(root);
-  assert.ok(errorIncludes(result, "root references must list the exact 35 projects"));
+  assert.ok(errorIncludes(result, "root references must list the exact 36 projects"));
   assert.ok(errorIncludes(result, "discovered project set"));
 });
 
@@ -565,7 +565,9 @@ test("the live owner map passes its own check", () => {
     "redis-cache": 4,
     "keyring-envelope": 2,
   });
-  assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 15);
+  // WIN-271 (M4.5), D10: 15 -> 16 directories and the MULTI-OWNER map unmoved —
+  // `channel-discord` has one owner, `channels`, carrying two ports.
+  assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 16);
 });
 
 test("§15 refusal: an adapter granted an owner edge it was not given fails", () => {

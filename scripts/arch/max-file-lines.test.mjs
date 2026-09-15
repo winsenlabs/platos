@@ -949,7 +949,12 @@ test("the live selectors scan an exact nonzero source census", () => {
   // `APPS-TRANSPORTS` term covers `apps/core-api/src/transports/**` and the suite
   // lives in `composition/`, which no selector here names. A reader who assumed
   // "two new files" would expect 1654.
-  assert.equal(result.fileCount, 1653);
+  // WIN-271 (M4.5), D10 — THE SECOND CHANNEL RUNTIME, 1653 -> 1671. EIGHTEEN, all
+  // under `packages/adapters/channel-discord/src` (thirteen modules, five
+  // suites), which the `packages/adapters/**` selector counts in full. None is in
+  // the warning band: the largest, `discord-transport.test.ts`, is under 400
+  // effective lines, so the pinned warning list below does not move.
+  assert.equal(result.fileCount, 1671);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -1049,7 +1054,10 @@ test("the live selectors scan an exact nonzero source census", () => {
       // integration suite is. Everything else the tranche touched is an EDIT:
       // `http/idempotency-policy.ts`, `transports/rest/operator.ts`,
       // `composition/context-ports.ts` and `composition/installation.test.ts`.
-      1
+      1 +
+      // WIN-271 (M4.5), D10: EIGHTEEN under `packages/adapters/channel-discord/src`,
+      // a new directory, so the whole directory and no net.
+      18
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1274,7 +1282,11 @@ test("the live selectors scan an exact nonzero source census", () => {
   // `transports/rest/operator.ts` IN PLACE and adds no file under either.
   //
   // 30 + 1093 + 474 + 18 + 38 = 1653.
-  assert.equal(result.fileCount, 30 + 1093 + 474 + 18 + 38);
+  //
+  // WIN-271 (M4.5), D10, +18 IN ONE TERM: ADAPTERS 474 -> 492. `KERNEL`,
+  // `CONTEXTS` (which is the claim: not one file in `channels`), `APPS-HTTP` and
+  // `APPS-TRANSPORTS` are flat. 30 + 1093 + 492 + 18 + 38 = 1671.
+  assert.equal(result.fileCount, 30 + 1093 + 492 + 18 + 38);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

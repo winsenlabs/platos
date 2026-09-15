@@ -22,15 +22,16 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "73232862256626745934f916cd2127c73227abfc77bb2a2478de2f6617b5863b",
+  "evidenceSha256": "fa02997a9bfad34eeb778939011f75fca1adc8033023fada97fb30b9f81b91d9",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
-    "generatedProjectCount": 39,
+    "generatedProjectCount": 40,
     "generatedProjects": [
       "apps/core-api",
       "apps/mcp-stdio",
       "docs",
       "internal-packages/llm-model-catalog",
+      "packages/adapters/channel-discord",
       "packages/adapters/channel-slack",
       "packages/adapters/clickhouse-observability",
       "packages/adapters/durable-runtime",
@@ -70,15 +71,16 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 116,
-        "sha256": "c5db2ea5312ba56f78b2c16bbe6f14b16fcf0ebc6f44d1421001c236b0596131"
+        "outputCount": 119,
+        "sha256": "127e581ff8558a4f14110dc346d4a9b44e8d3dae8516c94b6aba8446bbb47052"
       }
     ],
-    "ownedOutputCount": 116,
-    "ownedOutputProjectCount": 35,
+    "ownedOutputCount": 119,
+    "ownedOutputProjectCount": 36,
     "ownedOutputProjects": [
       "apps/core-api",
       "apps/mcp-stdio",
+      "packages/adapters/channel-discord",
       "packages/adapters/channel-slack",
       "packages/adapters/clickhouse-observability",
       "packages/adapters/durable-runtime",
@@ -115,7 +117,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "0ac0f4a06f3fc4b2a6bf15bb3a57647ae8609152a19a3b60f9bba4ec5d2320a7",
+    "aggregateSha256": "e153c217410938d24edb772fb604e937295cf9f312766370147307deab9b4477",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -227,7 +229,7 @@
       },
       {
         "path": ".dependency-cruiser.js",
-        "sha256": "6d4b6e02da32e4afbf7ade63eaa8163d5eb086efd11b0acfee03fbf8adf407d0"
+        "sha256": "e246b973e9acc5544be29485314f25d3ea9f457b6d5170641edb80ea7928a4ec"
       },
       {
         "path": ".dockerignore",
@@ -235,7 +237,7 @@
       },
       {
         "path": ".env.example",
-        "sha256": "5f15162638c8b69145775df642a4f65b05a4eff162a5b067f52accd4a325fcdf"
+        "sha256": "927ff5e0c1d2d933d7150cc9705b4b8c2999c092d9773f9add7457eecd941a3e"
       },
       {
         "path": ".github/FUNDING.yml",
@@ -2531,11 +2533,11 @@
       },
       {
         "path": "apps/core-api/package.json",
-        "sha256": "5d89045f4a7df5dcc6c2590c1767bfe663e7cbf79c82ca10531129ef0a0133f4"
+        "sha256": "f576b83fed55b7a4f3320f5bf7a2a17087de5e5d99e415cfdfa9bcd437ea00e5"
       },
       {
         "path": "apps/core-api/src/app.module.test.ts",
-        "sha256": "58168f51367aa653d6ee41fda2baa4b0223f3d7b6c9bca96043156ea6d602c62"
+        "sha256": "80fe1d3e8fdf5364eb67eb64aa7c9d74a3267e871db03aadfb033aeba7b509a4"
       },
       {
         "path": "apps/core-api/src/app.module.ts",
@@ -2543,11 +2545,11 @@
       },
       {
         "path": "apps/core-api/src/composition/adapter-bindings.ts",
-        "sha256": "481a341ce6c6b5a7fd3e1c46493d3bd28556beb9bebb72dad38c6b8a63dd1bc7"
+        "sha256": "148c2baf7f449e1eb257d3cc8024708bfcc19f8b9664b8f3083ff1f74a3b413d"
       },
       {
         "path": "apps/core-api/src/composition/context-ports.ts",
-        "sha256": "d3235d926ee0d4297b9238e31ed6bbc25c4a6a2643ca480cc9f620c082678cbc"
+        "sha256": "f8b967cb795340396bc54ec39cdd5ec89e35acf67f7f2fb99a1a3d7e1dd99d35"
       },
       {
         "path": "apps/core-api/src/composition/governance-judge.test.ts",
@@ -2563,7 +2565,7 @@
       },
       {
         "path": "apps/core-api/src/composition/installation.test.ts",
-        "sha256": "6b77c2eb6d9fe0752fae2d44af0f7b9a44638fafe172d70feff36a9350f54348"
+        "sha256": "cf7cb9340ee1863e38f48429b14f6766a203fe01dc04f1d13a7ecab7ecdbb7fd"
       },
       {
         "path": "apps/core-api/src/composition/integration-database.test.ts",
@@ -2599,7 +2601,7 @@
       },
       {
         "path": "apps/core-api/src/config/channels.ts",
-        "sha256": "feb5060f313d7c56258259c431feb775f0bf1c186331d2eca4d2ca0614b48410"
+        "sha256": "ebf1de745180d122ceb0bf81b6e6645eb55739b9ebacfa3663862a5b9c3f7673"
       },
       {
         "path": "apps/core-api/src/config/durable-runtime.ts",
@@ -2619,7 +2621,7 @@
       },
       {
         "path": "apps/core-api/src/config/platform.test.ts",
-        "sha256": "41bb3838bd935a732858d46ec08b6360ead2fc1879c2208ff623ce5a77cfdad9"
+        "sha256": "2116490d4b633af94a34212a664a45588a9e62b170f53c8f9669215e641a47df"
       },
       {
         "path": "apps/core-api/src/config/platform.ts",
@@ -2635,7 +2637,7 @@
       },
       {
         "path": "apps/core-api/src/config/sections.test.ts",
-        "sha256": "e3b833790090b40dd9ce0b40cb97be2e2477da6aa2e288adc4f9fc2b1f0d0c62"
+        "sha256": "2d25b23b5555b2bf6fa50d9a05dbded8ef3dc555810ea819e708c3ee781bfa98"
       },
       {
         "path": "apps/core-api/src/config/security.ts",
@@ -2727,7 +2729,7 @@
       },
       {
         "path": "apps/core-api/src/process.test.ts",
-        "sha256": "0396cc3958a6b140b9208d325918e5dea899c9e9912b384c5048174347792abc"
+        "sha256": "fa9d7e895a66824c230569e31bf5bea9f858af52d4790ae5821d4af3c7051a4d"
       },
       {
         "path": "apps/core-api/src/runtime/correlation.test.ts",
@@ -2751,7 +2753,7 @@
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.test.ts",
-        "sha256": "6e349d7f993cd19f063f37bb6ebfaf346d703694347579fb03d9dc7055b22e90"
+        "sha256": "c411e357994c346ff731da61c2924cbecda7f0c78f1b58c7a18460226ec5203f"
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.ts",
@@ -2931,7 +2933,7 @@
       },
       {
         "path": "apps/core-api/tsconfig.json",
-        "sha256": "ea1c28cc6e001b242cae6be75f68ef379771df9ef57373dbc9481901800571fe"
+        "sha256": "cf0bd85dd08e1eb35213c114ab46628d24dc6c68771bbb5b9bcce8fe0cad9745"
       },
       {
         "path": "apps/mcp-stdio/README.md",
@@ -3887,7 +3889,7 @@
       },
       {
         "path": "content/docs/self-hosting.md",
-        "sha256": "d5965d2ce096449d666bf8dc3bba1596176d50b0d8a2cb5058ba7982478ed066"
+        "sha256": "2d0d910e42001e99c9121bc9b666a3f0682cf3c91a23b6abb2e56bbab50c3df9"
       },
       {
         "path": "content/docs/skills.md",
@@ -4275,7 +4277,7 @@
       },
       {
         "path": "docker-compose.platos.yml",
-        "sha256": "c6741593e99686f81f17f5e5f5a958226578bbedaf19c53f9cbd9acc9ea372a7"
+        "sha256": "08ac7321b0f922d8b58092977b5ebb1fd018e5c87e971254fffd3d43a30827c2"
       },
       {
         "path": "docs/.gitignore",
@@ -4815,11 +4817,11 @@
       },
       {
         "path": "docs/env-vars.md",
-        "sha256": "8f820057f7b34fbeeec7326b92ebd6eaf807286fdb274ab5e74d3a181c19bd6c"
+        "sha256": "fa99dbc9870a95ad374352da94057084761c7a0c323119fa68069b1079fabab6"
       },
       {
         "path": "docs/error-taxonomy.json",
-        "sha256": "15e5c4eee3ddf9fd816ce14e70433876bffc0b5757477073fa7dae57090a5063"
+        "sha256": "9ce00d8e5b9c5f5a2f2bedfdd92ac72b92f1d1cbf176953c3833bce9fffbe2f1"
       },
       {
         "path": "docs/errors-retrying.mdx",
@@ -11328,6 +11330,90 @@
       {
         "path": "package.json",
         "sha256": "c7a02e26b1561afe98074b49a570bdfc33cb7a75cce1f5142b9ec110c8eccf3b"
+      },
+      {
+        "path": "packages/adapters/channel-discord/README.md",
+        "sha256": "62393e0adf3df6da372f4c426c6a2c31ed6d931449bb1edf34dae7ed308b81d6"
+      },
+      {
+        "path": "packages/adapters/channel-discord/package.json",
+        "sha256": "3cc5c2212fb3155566d96b0a334bcfe3afae22f860d5276d15ba8b18fd7beb03"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/adapter.ts",
+        "sha256": "0f769e7c2601ccd5c9eeaf136c2c93c4dc042e9509a95dcc90013c2de3da63d6"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/discord-signature.test.ts",
+        "sha256": "6b1e2a3bf0b97aa4d666333be63a555bafe331a25e19bc98e759a84e8e6dbbaf"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/discord-transport.test.ts",
+        "sha256": "25522349b59481b09052ff3b4cc0c754fb9f2e604cd8e554687fb034e1e62336"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/ed25519.ts",
+        "sha256": "c5e308a2ac243a3398b7fb698f550f64600dd7c41ffb3aed8c5a8419fc0da070"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/failure.ts",
+        "sha256": "d00b53794094432a196e0e251cc6da4f113d6ce6ab05c704119cfe679e48ca6c"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/far-side.ts",
+        "sha256": "224daea5eb7462ae28267cff70bd8be0c20f39e096a0e135b6251f628bf033ab"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/fixtures.ts",
+        "sha256": "e096c7fe33361ebd10ce12e0f9ca7e13137731879fd54c656bf79559f15457b5"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/index.ts",
+        "sha256": "ae84c45242546faf023b0526e78fa2b541e86cf779d142b44e22b03b1a51acfe"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/normalize.test.ts",
+        "sha256": "078855a5e81ebd7d5e3a3e99febbcfd2ec9ccfe4d877832fe0bbaa5487acb362"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/normalize.ts",
+        "sha256": "41e1a5966c491c73d3f4b7e064fed8b6aa100be857888bb8d7119ef1d48dd912"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/provider.ts",
+        "sha256": "903b3bb3f0d93a5f31520e0b7227f5c508b0b1f669707936b4f9407063f4d0aa"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/rate-limit.ts",
+        "sha256": "60d8eace5fa31e5398ebabcdbece5a8eaa100994c61e571e679110211f0a133b"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/rfc8032-vectors.ts",
+        "sha256": "326078a73372b892f27e18c215cd13780f462254d34b74e215324f296eed99e1"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/rfc8032.test.ts",
+        "sha256": "4c62d9820652a0edd465897b66ae9fa807625316c21411881b08082da3914851"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/send.ts",
+        "sha256": "190c5b7a055badca8d706033816e2518933a9819a8a104018d0b74199b79a73e"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/signed-admission.test.ts",
+        "sha256": "e8a7a91874cf3de71a40aeced946064e5e404f28f9ce949ad8761a6129da8954"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/vendor.ts",
+        "sha256": "d1c9e1537e0472e7975c9aa71e1e41b836cb482bdc75dc6ed227fa8d2ebb7165"
+      },
+      {
+        "path": "packages/adapters/channel-discord/src/verify.ts",
+        "sha256": "490cf69927743d16bcdc92172d481bc8af63132e56814acd230bcdfc8916a443"
+      },
+      {
+        "path": "packages/adapters/channel-discord/tsconfig.json",
+        "sha256": "d3f495eac9adfbe24ca6925d343b767169a7de12f631ae270010c158ae8b2c70"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -20123,7 +20209,7 @@
       },
       {
         "path": "pnpm-lock.yaml",
-        "sha256": "79d41ad4b0a27d19e41cff3b38d3a239673b69ccae76574a316aa40508823bb4"
+        "sha256": "c28a350f9e77f15d707e916fe0feae1db0374dfc45aa7685fcd9bcdc5b2745a4"
       },
       {
         "path": "pnpm-workspace.yaml",
@@ -20279,19 +20365,19 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "cc7a5b0c8cc83e57a15dcfaf2ee4de8b9930464cacfd1ccfe2ac7488cdb15c34"
+        "sha256": "a39dcb620fc816cb1b3db30493d9616bb4279db531fd00941ae92691527e589e"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
-        "sha256": "bfd6a57b55d9a52bbe65ff2d97c02986f2247d096837043c1d07e21bdadef39f"
+        "sha256": "e5d0b76d332ac680ddefc97d6d9f3a32939de1d77f2cc4f7ae0f99e2b252e4ab"
       },
       {
         "path": "scripts/arch/clean-v1.mjs",
-        "sha256": "df7a3e9d5aa294703fdc60193f22096bc6c321d7ef519bb70ea1e15a0f56d0ef"
+        "sha256": "865e12873efb8fb96d72dc4c5f7063046f290ef998705885f7cbcc1c25f6d89c"
       },
       {
         "path": "scripts/arch/clean-v1.test.mjs",
-        "sha256": "dcc35e375e304700bb5c439cebe601b2aaaf0bd173be8cea972e4229d97712c1"
+        "sha256": "8d64ab63ab045ef261d56cde5c151f4b1d89d2492573de97a0c07095e4c79d19"
       },
       {
         "path": "scripts/arch/composition-root.mjs",
@@ -20299,7 +20385,7 @@
       },
       {
         "path": "scripts/arch/composition-root.test.mjs",
-        "sha256": "bedf1b89ea909f581493642080f1e77fa9f2a8cbd537618782f1bae342c706d8"
+        "sha256": "55127e10c9b24694f0808e13d012d9f45acc3d7337111d4e6d2992f4ff31226c"
       },
       {
         "path": "scripts/arch/contract-map.mjs",
@@ -20319,7 +20405,7 @@
       },
       {
         "path": "scripts/arch/env-access.mjs",
-        "sha256": "fb1182fe3357dd5e72dafad1ab10b9cca3656290e2123e5bc92a66b5977776d8"
+        "sha256": "84ea2b465013fa1aa09d0553bc13f8ecc8cd8fdfb93d66b3ca9bd49f7615d9e3"
       },
       {
         "path": "scripts/arch/env-access.test.mjs",
@@ -20331,11 +20417,11 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "205ca66594ff35468a980f77d7875e886d53df81ae6e52fb8ac5277b07d90df8"
+        "sha256": "70a58352521969692a56b0ece2b28a5744c8e45ee08ca1e32cf840c0b1e6cdd5"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
-        "sha256": "ac2b9ab4ffa0b1d865de4e81d6c73034e51e1fa7c1d13cbe0280c8cc3f0574c3"
+        "sha256": "ec697bb763821cbe04cb90a751d79c4947bbe8733c7959a863e3f20636168aba"
       },
       {
         "path": "scripts/arch/kernel-content.mjs",
@@ -20351,7 +20437,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "0a281586ecd6913f92ebcfe7ea0761677c66948d676fa31795e951f0769bb9d4"
+        "sha256": "283b2a2d13213387a0fa10283dc9beea707be147d42bc1c899dfc7ffa4d2824b"
       },
       {
         "path": "scripts/arch/mcp-store-ownership.mjs",
@@ -20403,11 +20489,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "6e1df8fd9febc2f523e9cea67bdc3f738bf00366eb4fce12f098067bde6424a5"
+        "sha256": "90832f6fd0932550b2f122cf91aae8036ccac390d6f29d79c06c19d2f55afd04"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "79e7eee1b0b4bff2e1b89485abe9f52f6c717c179ace744a43ec0d58994ed993"
+        "sha256": "e542e0182aaf972dcc402b115fa0407558ee268bbc06bf9f4e20100280ef7e39"
       },
       {
         "path": "scripts/arch/tool-lifecycle-reach.mjs",
@@ -20427,11 +20513,11 @@
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
-        "sha256": "a738549c3797106f1ff8c7126cee976eb1c2e307947e659e0b3b1e0ab2afa6af"
+        "sha256": "d6f3203baacf9eb8b3a66e4a8918ef4eb86aece1a8857bad35d04cdc0f70813c"
       },
       {
         "path": "scripts/arch/v1-project-graph.test.mjs",
-        "sha256": "74b6bda35ccb7112061df966cf9162f79da121d33540c7bfb059934df6f4a89f"
+        "sha256": "fd9b9d948f8f1f58230fb673615e1ef36e8380aa518d183cbb2b5ff03df11aa1"
       },
       {
         "path": "scripts/audit-advisory.mjs",
@@ -20731,7 +20817,7 @@
       },
       {
         "path": "scripts/run-win271-mutations.mjs",
-        "sha256": "3704d8cc354642a0ebec6098ec11bc41f519612cd376cc763b0c1ec6f71f3ac8"
+        "sha256": "4a86599de1779f53f0b615917e66cb209f193c355f14859a4862bbe3ebbeeb4f"
       },
       {
         "path": "scripts/run-win272-mutations.mjs",
@@ -20864,6 +20950,10 @@
       {
         "path": "scripts/webapp-inventory-contract.test.mjs",
         "sha256": "b9f4170117ef040283323959f81829d320fbbfe1e3e7089af1d8be43a890048a"
+      },
+      {
+        "path": "scripts/win271-discord-mutation-plan.json",
+        "sha256": "88c6b2a903c87c2b0843fffca40db2b1cd074cad2952b4b116988200aa38a80a"
       },
       {
         "path": "scripts/win271-mutation-plan.json",
@@ -21179,7 +21269,7 @@
       },
       {
         "path": "tsconfig.json",
-        "sha256": "cde262fe4b93c4aae3c05a2df135eec337fee96b5b573a75aad1fd8dd328a0c0"
+        "sha256": "c93e3944c418abe501f2fff6e3a37563807e1d5e7c97ab1c6936934bf1c8dfb2"
       },
       {
         "path": "turbo.json",
@@ -21631,6 +21721,12 @@
             "script": "build:platos:agent"
           }
         ],
+        "packages/adapters/channel-discord": [
+          {
+            "from": "tsconfig.json",
+            "kind": "root-typescript-reference"
+          }
+        ],
         "packages/adapters/channel-slack": [
           {
             "from": "tsconfig.json",
@@ -21850,6 +21946,7 @@
         "internal-packages/docs",
         "internal-packages/tenancy-database",
         "internal-packages/workload-identity",
+        "packages/adapters/channel-discord",
         "packages/adapters/channel-slack",
         "packages/adapters/clickhouse-observability",
         "packages/adapters/durable-runtime",
@@ -21894,6 +21991,7 @@
       "internal-packages/tenancy-database",
       "internal-packages/tenancy-database/migration-image",
       "internal-packages/workload-identity",
+      "packages/adapters/channel-discord",
       "packages/adapters/channel-slack",
       "packages/adapters/clickhouse-observability",
       "packages/adapters/durable-runtime",
@@ -21957,6 +22055,7 @@
       "internal-packages/tracing",
       "internal-packages/workload-identity",
       "internal-packages/zod-worker",
+      "packages/adapters/channel-discord",
       "packages/adapters/channel-slack",
       "packages/adapters/clickhouse-observability",
       "packages/adapters/durable-runtime",
@@ -22008,32 +22107,32 @@
   },
   "schemaVersion": 2,
   "summary": {
-    "applicationDeployableWorkspaceCount": 40,
+    "applicationDeployableWorkspaceCount": 41,
     "channelReachableCounts": {
-      "ci": 63,
+      "ci": 64,
       "dockerImage": 8,
-      "docsExamples": 60,
-      "generated": 43,
-      "license": 49,
-      "packageScripts": 63,
+      "docsExamples": 61,
+      "generated": 44,
+      "license": 50,
+      "packageScripts": 64,
       "patches": 17,
       "sourceDynamic": 2,
-      "sourceStatic": 47,
-      "testsFixtures": 59
+      "sourceStatic": 48,
+      "testsFixtures": 60
     },
     "configuredPatchCount": 5,
-    "deploymentUnionWorkspaceCount": 41,
+    "deploymentUnionWorkspaceCount": 42,
     "externalProductionSnapshotNodesByImage": {
       "agent": 718,
       "core-api": 329,
       "webapp": 335
     },
-    "installTraversalWorkspaceCount": 63,
-    "ociImageWorkspaceCount": 40,
+    "installTraversalWorkspaceCount": 64,
+    "ociImageWorkspaceCount": 41,
     "publicBoundaryCount": 8,
     "reconciledPatchCount": 5,
-    "registeredWorkspaceCount": 63,
-    "repositoryDevWorkspaceCount": 44,
+    "registeredWorkspaceCount": 64,
+    "repositoryDevWorkspaceCount": 45,
     "reviewCandidateCount": 22
   },
   "workspaces": [
@@ -26599,6 +26698,11 @@
               "line": 222
             },
             {
+              "from": "packages/adapters/channel-discord/README.md",
+              "kind": "reference",
+              "line": 13
+            },
+            {
               "from": "packages/adapters/channel-slack/README.md",
               "kind": "reference",
               "line": 13
@@ -26764,6 +26868,10 @@
               "docs/win-260-mutation-ledger.json"
             ],
             [
+              "packages/adapters/channel-discord/README.md",
+              "packages/adapters/channel-discord/README.md"
+            ],
+            [
               "packages/adapters/channel-slack/README.md",
               "packages/adapters/channel-slack/README.md"
             ],
@@ -26847,6 +26955,7 @@
             "docs/error-taxonomy.json",
             "docs/v1-ledger-rules.json",
             "docs/win-260-mutation-ledger.json",
+            "packages/adapters/channel-discord/README.md",
             "packages/adapters/channel-slack/README.md",
             "packages/adapters/clickhouse-observability/README.md",
             "packages/adapters/durable-runtime/README.md",
@@ -27193,7 +27302,7 @@
             {
               "from": "apps/core-api/src/config/sections.test.ts",
               "kind": "workspace-owned-file",
-              "line": 227
+              "line": 254
             },
             {
               "from": "apps/core-api/src/http/api-surface.test.ts",
@@ -27903,8 +28012,8 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "e5d899b4d0f24bd8f82fcbca0953c2e5337d5bd83c11bdfd9c22f0e7f933ac69",
-      "manifestSha256": "5d89045f4a7df5dcc6c2590c1767bfe663e7cbf79c82ca10531129ef0a0133f4",
+      "evidenceSha256": "289f7ba98718c4d502a84df3df835ae843b00f23126cc2ef7795bc7290a1fb52",
+      "manifestSha256": "f576b83fed55b7a4f3320f5bf7a2a17087de5e5d99e415cfdfa9bcd437ea00e5",
       "name": "@platos/core-api",
       "ociImageClosure": {
         "reachable": true,
@@ -28283,12 +28392,12 @@
             {
               "from": "apps/core-api/src/composition/installation.test.ts",
               "kind": "reference",
-              "line": 1086
+              "line": 1106
             },
             {
               "from": "apps/core-api/src/config/sections.test.ts",
               "kind": "reference",
-              "line": 248
+              "line": 275
             },
             {
               "from": "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
@@ -28328,7 +28437,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 149
+              "line": 152
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -28460,7 +28569,7 @@
           "apps/mcp-stdio"
         ]
       },
-      "evidenceSha256": "4206e6f9dd67eaee3b9ac6421a1ef24aeea1cad53b5cba7eb5bbfe28773b60e7",
+      "evidenceSha256": "c639b9fa7221006e9816517c0fa329a77635d6bff0f8caa63f034e50eb49c128",
       "manifestSha256": "c9bb318e0946a79c6a4572d2c852f7ac414cb361c6dab2e34c5543dcefcc00a3",
       "name": "@platos/mcp-stdio",
       "ociImageClosure": {
@@ -29896,7 +30005,7 @@
             {
               "from": "apps/core-api/src/app.module.test.ts",
               "kind": "reference",
-              "line": 842
+              "line": 851
             },
             {
               "from": "apps/webapp/package.json",
@@ -30757,7 +30866,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "abe67fe2a6dd0ec719df82a8939a37c7f66102175aa369604a526f86e96b8808",
+      "evidenceSha256": "bd347a8ff3d6dddae3e6ca62cfc4bf60d4824e1afcce7a24499f86cafebbf37b",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -36410,7 +36519,7 @@
             {
               "from": "apps/core-api/src/config/sections.test.ts",
               "kind": "reference",
-              "line": 214
+              "line": 241
             },
             {
               "from": "apps/core-api/src/http/failure.test.ts",
@@ -37000,7 +37109,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "3c87eee6da88918dadefccb72369c36043d356d7b4e68449c1095013e88cc930",
+      "evidenceSha256": "ad349ddea44d60ba7153c1487cd30e147458860de93c2c32e615852d72809ff9",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -38475,7 +38584,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 1592
+              "line": 1604
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -38590,7 +38699,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "e5de59cc4f9af103e1140f4a4e28999c4d30df7f72bc94a287b43819b14d6b7f",
+      "evidenceSha256": "8c82a5da1a433d9c57cbb2b9cf6c9e3fc8f1c92870bd6519caaeef9aca221248",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -40835,7 +40944,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 1615
+              "line": 1627
             }
           ],
           "reversePaths": [
@@ -40925,7 +41034,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "bf2862fabc79eedc5a19a8ebbc7a87a2c75f6756a6bd5635c2a745eb2b00c9ca",
+      "evidenceSha256": "747a9cc62ba19d54e75658505b89fad6387f5d4f193e3fa02ea53dc29966d861",
       "manifestSha256": "2848f0f02171494d6112ab9631f2b0ed74a98d740454f7a2e43a442b2b3d6c16",
       "name": "@internal/redis",
       "ociImageClosure": {
@@ -43664,7 +43773,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 1587
+              "line": 1599
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -44544,7 +44653,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "b5ef259183f8ec08769c099701248861eb617ac8228c83af34b11c012c6e465e",
+      "evidenceSha256": "7d1df3ba1cb574841900c45eb770b3cb0612f165e2c57d496278fd9417cd4a27",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -47464,6 +47573,531 @@
             ],
             "path": [
               "apps/core-api",
+              "packages/adapters/channel-discord"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
+                "from": "apps/core-api/package.json",
+                "kind": "executable-manifest"
+              },
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-discord"
+            ],
+            "root": "packages/adapters/channel-discord",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/channel-discord"
+          ],
+          [
+            "packages/adapters/channel-discord"
+          ]
+        ],
+        "roots": [
+          "apps/core-api",
+          "packages/adapters/channel-discord"
+        ]
+      },
+      "boundaries": {
+        "externalPublic": false,
+        "externalPublicReasons": [],
+        "kind": "private-workspace",
+        "ownerDecisionReasons": [],
+        "ownerDecisionRequired": false
+      },
+      "candidate": {
+        "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
+        "deletionAuthorized": false,
+        "reviewCandidate": false,
+        "status": "retain-oci-image"
+      },
+      "channels": {
+        "ci": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": ".github/workflows/build-images.yml",
+              "kind": "workspace-wide-install"
+            },
+            {
+              "from": ".github/workflows/ci.yml",
+              "kind": "workspace-wide-install"
+            },
+            {
+              "from": ".github/workflows/trigger-deploy.yml",
+              "kind": "workspace-wide-install"
+            }
+          ],
+          "reversePaths": [
+            [
+              ".github/workflows/build-images.yml",
+              ".github/workflows/build-images.yml"
+            ],
+            [
+              ".github/workflows/ci.yml",
+              ".github/workflows/ci.yml"
+            ],
+            [
+              ".github/workflows/trigger-deploy.yml",
+              ".github/workflows/trigger-deploy.yml"
+            ]
+          ],
+          "roots": [
+            ".github/workflows/build-images.yml",
+            ".github/workflows/ci.yml",
+            ".github/workflows/trigger-deploy.yml"
+          ]
+        },
+        "dockerImage": {
+          "reachable": false,
+          "reasons": [],
+          "reversePaths": [],
+          "roots": []
+        },
+        "docsExamples": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "docs/error-taxonomy.json",
+              "kind": "reference",
+              "line": 3237
+            },
+            {
+              "from": "packages/adapters/channel-discord/README.md",
+              "kind": "workspace-owned-file",
+              "line": 1
+            }
+          ],
+          "reversePaths": [
+            [
+              "docs/error-taxonomy.json",
+              "docs/error-taxonomy.json"
+            ],
+            [
+              "packages/adapters/channel-discord/README.md",
+              "packages/adapters/channel-discord/README.md"
+            ]
+          ],
+          "roots": [
+            "docs/error-taxonomy.json",
+            "packages/adapters/channel-discord/README.md"
+          ]
+        },
+        "generated": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/adapters/channel-discord/package.json",
+              "generator": "scripts/arch/gen-v1-skeleton.mjs",
+              "kind": "generator-owned-output"
+            },
+            {
+              "from": "packages/adapters/channel-discord/README.md",
+              "generator": "scripts/arch/gen-v1-skeleton.mjs",
+              "kind": "generator-owned-output"
+            },
+            {
+              "from": "packages/adapters/channel-discord/tsconfig.json",
+              "generator": "scripts/arch/gen-v1-skeleton.mjs",
+              "kind": "generator-owned-output"
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/adapters/channel-discord/package.json",
+              "packages/adapters/channel-discord/package.json"
+            ],
+            [
+              "packages/adapters/channel-discord/README.md",
+              "packages/adapters/channel-discord/README.md"
+            ],
+            [
+              "packages/adapters/channel-discord/tsconfig.json",
+              "packages/adapters/channel-discord/tsconfig.json"
+            ]
+          ],
+          "roots": [
+            "packages/adapters/channel-discord/README.md",
+            "packages/adapters/channel-discord/package.json",
+            "packages/adapters/channel-discord/tsconfig.json"
+          ]
+        },
+        "license": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/adapters/channel-discord/package.json",
+              "kind": "manifest-license",
+              "license": "Apache-2.0"
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/adapters/channel-discord/package.json",
+              "packages/adapters/channel-discord/package.json"
+            ]
+          ],
+          "roots": [
+            "packages/adapters/channel-discord/package.json"
+          ]
+        },
+        "packageScripts": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "build"
+            },
+            {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "clean"
+            },
+            {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
+              "command": "tsc -b",
+              "from": "packages/adapters/channel-discord/package.json",
+              "kind": "workspace-script",
+              "script": "build"
+            },
+            {
+              "command": "tsc -b --clean",
+              "from": "packages/adapters/channel-discord/package.json",
+              "kind": "workspace-script",
+              "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/adapters/channel-discord/package.json",
+              "kind": "workspace-script",
+              "script": "test"
+            }
+          ],
+          "reversePaths": [
+            [
+              "package.json",
+              "package.json"
+            ],
+            [
+              "packages/adapters/channel-discord/package.json",
+              "packages/adapters/channel-discord/package.json"
+            ]
+          ],
+          "roots": [
+            "package.json",
+            "packages/adapters/channel-discord/package.json"
+          ]
+        },
+        "patches": {
+          "reachable": false,
+          "reasons": [],
+          "reversePaths": [],
+          "roots": []
+        },
+        "sourceDynamic": {
+          "reachable": false,
+          "reasons": [],
+          "reversePaths": [],
+          "roots": []
+        },
+        "sourceStatic": {
+          "reachable": true,
+          "reasons": [
+            {
+              "file": "apps/core-api/src/composition/adapter-bindings.ts",
+              "from": "apps/core-api",
+              "line": 160,
+              "specifier": "@platos/adapter-channel-discord"
+            },
+            {
+              "file": "apps/core-api/src/composition/adapter-bindings.ts",
+              "from": "apps/core-api",
+              "line": 161,
+              "specifier": "@platos/adapter-channel-discord"
+            }
+          ],
+          "reversePaths": [
+            [
+              "apps/core-api",
+              "apps/core-api/src/composition/adapter-bindings.ts"
+            ]
+          ],
+          "roots": [
+            "apps/core-api"
+          ]
+        },
+        "testsFixtures": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/adapters/channel-discord/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "packages/adapters/channel-discord/src/discord-signature.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/channel-discord/src/discord-transport.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/channel-discord/src/normalize.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/channel-discord/src/rfc8032.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/channel-discord/src/signed-admission.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "scripts/arch/arch-boundaries.test.mjs",
+              "kind": "reference",
+              "line": 1406
+            },
+            {
+              "from": "scripts/arch/max-file-lines.test.mjs",
+              "kind": "reference",
+              "line": 953
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 480
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/adapters/channel-discord/package.json",
+              "packages/adapters/channel-discord/package.json"
+            ],
+            [
+              "packages/adapters/channel-discord/src/discord-signature.test.ts",
+              "packages/adapters/channel-discord/src/discord-signature.test.ts"
+            ],
+            [
+              "packages/adapters/channel-discord/src/discord-transport.test.ts",
+              "packages/adapters/channel-discord/src/discord-transport.test.ts"
+            ],
+            [
+              "packages/adapters/channel-discord/src/normalize.test.ts",
+              "packages/adapters/channel-discord/src/normalize.test.ts"
+            ],
+            [
+              "packages/adapters/channel-discord/src/rfc8032.test.ts",
+              "packages/adapters/channel-discord/src/rfc8032.test.ts"
+            ],
+            [
+              "packages/adapters/channel-discord/src/signed-admission.test.ts",
+              "packages/adapters/channel-discord/src/signed-admission.test.ts"
+            ],
+            [
+              "scripts/arch/arch-boundaries.test.mjs",
+              "scripts/arch/arch-boundaries.test.mjs"
+            ],
+            [
+              "scripts/arch/max-file-lines.test.mjs",
+              "scripts/arch/max-file-lines.test.mjs"
+            ],
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ]
+          ],
+          "roots": [
+            "packages/adapters/channel-discord/package.json",
+            "packages/adapters/channel-discord/src/discord-signature.test.ts",
+            "packages/adapters/channel-discord/src/discord-transport.test.ts",
+            "packages/adapters/channel-discord/src/normalize.test.ts",
+            "packages/adapters/channel-discord/src/rfc8032.test.ts",
+            "packages/adapters/channel-discord/src/signed-admission.test.ts",
+            "scripts/arch/arch-boundaries.test.mjs",
+            "scripts/arch/max-file-lines.test.mjs",
+            "scripts/arch/test-case-census.test.mjs"
+          ]
+        }
+      },
+      "deploymentUnionClosure": {
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/channel-discord"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
+                "from": "apps/core-api/package.json",
+                "kind": "executable-manifest"
+              },
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-discord"
+            ],
+            "root": "packages/adapters/channel-discord",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/channel-discord"
+          ],
+          [
+            "packages/adapters/channel-discord"
+          ]
+        ],
+        "roots": [
+          "apps/core-api",
+          "packages/adapters/channel-discord"
+        ]
+      },
+      "evidenceSha256": "220f49a44e109cc061d512b6f35ef5dc4f9897f56a241a166d902343303ec5d2",
+      "manifestSha256": "3cc5c2212fb3155566d96b0a334bcfe3afae22f860d5276d15ba8b18fd7beb03",
+      "name": "@platos/adapter-channel-discord",
+      "ociImageClosure": {
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/channel-discord"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/channel-discord"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
+      },
+      "path": "packages/adapters/channel-discord",
+      "private": true,
+      "repositoryDevClosure": {
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/channel-discord"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/channel-discord"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
+      }
+    },
+    {
+      "applicationDeployableClosure": {
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
               "packages/adapters/channel-slack"
             ],
             "root": "apps/core-api",
@@ -47575,7 +48209,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3237
+              "line": 3253
             },
             {
               "from": "packages/adapters/channel-slack/README.md",
@@ -47797,7 +48431,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 1010
+              "line": 1015
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -47969,7 +48603,7 @@
           "packages/adapters/channel-slack"
         ]
       },
-      "evidenceSha256": "20122eda20056219c1655a67ebf2a188eb8d66801613defd8bf6224d139a460e",
+      "evidenceSha256": "439c718b3e839b26e18ced366d913334f8874236420e4dc6d91bcbf497d5fe61",
       "manifestSha256": "602133cd6f0a158f3dd4764775171821935d6905555f731042114748187eaa04",
       "name": "@platos/adapter-channel-slack",
       "ociImageClosure": {
@@ -48345,7 +48979,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 438
+              "line": 444
             }
           ],
           "reversePaths": [
@@ -48427,7 +49061,7 @@
           "packages/adapters/clickhouse-observability"
         ]
       },
-      "evidenceSha256": "fda9e209c1616d4c7af7cb16268bec93603232769ba6764e6059a78e0bdc993a",
+      "evidenceSha256": "477e03168a543e4a010b1ec8a9951e9716a4b11ecd8f1032e40c5d105fbce2eb",
       "manifestSha256": "40bd79d6088e4c71073e849ecff745f0dfa79e7add5ff2ae33406f67a3f01acf",
       "name": "@platos/adapter-clickhouse-observability",
       "ociImageClosure": {
@@ -48818,12 +49452,12 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 454
+              "line": 460
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 163
+              "line": 166
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -48935,7 +49569,7 @@
           "packages/adapters/durable-runtime"
         ]
       },
-      "evidenceSha256": "59c7de112762441b691aade58e89d769bf5652216a74c2b17fdbe1d795259690",
+      "evidenceSha256": "f8f5d8c7e82ed9b0f7a4e49d739c4792f228ee2313bdadc3dd80d989d9d003cd",
       "manifestSha256": "1291fd9c446a27a02ca32d3da2adb9193c903e0af03fecc1d397d85f051e26d6",
       "name": "@platos/adapter-durable-runtime",
       "ociImageClosure": {
@@ -49126,7 +49760,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3245
+              "line": 3261
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -49287,13 +49921,13 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 159,
+              "line": 164,
               "specifier": "@platos/adapter-keyring-envelope"
             },
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 160,
+              "line": 165,
               "specifier": "@platos/adapter-keyring-envelope"
             }
           ],
@@ -49388,7 +50022,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 2002
+              "line": 2008
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -49560,7 +50194,7 @@
           "packages/adapters/keyring-envelope"
         ]
       },
-      "evidenceSha256": "3db5e007f1de64ad55215338b1191f89d7c21ed9b0db9f939036920c087dbf86",
+      "evidenceSha256": "e03ba779b352886572a9fd366b7c134354fc6fd193fbb2a719813a89d953e8a6",
       "manifestSha256": "ae371bc6b627e6693e9a7b45f6a789d1df3f4489f8b93db1ed61c9c2fefdd854",
       "name": "@platos/adapter-keyring-envelope",
       "ociImageClosure": {
@@ -50018,7 +50652,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1400
+              "line": 1404
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -50215,7 +50849,7 @@
           "packages/adapters/model-router-providers"
         ]
       },
-      "evidenceSha256": "c179f5bfce38b25f666147701a5f2e182045b205043ee7faa9ca36fbce1ca669",
+      "evidenceSha256": "02c83177646a57a0cca2992799b753283795eddb335d388ae15d564f2b60eada",
       "manifestSha256": "eaa4ecedce49dc05224e2c4b7982274d371f8fb27a60a9783fa643a8f6defcbd",
       "name": "@platos/adapter-model-router-providers",
       "ociImageClosure": {
@@ -50576,13 +51210,13 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 161,
+              "line": 166,
               "specifier": "@platos/adapter-node-crypto-digest"
             },
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 162,
+              "line": 167,
               "specifier": "@platos/adapter-node-crypto-digest"
             }
           ],
@@ -50622,7 +51256,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 2063
+              "line": 2069
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -50739,7 +51373,7 @@
           "packages/adapters/node-crypto-digest"
         ]
       },
-      "evidenceSha256": "16d3a8a9663096b155d1fa089014ef22d38d05c45797b29a7ed9290d33dfde43",
+      "evidenceSha256": "d2ce720844de953b66cf6b1ad98bf6b9cf67fde2b11e3fff446a72b62b697c75",
       "manifestSha256": "229fe0120b22a0df9fb190c46ea80e762a3efc68e6e509531147796557ea58ce",
       "name": "@platos/adapter-node-crypto-digest",
       "ociImageClosure": {
@@ -51080,7 +51714,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 157,
+              "line": 162,
               "specifier": "@platos/adapter-notifier-email"
             }
           ],
@@ -51164,7 +51798,7 @@
           "packages/adapters/notifier-email"
         ]
       },
-      "evidenceSha256": "396e305a788ac53554f025cd1fc8e13a66b83480e93ff7913ea64286be62ca1f",
+      "evidenceSha256": "409bb1926769f545f22eef3b1d4564948eb1c5c834ec248ff4200baa1889346b",
       "manifestSha256": "d588b586308cc20ed7e78f71ca261ad5de04772b80eaf54ce1d0601908361f66",
       "name": "@platos/adapter-notifier-email",
       "ociImageClosure": {
@@ -51505,7 +52139,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 158,
+              "line": 163,
               "specifier": "@platos/adapter-notifier-webhook"
             }
           ],
@@ -51602,7 +52236,7 @@
           "packages/adapters/notifier-webhook"
         ]
       },
-      "evidenceSha256": "e6b47c260c4f79d400b9d3d09d4b184af69c84675b88a104ffb2add5f3fb2158",
+      "evidenceSha256": "82ab1fea4afb0b0e047e9a109cfb00c82fed27eaed5feaa684ae7c6115efd7b8",
       "manifestSha256": "a5c1fd70b86c907c02a4fc57d582bc8c3b654208fedc056c2761b248ea1683cd",
       "name": "@platos/adapter-notifier-webhook",
       "ociImageClosure": {
@@ -51973,7 +52607,7 @@
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 583
+              "line": 585
             }
           ],
           "reversePaths": [
@@ -52050,7 +52684,7 @@
           "packages/adapters/objectstore-minio"
         ]
       },
-      "evidenceSha256": "10b7bb6241015a7c1163cca5f16a3d8adf37c1947158918b433f6abc815b2e66",
+      "evidenceSha256": "9c27c41c3974be2754ca7af3186ad3ddc0e3f6e50ab0fa6bf57a687405c1d2f5",
       "manifestSha256": "8e1920de7ae2081a0fdd6854c321467200fa8b07d67b3503449c10ec385c6077",
       "name": "@platos/adapter-objectstore-minio",
       "ociImageClosure": {
@@ -52473,7 +53107,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 726
+              "line": 740
             },
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
@@ -52488,7 +53122,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1944
+              "line": 1948
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -52645,7 +53279,7 @@
           "packages/adapters/outbox"
         ]
       },
-      "evidenceSha256": "e57102f8c3263f7d76cbc6f735511f03005ee892110964cf21c2b2c99c2a3bf3",
+      "evidenceSha256": "37f06d6d0a0bbcbe8f06cd727e20aa1369a9c71573393ebe441e5ec3165789ca",
       "manifestSha256": "83a45d455aac9f0e888c1045ad4b91d9111960486ba77a4a087018299d5941b2",
       "name": "@platos/adapter-outbox",
       "ociImageClosure": {
@@ -52856,7 +53490,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3253
+              "line": 3269
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -53893,7 +54527,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1502
+              "line": 1506
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -54815,7 +55449,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "73f5b3bb0a416cffa2228ce4b188b86cd67fde352d973d33ca31d5421c5c01d3",
+      "evidenceSha256": "58cb68c182817610c45649ef98899ddf7781c42d61f2a03e5b8868b6beb38893",
       "manifestSha256": "c3c49b3941820594e187dcbb86c78001443c58add67ce25009e535c3f1374927",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -55011,7 +55645,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3277
+              "line": 3293
             },
             {
               "from": "docs/win-260-mutation-ledger.json",
@@ -55249,7 +55883,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 307
+              "line": 312
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -55451,7 +56085,7 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "6af76fbd6bc4a7f6150b37590c3fd6266d670cee5da137e18f06daf886df7a51",
+      "evidenceSha256": "4d0590e3da84d422c3c8ca40d73f0a7765fb666d4625a713853915f82e8f3dff",
       "manifestSha256": "28d8382e77863b7c6b09e45dbccdcb4dd2e5d292e3dcdef574a37a2e21dac28d",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
@@ -55840,7 +56474,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 979
+              "line": 984
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -55982,7 +56616,7 @@
           "packages/adapters/redis-ratelimit"
         ]
       },
-      "evidenceSha256": "f0a32c373f7fb437ad9cb43f7b904402163e36a5af136698b74c914ca58c54d4",
+      "evidenceSha256": "a3edac4fdae75c2219af440b22bd8979a15164b7e59325d0cd5b4339f9401e9c",
       "manifestSha256": "c34050bbafd7dbb339e9a1a8dabffc4ab2ab84203fc1f1739d9045c883563955",
       "name": "@platos/adapter-redis-ratelimit",
       "ociImageClosure": {
@@ -56381,7 +57015,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 1018
+              "line": 1023
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -56528,7 +57162,7 @@
           "packages/adapters/redis-streams"
         ]
       },
-      "evidenceSha256": "71d9c33b97dfbaa2aaf74fd35053feafb1abfcd3b75dd8fa99ac08be19fd5a3c",
+      "evidenceSha256": "8be5476a4e7b60bbd764acfdb6d9d3f3c2130b6009401122e346fa8c43dfd94a",
       "manifestSha256": "0b7ad7cf97137ad450d2033aed4deafc061f743a4fab118a56f7effe5b6031d8",
       "name": "@platos/adapter-redis-streams",
       "ociImageClosure": {
@@ -56860,13 +57494,13 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 163,
+              "line": 168,
               "specifier": "@platos/adapter-tokenmint-totp"
             },
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 164,
+              "line": 169,
               "specifier": "@platos/adapter-tokenmint-totp"
             }
           ],
@@ -57063,7 +57697,7 @@
           "packages/adapters/tokenmint-totp"
         ]
       },
-      "evidenceSha256": "916ca183865ba151ec36458563cef048e98efd7844d2f16ed6609da949d3620d",
+      "evidenceSha256": "9787088e30f9a02ad5887414fded601588e61daf0fbd823162e9c784751becd8",
       "manifestSha256": "6786de357df47e9fb13ec8d4c69ca91bb24c9ee6c47ebc7aa5565fa77883979b",
       "name": "@platos/adapter-tokenmint-totp",
       "ociImageClosure": {
@@ -57325,7 +57959,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3285
+              "line": 3301
             },
             {
               "from": "packages/contexts/agents/README.md",
@@ -57898,7 +58532,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 519
+              "line": 525
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -57908,7 +58542,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1250
+              "line": 1254
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -58256,7 +58890,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "aead50d9fbf7bade37d3c4a76d819630dc815576e0e35b0f36bde5f2a89eb4e8",
+      "evidenceSha256": "3255ebd67bcc538b00293692d6695afb22dd802d895d291a4f68ca68cbd5a210",
       "manifestSha256": "e43db9efa534960ba5ade2f86cf89a88453e7575222d56297d6b6ccfe816a8f3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
@@ -58360,6 +58994,23 @@
               "optionalDependencies"
             ],
             "path": [
+              "packages/adapters/channel-discord",
+              "packages/contexts/channels"
+            ],
+            "root": "packages/adapters/channel-discord",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "packages/adapters/channel-slack",
               "packages/contexts/channels"
             ],
@@ -58411,6 +59062,10 @@
             "packages/contexts/channels"
           ],
           [
+            "packages/adapters/channel-discord",
+            "packages/contexts/channels"
+          ],
+          [
             "packages/adapters/channel-slack",
             "packages/contexts/channels"
           ],
@@ -58424,6 +59079,7 @@
         ],
         "roots": [
           "apps/core-api",
+          "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
           "packages/adapters/postgres-tenancy",
           "packages/contexts/channels"
@@ -58496,7 +59152,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3301
+              "line": 3317
             },
             {
               "from": "packages/contexts/channels/README.md",
@@ -58654,6 +59310,42 @@
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
               "line": 84,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-discord/src/adapter.ts",
+              "from": "packages/adapters/channel-discord",
+              "line": 57,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-discord/src/failure.ts",
+              "from": "packages/adapters/channel-discord",
+              "line": 45,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-discord/src/fixtures.ts",
+              "from": "packages/adapters/channel-discord",
+              "line": 28,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-discord/src/normalize.ts",
+              "from": "packages/adapters/channel-discord",
+              "line": 40,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-discord/src/send.ts",
+              "from": "packages/adapters/channel-discord",
+              "line": 26,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-discord/src/verify.ts",
+              "from": "packages/adapters/channel-discord",
+              "line": 38,
               "specifier": "@platos/context-channels/application/ports/index.js"
             },
             {
@@ -58823,6 +59515,30 @@
               "apps/core-api/src/composition/adapter-bindings.ts"
             ],
             [
+              "packages/adapters/channel-discord",
+              "packages/adapters/channel-discord/src/adapter.ts"
+            ],
+            [
+              "packages/adapters/channel-discord",
+              "packages/adapters/channel-discord/src/failure.ts"
+            ],
+            [
+              "packages/adapters/channel-discord",
+              "packages/adapters/channel-discord/src/fixtures.ts"
+            ],
+            [
+              "packages/adapters/channel-discord",
+              "packages/adapters/channel-discord/src/normalize.ts"
+            ],
+            [
+              "packages/adapters/channel-discord",
+              "packages/adapters/channel-discord/src/send.ts"
+            ],
+            [
+              "packages/adapters/channel-discord",
+              "packages/adapters/channel-discord/src/verify.ts"
+            ],
+            [
               "packages/adapters/channel-slack",
               "packages/adapters/channel-slack/src/adapter.ts"
             ],
@@ -58893,6 +59609,7 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/adapters/channel-discord",
             "packages/adapters/channel-slack",
             "packages/adapters/postgres-tenancy"
           ]
@@ -58900,6 +59617,21 @@
         "testsFixtures": {
           "reachable": true,
           "reasons": [
+            {
+              "from": "packages/adapters/channel-discord/src/discord-transport.test.ts",
+              "kind": "reference",
+              "line": 29
+            },
+            {
+              "from": "packages/adapters/channel-discord/src/normalize.test.ts",
+              "kind": "reference",
+              "line": 12
+            },
+            {
+              "from": "packages/adapters/channel-discord/src/signed-admission.test.ts",
+              "kind": "reference",
+              "line": 22
+            },
             {
               "from": "packages/adapters/channel-slack/src/normalize.test.ts",
               "kind": "reference",
@@ -59048,7 +59780,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 1013
+              "line": 1018
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -59058,7 +59790,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1302
+              "line": 1306
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -59067,6 +59799,18 @@
             }
           ],
           "reversePaths": [
+            [
+              "packages/adapters/channel-discord/src/discord-transport.test.ts",
+              "packages/adapters/channel-discord/src/discord-transport.test.ts"
+            ],
+            [
+              "packages/adapters/channel-discord/src/normalize.test.ts",
+              "packages/adapters/channel-discord/src/normalize.test.ts"
+            ],
+            [
+              "packages/adapters/channel-discord/src/signed-admission.test.ts",
+              "packages/adapters/channel-discord/src/signed-admission.test.ts"
+            ],
             [
               "packages/adapters/channel-slack/src/normalize.test.ts",
               "packages/adapters/channel-slack/src/normalize.test.ts"
@@ -59201,6 +59945,9 @@
             ]
           ],
           "roots": [
+            "packages/adapters/channel-discord/src/discord-transport.test.ts",
+            "packages/adapters/channel-discord/src/normalize.test.ts",
+            "packages/adapters/channel-discord/src/signed-admission.test.ts",
             "packages/adapters/channel-slack/src/normalize.test.ts",
             "packages/adapters/channel-slack/src/signed-admission.test.ts",
             "packages/adapters/channel-slack/src/slack-transport.test.ts",
@@ -59275,6 +60022,23 @@
               "optionalDependencies"
             ],
             "path": [
+              "packages/adapters/channel-discord",
+              "packages/contexts/channels"
+            ],
+            "root": "packages/adapters/channel-discord",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "packages/adapters/channel-slack",
               "packages/contexts/channels"
             ],
@@ -59326,6 +60090,10 @@
             "packages/contexts/channels"
           ],
           [
+            "packages/adapters/channel-discord",
+            "packages/contexts/channels"
+          ],
+          [
             "packages/adapters/channel-slack",
             "packages/contexts/channels"
           ],
@@ -59339,12 +60107,13 @@
         ],
         "roots": [
           "apps/core-api",
+          "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
           "packages/adapters/postgres-tenancy",
           "packages/contexts/channels"
         ]
       },
-      "evidenceSha256": "218ad5f03d16789c1bfce2d39dafc3845490d75f296b0ad06285add6cfaa9c0f",
+      "evidenceSha256": "aaa04771993995e7e407b28bd63335bf93ad181723bff08034743033145d2325",
       "manifestSha256": "83395ffe4b76070f9efb7bd1bb4b49d7228aea090069f569a5eec747aa98ab74",
       "name": "@platos/context-channels",
       "ociImageClosure": {
@@ -60101,7 +60870,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1481
+              "line": 1485
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -60435,7 +61204,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "6565ab3d2f99308e92993f72bed49c4607aefef927a2da567db4047b513fa8ff",
+      "evidenceSha256": "4949bbf6525ec0554c695720d8d23440659a824d7ac34d415af1e5bdf6576b8b",
       "manifestSha256": "218c32b5c5b423bdf39bf215d6365c07bbd746fca291a1b0609da87e2cebd4d8",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -60719,7 +61488,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3309
+              "line": 3325
             },
             {
               "from": "packages/contexts/cost-monitoring/README.md",
@@ -61261,7 +62030,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1137
+              "line": 1141
             }
           ],
           "reversePaths": [
@@ -61591,7 +62360,7 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "4ac878ce6b22203bfd17b9d29420d42f3fbb34445f36d6ab3478f8b632b8ce2f",
+      "evidenceSha256": "15f9970aa7b7fee63c9547ea5da13df2543482a84f7d7e685fce2c4e942ee72f",
       "manifestSha256": "2e327d74bea9a17116d859d643836bc142e0977bd86d3a96567638fb75c7b3bb",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
@@ -61814,7 +62583,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3333
+              "line": 3349
             },
             {
               "from": "packages/contexts/eventing/README.md",
@@ -62510,7 +63279,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "5f73509c77566c5dac8763d2ab87ec72c29d1d7b66cb4ed07e34b1570b470663",
+      "evidenceSha256": "82d21eeff9dcbee1044e2deb562e653aa69de12a97c3e1d4869d349e3514ab1e",
       "manifestSha256": "57c1d00c9dc67970acaec3dc30138bbd18273e9d303ea3804f6a13ab6a2d012a",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
@@ -62844,7 +63613,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3341
+              "line": 3357
             },
             {
               "from": "packages/contexts/files/README.md",
@@ -63379,7 +64148,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 269
+              "line": 274
             },
             {
               "from": "scripts/arch/env-access.test.mjs",
@@ -63764,7 +64533,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "9e5f462b70f88eab42dd6521f956fdcdbc396508d5003a772108ea188789ecb7",
+      "evidenceSha256": "e89d32c7b642248580df2d011e95dbbf43932199096105284a2a56f9dee1426f",
       "manifestSha256": "39fe0424b871775bb785e2d759c32cd0e833a9cf71c9934313d397ca699950ca",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -63982,7 +64751,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3349
+              "line": 3365
             },
             {
               "from": "packages/contexts/governance/README.md",
@@ -64724,7 +65493,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1373
+              "line": 1377
             }
           ],
           "reversePaths": [
@@ -65053,7 +65822,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "664b39aa98ba19eaab0f9ad64114a4e7447f9f42295201c853c318a3d62552e1",
+      "evidenceSha256": "1f86b7963277dd20743c7e8f589ff05993d4df246f50cb2167d37ac57ef24fa4",
       "manifestSha256": "2e4c46079d53cec680be1e27cbc15aed896688935706c604462aef1db775b330",
       "name": "@platos/context-governance",
       "ociImageClosure": {
@@ -65167,6 +65936,24 @@
                 "from": "apps/mcp-stdio/package.json",
                 "kind": "executable-manifest"
               },
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-discord",
+              "packages/contexts/channels",
+              "packages/contexts/identity-access"
+            ],
+            "root": "packages/adapters/channel-discord",
+            "rootReasons": [
               {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
@@ -65697,6 +66484,11 @@
             "packages/contexts/identity-access"
           ],
           [
+            "packages/adapters/channel-discord",
+            "packages/contexts/channels",
+            "packages/contexts/identity-access"
+          ],
+          [
             "packages/adapters/channel-slack",
             "packages/contexts/channels",
             "packages/contexts/identity-access"
@@ -65836,6 +66628,7 @@
         "roots": [
           "apps/core-api",
           "apps/mcp-stdio",
+          "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
           "packages/adapters/clickhouse-observability",
           "packages/adapters/keyring-envelope",
@@ -65938,7 +66731,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3389
+              "line": 3405
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -66921,17 +67714,17 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 261
+              "line": 266
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 208
+              "line": 214
             },
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 969
+              "line": 974
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -67278,6 +68071,24 @@
                 "from": "apps/mcp-stdio/package.json",
                 "kind": "executable-manifest"
               },
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-discord",
+              "packages/contexts/channels",
+              "packages/contexts/identity-access"
+            ],
+            "root": "packages/adapters/channel-discord",
+            "rootReasons": [
               {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
@@ -67808,6 +68619,11 @@
             "packages/contexts/identity-access"
           ],
           [
+            "packages/adapters/channel-discord",
+            "packages/contexts/channels",
+            "packages/contexts/identity-access"
+          ],
+          [
             "packages/adapters/channel-slack",
             "packages/contexts/channels",
             "packages/contexts/identity-access"
@@ -67947,6 +68763,7 @@
         "roots": [
           "apps/core-api",
           "apps/mcp-stdio",
+          "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
           "packages/adapters/clickhouse-observability",
           "packages/adapters/keyring-envelope",
@@ -67977,7 +68794,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "30277de0f6c89765f11429c21a4feea75062473c32ce8d7c1489a85e25a805bc",
+      "evidenceSha256": "8e25568a34e5ee498597564a55f5692a34a533128f7c054640a57169df3bbeac",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -69379,7 +70196,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3429
+              "line": 3445
             },
             {
               "from": "packages/contexts/memory/README.md",
@@ -70027,7 +70844,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1107
+              "line": 1111
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -70390,7 +71207,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "3a5e56eb986d2c21c5de32976bb77a5203d2a0ae8edaf5cdeeddd2838dd91215",
+      "evidenceSha256": "5c347e2eba1ca8035fed45073c34b788cf3f7bc2267ff42b67405660f6367c6f",
       "manifestSha256": "d596af2fb68e3e6c3622cf1cfb1683e20f46b5fac434d3f8cd6bf37df74d5b28",
       "name": "@platos/context-memory",
       "ociImageClosure": {
@@ -71025,7 +71842,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1208
+              "line": 1212
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -71276,7 +72093,7 @@
           "packages/contexts/observability"
         ]
       },
-      "evidenceSha256": "5bac6afd9a3e8af8a2f9746096716b42913a784303779fa4c9a2fc190534a13e",
+      "evidenceSha256": "a7468cc529f39a3a299ed51ed74308f21aa0739272d17f8c8362d65f8da4a3a1",
       "manifestSha256": "09d858b658a326451d6bdd026af44df9ba5d1b195ce0c71deffc0cb972afc6d7",
       "name": "@platos/context-observability",
       "ociImageClosure": {
@@ -71935,7 +72752,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1175
+              "line": 1179
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -72169,7 +72986,7 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "be327899e3cad89998de35e9e293bec465e61a7a289f600fcc3fa47944259a20",
+      "evidenceSha256": "c5be6603cc8875bafb2b71333a5a895c37025b0230a130471223a01829d8c57d",
       "manifestSha256": "8d9032044280327b5d3d795c13039f78e41ca275c9d6bce9f093b794a97473f1",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
@@ -72652,7 +73469,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3437
+              "line": 3453
             },
             {
               "from": "packages/contexts/providers/README.md",
@@ -73357,7 +74174,7 @@
             {
               "from": "apps/core-api/src/composition/installation.test.ts",
               "kind": "reference",
-              "line": 916
+              "line": 936
             },
             {
               "from": "packages/adapters/model-router-providers/src/adapter.test.ts",
@@ -73622,7 +74439,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 845
+              "line": 849
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -74261,7 +75078,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "91e06fb99e0b97a2e54e09c08a5e80f7ccc8c299a4191ce6d9e2ae8244130917",
+      "evidenceSha256": "14913a75b3a45b92edf766b1dc3151868289654d3bca13f10390f7a794b6ec99",
       "manifestSha256": "7462dcd3934c960646a6d3528915863411b9e195545de995cb54d10e6c43da83",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -74799,7 +75616,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3445
+              "line": 3461
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -76344,7 +77161,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "e8d1c9027d5fc46adf1b681a3918f55a839b75f60f0a36f1365a4d1a3c9373d0",
+      "evidenceSha256": "4711448e102b9cdc1da317335426ffec80ce9faa7865e6f3a00b0cf0f30f2074",
       "manifestSha256": "03739f55f9812a44e47b5c9175c9ebb610f9448ba48bf906432c70796ecc3c03",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -76630,7 +77447,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3501
+              "line": 3517
             },
             {
               "from": "packages/contexts/skills/README.md",
@@ -77191,7 +78008,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 914
+              "line": 918
             }
           ],
           "reversePaths": [
@@ -77513,7 +78330,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "56eccd585f418adaf29f0d9807858bf789493292d464539a8fd6348ded481dba",
+      "evidenceSha256": "5eb6bcffdd8be3400721b51f337ca475f3651731600154fc492f4808a2822129",
       "manifestSha256": "f1e56a67ae6b3d846f0887d8a17048ad19d4e0356bf7f38d1056b58507a2e7e2",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -77627,6 +78444,24 @@
                 "from": "apps/mcp-stdio/package.json",
                 "kind": "executable-manifest"
               },
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-discord",
+              "packages/contexts/channels",
+              "packages/contexts/tenancy"
+            ],
+            "root": "packages/adapters/channel-discord",
+            "rootReasons": [
               {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
@@ -78048,6 +78883,11 @@
             "packages/contexts/tenancy"
           ],
           [
+            "packages/adapters/channel-discord",
+            "packages/contexts/channels",
+            "packages/contexts/tenancy"
+          ],
+          [
             "packages/adapters/channel-slack",
             "packages/contexts/channels",
             "packages/contexts/tenancy"
@@ -78149,6 +78989,7 @@
         "roots": [
           "apps/core-api",
           "apps/mcp-stdio",
+          "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
           "packages/adapters/clickhouse-observability",
           "packages/adapters/model-router-providers",
@@ -78241,7 +79082,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3509
+              "line": 3525
             },
             {
               "from": "packages/contexts/tenancy/README.md",
@@ -79534,7 +80375,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 229
+              "line": 234
             },
             {
               "from": "scripts/arch/env-access.test.mjs",
@@ -79544,7 +80385,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 589
+              "line": 595
             },
             {
               "from": "scripts/arch/kernel-content.test.mjs",
@@ -79559,7 +80400,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 783
+              "line": 787
             },
             {
               "from": "scripts/arch/transaction-outcome.test.mjs",
@@ -79911,6 +80752,24 @@
                 "from": "apps/mcp-stdio/package.json",
                 "kind": "executable-manifest"
               },
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-discord",
+              "packages/contexts/channels",
+              "packages/contexts/tenancy"
+            ],
+            "root": "packages/adapters/channel-discord",
+            "rootReasons": [
               {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
@@ -80332,6 +81191,11 @@
             "packages/contexts/tenancy"
           ],
           [
+            "packages/adapters/channel-discord",
+            "packages/contexts/channels",
+            "packages/contexts/tenancy"
+          ],
+          [
             "packages/adapters/channel-slack",
             "packages/contexts/channels",
             "packages/contexts/tenancy"
@@ -80433,6 +81297,7 @@
         "roots": [
           "apps/core-api",
           "apps/mcp-stdio",
+          "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
           "packages/adapters/clickhouse-observability",
           "packages/adapters/model-router-providers",
@@ -80458,7 +81323,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "a0578796aca9d2114cd343b1a1f68e9bc75495353492863004ee6087f48d28ab",
+      "evidenceSha256": "9596b6d69208c4ac52d2b3ac2ca4fd954d91e06dc2a4842a4a5797d76d1c4f42",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -81171,7 +82036,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 2381,
+              "line": 2446,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -81279,7 +82144,7 @@
             {
               "from": "apps/core-api/src/composition/installation.test.ts",
               "kind": "reference",
-              "line": 1475
+              "line": 1496
             },
             {
               "from": "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
@@ -81289,7 +82154,7 @@
             {
               "from": "apps/core-api/src/process.test.ts",
               "kind": "reference",
-              "line": 400
+              "line": 409
             },
             {
               "from": "packages/adapters/postgres-tenancy/src/plans-tools.integration.test.ts",
@@ -81464,7 +82329,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1258
+              "line": 1262
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -81832,7 +82697,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "aa8057d52e2de3a1840d8c37cdf41620acf792d83f02e88edaabff3dad3da22d",
+      "evidenceSha256": "4d0f7182049832aaca9fbcec27dbeb2c9bf61d2c4131b97071dc4715a96c9797",
       "manifestSha256": "164953cbfdcf1a718a65f058aa90a6b74be609a0c2c7ede9f88c30ed277fb8b7",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -83667,6 +84532,24 @@
               "optionalDependencies"
             ],
             "path": [
+              "packages/adapters/channel-discord",
+              "packages/contexts/channels",
+              "packages/kernel"
+            ],
+            "root": "packages/adapters/channel-discord",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "packages/adapters/channel-slack",
               "packages/contexts/channels",
               "packages/kernel"
@@ -84255,6 +85138,11 @@
             "packages/kernel"
           ],
           [
+            "packages/adapters/channel-discord",
+            "packages/contexts/channels",
+            "packages/kernel"
+          ],
+          [
             "packages/adapters/channel-slack",
             "packages/contexts/channels",
             "packages/kernel"
@@ -84399,6 +85287,7 @@
         "roots": [
           "apps/core-api",
           "apps/mcp-stdio",
+          "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
           "packages/adapters/clickhouse-observability",
           "packages/adapters/durable-runtime",
@@ -84531,7 +85420,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3533
+              "line": 3549
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -89104,7 +89993,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 2262,
+              "line": 2327,
               "specifier": "@platos/kernel"
             }
           ],
@@ -92993,7 +93882,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 750
+              "line": 764
             },
             {
               "from": "scripts/arch/env-access.test.mjs",
@@ -94482,6 +95371,24 @@
               "optionalDependencies"
             ],
             "path": [
+              "packages/adapters/channel-discord",
+              "packages/contexts/channels",
+              "packages/kernel"
+            ],
+            "root": "packages/adapters/channel-discord",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "packages/adapters/channel-slack",
               "packages/contexts/channels",
               "packages/kernel"
@@ -95070,6 +95977,11 @@
             "packages/kernel"
           ],
           [
+            "packages/adapters/channel-discord",
+            "packages/contexts/channels",
+            "packages/kernel"
+          ],
+          [
             "packages/adapters/channel-slack",
             "packages/contexts/channels",
             "packages/kernel"
@@ -95214,6 +96126,7 @@
         "roots": [
           "apps/core-api",
           "apps/mcp-stdio",
+          "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
           "packages/adapters/clickhouse-observability",
           "packages/adapters/durable-runtime",
@@ -95249,7 +96162,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "9afbd839abc5ec9bcd7901e9e64c43c475f77b2e05f5ab58cf7e283692595b4d",
+      "evidenceSha256": "801ca37158c328e21bde57b4fe92493efd350a1c62e5ba8c651c2fea1846b73d",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
@@ -95385,7 +96298,7 @@
             {
               "from": "docker-compose.platos.yml",
               "kind": "reference",
-              "line": 790
+              "line": 792
             },
             {
               "from": "references/entity-docs-mcp-bridge/Dockerfile",
@@ -95957,7 +96870,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "b2da39b373c42d042dc17bb512983451422be25ae9cd97f7d2363619967c5c62",
+      "evidenceSha256": "f18ab16bb96256ffbc25171b42f4e0102827a5deb2d1e9bafa4dd62538111715",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {
