@@ -21,6 +21,7 @@ reconciles external snapshots and importer-linked workspaces separately.
 |---|---|---|
 | `platos-agent.cdx.json` | CycloneDX 1.5 SBOM — agent image production closure (**718 components / 657 names**) | `bb31518f442fa32a…` |
 | `platos-webapp.cdx.json` | CycloneDX 1.5 SBOM — exact webapp Docker image inventory (**330 components / 303 names**) | `89c8d9d5d6948ea3…` |
+| `platos-core-api.cdx.json` | CycloneDX 1.5 SBOM — core-api image: its lock closure (326) minus the three absences `scripts/deploy-bundle-closure.mjs check` proves in the image build (**323 components / 310 names**) | regenerated |
 | `platos-webapp.image-inventory.json` | exact `linux/amd64` external and linked-workspace packages installed in the webapp Docker `production-deps` stage | `9b745000948ff883…` |
 | `closure-receipts.json` | machine-readable receipts: per-image SBOM/inventory sha256, counts, roots; input hashes | regenerated |
 | `license-index.json` | frozen registry.npmjs.org licence snapshot for the 881-component lock closure plus two linked first-party workspaces | `db522b9f17757a1c…` |

@@ -1,12 +1,12 @@
 {
   "$schema": "platos.audit.license-index/v1",
   "note": "Frozen registry.npmjs.org licence snapshot for the union production closure plus linked first-party workspace components. Provisioning output of scripts/audit-licenses.mjs; consumed read-only by scripts/audit-sbom.mjs. Regenerate only after a relock. resolvedAt is the latest immutable publication timestamp among successful external resolutions, not the generator wall clock. Every successful external resolution must provide a valid publication timestamp; non-success statuses are excluded.",
-  "resolvedAgainstLockfileSha256": "61b4bae8878f33c8c4199a4d829243bd5a0f9a4ac51ca8ca7874821705b6b983",
-  "resolvedAt": "2026-08-07T16:41:05.696Z",
+  "resolvedAgainstLockfileSha256": "79d41ad4b0a27d19e41cff3b38d3a239673b69ccae76574a316aa40508823bb4",
+  "resolvedAt": "2026-09-05T06:15:40.568Z",
   "resolvedAtPolicy": "maximum registry version publication timestamp across successful external resolutions; every successful resolution is timestamped; non-success statuses are excluded",
   "registry": "https://registry.npmjs.org",
-  "componentCount": 883,
-  "successfulResolutionCount": 881,
+  "componentCount": 886,
+  "successfulResolutionCount": 884,
   "resolvedAtExcludedCount": 2,
   "unresolvedCount": 2,
   "index": {
@@ -400,7 +400,19 @@
       "resolutionStatus": "resolved",
       "status": 200
     },
+    "@chat-adapter/shared@4.40.0": {
+      "license": "MIT",
+      "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
+      "status": 200
+    },
     "@chat-adapter/slack@4.34.0": {
+      "license": "MIT",
+      "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
+      "status": 200
+    },
+    "@chat-adapter/slack@4.40.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "resolutionStatus": "resolved",
@@ -2249,6 +2261,12 @@
       "status": 200
     },
     "chat@4.34.0": {
+      "license": "MIT",
+      "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
+      "status": 200
+    },
+    "chat@4.40.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "resolutionStatus": "resolved",

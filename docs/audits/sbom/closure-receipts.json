@@ -4,13 +4,13 @@
   "toolVersion": "1.0.0",
   "fixedTimestamp": "2026-08-28T00:00:00.000Z",
   "lockfileSha256": "79d41ad4b0a27d19e41cff3b38d3a239673b69ccae76574a316aa40508823bb4",
-  "licenseIndexSha256": "6ddfd92742189cdb4a603a7799387fc49beb90c3cc1e126264538b0cf78ed8c1",
+  "licenseIndexSha256": "dce9209b6a293e9bbf504bbb0084776db927a126e0d69c976c5b7eee5258c23f",
   "licenseOverlaySha256": "db436a3bfad82b7bfe9413d8023f86df0ea848e44ad4b5c86d78b727406a713b",
   "licensePolicySha256": "2c47d8ec03aed511b986f67ab1bca3f3735aef6f440255ca0ad5afabe06bd0d1",
   "images": {
     "agent": {
       "file": "docs/audits/sbom/platos-agent.cdx.json",
-      "sha256": "8b880df3301024028e23517dc24088f987baaf62005d800f6da8dad70bb485c8",
+      "sha256": "828a09b58d9fcfd4c9c1cbf231ca4f942797fea051e4f799e9d5ca28d89d552e",
       "componentCount": 718,
       "distinctNames": 657,
       "roots": [
@@ -20,7 +20,7 @@
     },
     "webapp": {
       "file": "docs/audits/sbom/platos-webapp.cdx.json",
-      "sha256": "89c8d9d5d6948ea37eb32134b5f8aa648dc13740bb25e04c745ab53519344511",
+      "sha256": "45eb8756ccebf614ab7ae12681583c4d5a62e68e3784479c9421efaf4863c15f",
       "componentCount": 330,
       "distinctNames": 303,
       "roots": [
@@ -90,6 +90,16 @@
         }
       ],
       "buildInputsSha256": "069a9214e41b093d34f23b8ebf41034261a63e5e2c2aa573558977dc2b390e5d"
+    },
+    "core-api": {
+      "file": "docs/audits/sbom/platos-core-api.cdx.json",
+      "sha256": "0940f2ec87d60f8a0fc5122615feb7dbd13f174ef2c28fb90a4c365502fe9c38",
+      "componentCount": 323,
+      "distinctNames": 310,
+      "roots": [
+        "apps/core-api"
+      ],
+      "derivation": "deploy-bundle-closure-check"
     }
   }
 }

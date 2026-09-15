@@ -296,9 +296,13 @@ test("committed baseline independently captures OCI, application/deployable, and
   assert.ok(applicationRootKinds.has("executable-manifest"));
   assert.ok(applicationRootKinds.has("root-typescript-reference"));
   assert.ok(applicationRootKinds.has("ci-build-entrypoint"));
+  // core-api joined IMAGES (scripts/lib/pnpm-closure.mjs) with the fourth build
+  // candidate. 329 lock snapshot nodes: its 326 name@version components, three of
+  // them present under more than one peer-resolution suffix.
   assert.deepEqual(report.summary.externalProductionSnapshotNodesByImage, {
     agent: 718,
     webapp: 335,
+    "core-api": 329,
   });
   assert.equal(
     report.inputs.files.some((file) => file.path === ".git"),

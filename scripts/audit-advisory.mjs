@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Point-in-time OSV scan for the exact shipping package sets. The agent set is
-// derived from the canonical production lock closure. The webapp set is the
-// validated, committed linux/amd64 image inventory.
+// Point-in-time OSV scan for the exact shipping package sets, one per IMAGES
+// entry (scripts/lib/pnpm-closure.mjs). The webapp set is the validated,
+// committed linux/amd64 image inventory; every other set is lock-derived as
+// scripts/lib/shipping-components.mjs decides, the same derivation the SBOM uses.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadLockfile, computeClosure, componentsFromSnapshots, IMAGES } from './lib/pnpm-closure.mjs';
+import { loadLockfile, IMAGES } from './lib/pnpm-closure.mjs';
+import { lockDerivedComponents } from './lib/shipping-components.mjs';
 import { assertDispositions } from './lib/advisory-dispositions.mjs';
 import {
   WEBAPP_INVENTORY_SCHEMA,
@@ -57,11 +59,13 @@ export function buildCurrentInputs({ lockPath = LOCK, inventoryPath = INVENTORY 
   const inventoryBytes = fs.readFileSync(inventoryPath);
   const inventory = JSON.parse(inventoryBytes);
   const validated = validateInventoryDocument(inventory);
-  const componentSets = {
-    agent: componentsFromSnapshots(computeClosure(IMAGES.agent.roots, parsed)),
-    webapp: validated.components,
-  };
-  const union = sortAndDedupeComponents([...componentSets.agent, ...componentSets.webapp]);
+  const componentSets = Object.fromEntries(
+    Object.keys(IMAGES).map((image) => [
+      image,
+      image === 'webapp' ? validated.components : lockDerivedComponents(parsed, image),
+    ]),
+  );
+  const union = sortAndDedupeComponents(Object.values(componentSets).flat());
   return {
     lockfileSha256: sha256(text),
     inventoryBytes,
@@ -80,7 +84,7 @@ export function buildCurrentInputs({ lockPath = LOCK, inventoryPath = INVENTORY 
 
 function imagesFor(component, componentSets) {
   const id = componentId(component);
-  return ['agent', 'webapp'].filter((image) => componentSets[image].some((entry) => componentId(entry) === id));
+  return Object.keys(IMAGES).filter((image) => componentSets[image].some((entry) => componentId(entry) === id));
 }
 
 function severityOf(vulnerability) {
@@ -291,6 +295,11 @@ export function validateReceipt(receipt, current) {
   equal(receipt.webappInventory?.componentCount, current.componentSets.webapp.length, 'webapp component count');
   equal(receipt.agentComponents, current.componentSets.agent.length, 'agent component count');
   equal(receipt.webappComponents, current.componentSets.webapp.length, 'webapp component count summary');
+  equal(
+    receipt.imageComponents,
+    Object.fromEntries(Object.entries(current.componentSets).map(([image, components]) => [image, components.length])),
+    'per-image component counts',
+  );
   equal(receipt.componentsScanned, current.union.length, 'union component count');
   equal(receipt.scanSetSha256, current.scanSetSha256, 'per-image scan-set SHA-256');
   equal(receipt.imageScanSetSha256, current.imageScanSetSha256, 'per-image component SHA-256 values');
@@ -375,7 +384,7 @@ export async function refreshReceipt(options = {}) {
     network: telemetry,
     lockfileSha256: current.lockfileSha256,
     ecosystem: 'npm',
-    scope: 'agent production lock closure plus exact verified linux/amd64 webapp image inventory',
+    scope: 'agent production lock closure, core-api lock closure as its image build proves its deploy bundle, plus exact verified linux/amd64 webapp image inventory',
     webappInventory: {
       file: 'docs/audits/sbom/platos-webapp.image-inventory.json',
       schema: current.inventory.$schema,
@@ -389,6 +398,9 @@ export async function refreshReceipt(options = {}) {
     componentsScanned: current.union.length,
     agentComponents: current.componentSets.agent.length,
     webappComponents: current.componentSets.webapp.length,
+    imageComponents: Object.fromEntries(
+      Object.entries(current.componentSets).map(([image, components]) => [image, components.length]),
+    ),
     findingsCount: findings.length,
     withdrawnCount: withdrawn.length,
     bySeverity: severityCounts(findings),
@@ -432,7 +444,7 @@ export async function runCli(argv = process.argv.slice(2)) {
   fs.writeFileSync(outputPath, `${JSON.stringify(receipt, null, 2)}\n`);
   console.error(`Wrote ${outputPath}`);
   console.error(
-    `Scanned agent=${receipt.agentComponents}, webapp=${receipt.webappComponents}, union=${receipt.componentsScanned}; ` +
+    `Scanned ${Object.entries(receipt.imageComponents).map(([image, count]) => `${image}=${count}`).join(', ')}, union=${receipt.componentsScanned}; ` +
     `findings=${receipt.findingsCount}, network=${receipt.network.effectiveMode}.`,
   );
   for (const limitation of receipt.network.limitations) console.error(`LIMITATION: ${limitation}`);

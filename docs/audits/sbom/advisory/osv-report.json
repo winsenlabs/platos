@@ -1,7 +1,7 @@
 {
   "$schema": "platos.audit.osv-receipt/v2",
   "tool": "scripts/audit-advisory.mjs (OSV querybatch + vulnerability details)",
-  "scannedAt": "2026-09-10T01:00:28.032Z",
+  "scannedAt": "2026-09-15T13:17:18.164Z",
   "network": {
     "requestedMode": "public-osv-with-cache",
     "effectiveMode": "public-osv-live",
@@ -15,7 +15,7 @@
   },
   "lockfileSha256": "79d41ad4b0a27d19e41cff3b38d3a239673b69ccae76574a316aa40508823bb4",
   "ecosystem": "npm",
-  "scope": "agent production lock closure plus exact verified linux/amd64 webapp image inventory",
+  "scope": "agent production lock closure, core-api lock closure as its image build proves its deploy bundle, plus exact verified linux/amd64 webapp image inventory",
   "webappInventory": {
     "file": "docs/audits/sbom/platos-webapp.image-inventory.json",
     "schema": "platos.audit.image-package-inventory/v2",
@@ -24,14 +24,20 @@
     "componentCount": 330,
     "distinctNames": 303
   },
-  "scanSetSha256": "16448697399cd2a73f023d0a9e8ff806077580bfd7f6e165f0ad7e7c6a51f103",
+  "scanSetSha256": "8176649d367da43266c18e8051b0370f4c14ce3c09593734ae48eeae64f74466",
   "imageScanSetSha256": {
     "agent": "f971f028d668d880d2c983f52d71f40b104e0a8c0e3dd714eb0af164b6486751",
-    "webapp": "b8b4fb78428532a9545374f8eaa5ce78223a2b29ce3c588875bde605550d287b"
+    "webapp": "b8b4fb78428532a9545374f8eaa5ce78223a2b29ce3c588875bde605550d287b",
+    "core-api": "09db5f398d84a1eb49bfb38a4d2103c0ce79134018a11d3725f61dd851b9a83a"
   },
-  "componentsScanned": 876,
+  "componentsScanned": 879,
   "agentComponents": 718,
   "webappComponents": 330,
+  "imageComponents": {
+    "agent": 718,
+    "webapp": 330,
+    "core-api": 323
+  },
   "findingsCount": 157,
   "withdrawnCount": 0,
   "bySeverity": {
@@ -51,7 +57,8 @@
       ],
       "shipsIn": [
         "agent",
-        "webapp"
+        "webapp",
+        "core-api"
       ],
       "advisories": [
         {
@@ -534,7 +541,8 @@
       ],
       "shipsIn": [
         "agent",
-        "webapp"
+        "webapp",
+        "core-api"
       ],
       "advisories": [
         {
@@ -547,7 +555,8 @@
           "fixedIn": "5.2.4",
           "images": [
             "agent",
-            "webapp"
+            "webapp",
+            "core-api"
           ]
         },
         {
@@ -560,7 +569,8 @@
           "fixedIn": "5.2.5",
           "images": [
             "agent",
-            "webapp"
+            "webapp",
+            "core-api"
           ]
         },
         {
@@ -572,7 +582,8 @@
           "severity": "HIGH",
           "fixedIn": "5.2.5",
           "images": [
-            "agent"
+            "agent",
+            "core-api"
           ]
         },
         {
@@ -585,7 +596,8 @@
           "fixedIn": "8.20.1",
           "images": [
             "agent",
-            "webapp"
+            "webapp",
+            "core-api"
           ]
         },
         {
@@ -597,7 +609,8 @@
           "severity": "MODERATE",
           "fixedIn": "8.20.1",
           "images": [
-            "agent"
+            "agent",
+            "core-api"
           ]
         }
       ],
@@ -612,7 +625,8 @@
       ],
       "shipsIn": [
         "webapp",
-        "agent"
+        "agent",
+        "core-api"
       ],
       "advisories": [
         {
@@ -717,7 +731,8 @@
       "summary": "@hono/node-server has authorization bypass for protected static paths via encoded slashes in Serve Static Middleware",
       "fixedIn": "1.19.10",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -946,7 +961,8 @@
       "fixedIn": "8.0.0",
       "images": [
         "agent",
-        "webapp"
+        "webapp",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -966,7 +982,8 @@
       "fixedIn": "6.1.5",
       "images": [
         "agent",
-        "webapp"
+        "webapp",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -986,7 +1003,8 @@
       "fixedIn": "3.20.0",
       "images": [
         "agent",
-        "webapp"
+        "webapp",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1043,7 +1061,8 @@
       "summary": "express-rate-limit: IPv4-mapped IPv6 addresses bypass per-client rate limiting on servers with dual-stack network",
       "fixedIn": "8.2.2",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1062,7 +1081,8 @@
       "summary": "fast-uri vulnerable to host confusion via failed IDN canonicalization",
       "fixedIn": "4.0.1",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1081,7 +1101,8 @@
       "summary": "fast-uri vulnerable to host confusion via backslash authority introducer",
       "fixedIn": "2.4.4",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1100,7 +1121,8 @@
       "summary": "fast-uri vulnerable to server-side request forgery via malformed IPv6 normalization",
       "fixedIn": "2.4.5",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1119,7 +1141,8 @@
       "summary": "fast-uri vulnerable to host confusion via percent-encoded scheme normalization",
       "fixedIn": "2.4.5",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1138,7 +1161,8 @@
       "summary": "fast-uri vulnerable to path traversal via percent-encoded dot segments",
       "fixedIn": "3.1.1",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1157,7 +1181,8 @@
       "summary": "fast-uri vulnerable to host confusion via literal backslash authority delimiter",
       "fixedIn": "2.4.3",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1176,7 +1201,8 @@
       "summary": "fast-uri vulnerable to host confusion via percent-encoded authority delimiters",
       "fixedIn": "3.1.2",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1252,7 +1278,8 @@
       "summary": "form-data: CRLF injection in form-data via unescaped multipart field names and filenames",
       "fixedIn": "2.5.6",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1290,7 +1317,8 @@
       "summary": "hono: CORS Middleware reflects any Origin with credentials when `origin` defaults to the wildcard",
       "fixedIn": "4.12.25",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1309,7 +1337,8 @@
       "summary": "Hono vulnerable to arbitrary file access via serveStatic vulnerability ",
       "fixedIn": "4.12.4",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1328,7 +1357,8 @@
       "summary": "ip-address: Address4 decodes leading-zero octets as decimal while resolvers decode them as octal, allowing SSRF and trust-boundary bypass",
       "fixedIn": "10.3.1",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1426,7 +1456,8 @@
       "summary": "multer vulnerable to Denial of Service via oversized array index in field names",
       "fixedIn": "2.3.0",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1445,7 +1476,8 @@
       "summary": "Multer vulnerable to Denial of Service via deeply nested field names",
       "fixedIn": "2.2.0",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1464,7 +1496,8 @@
       "summary": "multer vulnerable to Denial of Service via crafted multipart field names",
       "fixedIn": "2.3.0",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1525,7 +1558,8 @@
       "fixedIn": "4.2.7",
       "images": [
         "agent",
-        "webapp"
+        "webapp",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1545,7 +1579,8 @@
       "fixedIn": "3.3.5",
       "images": [
         "agent",
-        "webapp"
+        "webapp",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1755,7 +1790,8 @@
       "fixedIn": "5.2.4",
       "images": [
         "agent",
-        "webapp"
+        "webapp",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1775,7 +1811,8 @@
       "fixedIn": "5.2.5",
       "images": [
         "agent",
-        "webapp"
+        "webapp",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1794,7 +1831,8 @@
       "summary": "ws: Memory exhaustion DoS from tiny fragments and data chunks",
       "fixedIn": "5.2.5",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1813,7 +1851,8 @@
       "summary": "@hono/node-server: Middleware bypass via repeated slashes in serveStatic",
       "fixedIn": "1.19.13",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -1828,7 +1867,8 @@
       "summary": "Node.js Adapter for Hono: Path traversal in `serve-static` on Windows via encoded backslash (`%5C`)",
       "fixedIn": "2.0.5",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2133,7 +2173,8 @@
       "summary": "Hono missing validation of cookie name on write path in setCookie()",
       "fixedIn": "4.12.12",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2152,7 +2193,8 @@
       "summary": "Hono: app.mount() strips mount prefix using undecoded path, causing incorrect routing for percent-encoded paths",
       "fixedIn": "4.12.21",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2171,7 +2213,8 @@
       "summary": "Hono: Cookie helper does not sanitize sameSite and priority, allowing Set-Cookie injection",
       "fixedIn": "4.12.21",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2190,7 +2233,8 @@
       "summary": "hono Improperly Handles JSX Attribute Names Allows HTML Injection in hono/jsx SSR",
       "fixedIn": "4.12.14",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2209,7 +2253,8 @@
       "summary": "Hono Vulnerable to Cookie Attribute Injection via Unsanitized domain and path in setCookie()",
       "fixedIn": "4.12.4",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2228,7 +2273,8 @@
       "summary": "hono/jsx has Unvalidated JSX Tag Names that May Allow HTML Injection",
       "fixedIn": "4.12.16",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2247,7 +2293,8 @@
       "summary": "Hono: ReDoS in CORS middleware via Access-Control-Request-Headers",
       "fixedIn": "4.12.34",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2266,7 +2313,8 @@
       "summary": "Hono: bodyLimit() can be bypassed for chunked / unknown-length requests",
       "fixedIn": "4.12.16",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2285,7 +2333,8 @@
       "summary": "Hono: Query parser reads parameters after the URL fragment, causing cache-key and proxy interpretation differentials",
       "fixedIn": "4.13.5",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2304,7 +2353,8 @@
       "summary": "Hono: `memo()` retains SSR output across requests, leading to cross-user data disclosure",
       "fixedIn": "4.12.34",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2323,7 +2373,8 @@
       "summary": "Hono: JWT middleware accepts any Authorization scheme, not only Bearer",
       "fixedIn": "4.12.21",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2342,7 +2393,8 @@
       "summary": "Hono: Unbounded dot-notation nesting in `parseBody()` can cause memory exhaustion",
       "fixedIn": "4.13.5",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2361,7 +2413,8 @@
       "summary": "Hono: Incomplete fix for CVE-2026-39408: `toSSG()` still writes files outside the output directory",
       "fixedIn": "4.13.5",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2380,7 +2433,8 @@
       "summary": "hono/jsx does not isolate context per request, leading to cross-request data disclosure",
       "fixedIn": "4.12.27",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2399,7 +2453,8 @@
       "summary": "hono: AWS Lambda adapter merges multiple `Set-Cookie` headers into one value, dropping cookies on ALB single-header and Lattice",
       "fixedIn": "4.12.25",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2418,7 +2473,8 @@
       "summary": "Hono Vulnerable to SSE Control Field Injection via CR/LF in writeSSE()",
       "fixedIn": "4.12.4",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2437,7 +2493,8 @@
       "summary": "Hono's Cache Middleware ignores Vary: Authorization / Vary: Cookie leading to cross-user cache leakage",
       "fixedIn": "4.12.18",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2456,7 +2513,8 @@
       "summary": "Hono has CSS Declaration Injection via Style Object Values in JSX SSR",
       "fixedIn": "4.12.18",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2475,7 +2533,8 @@
       "summary": "Hono: Non-breaking space prefix bypass in cookie name handling in getCookie()",
       "fixedIn": "4.12.12",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2494,7 +2553,8 @@
       "summary": "hono: Body Limit Middleware can be bypassed on AWS Lambda by understating `Content-Length`",
       "fixedIn": "4.12.25",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2513,7 +2573,8 @@
       "summary": "Hono vulnerable to Prototype Pollution possible through __proto__ key allowed in parseBody({ dot: true })",
       "fixedIn": "4.12.7",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2532,7 +2593,8 @@
       "summary": "Hono: Server-Side XSS via JSX Escaping Bypass in cx() Utility",
       "fixedIn": "4.12.27",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2551,7 +2613,8 @@
       "summary": "hono: Lambda@Edge adapter keeps only the last value of a repeated request header, dropping the rest",
       "fixedIn": "4.12.25",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2570,7 +2633,8 @@
       "summary": "Hono: Middleware bypass via repeated slashes in serveStatic",
       "fixedIn": "4.12.12",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2589,7 +2653,8 @@
       "summary": "hono: Path traversal in `serve-static` on Windows via encoded backslash (`%5C`)",
       "fixedIn": "4.12.25",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2608,7 +2673,8 @@
       "summary": "Hono: Path traversal in toSSG() allows writing files outside the output directory",
       "fixedIn": "4.12.12",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2627,7 +2693,8 @@
       "summary": "Hono: API Gateway v1 adapter can drop a distinct repeated request header value during de-duplication",
       "fixedIn": "4.12.27",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2646,7 +2713,8 @@
       "summary": "Hono has incorrect IP matching in ipRestriction() for IPv4-mapped IPv6 addresses",
       "fixedIn": "4.12.12",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2665,7 +2733,8 @@
       "summary": "Hono: IP Restriction bypasses static deny rules for non-canonical IPv6 ",
       "fixedIn": "4.12.21",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2684,7 +2753,8 @@
       "summary": "ip-address has XSS in Address6 HTML-emitting methods",
       "fixedIn": "10.1.1",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2725,7 +2795,8 @@
       "summary": "Multer vulnerable to Denial of Service via incomplete cleanup of aborted uploads",
       "fixedIn": "2.2.0",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2745,7 +2816,8 @@
       "fixedIn": "6.16.0",
       "images": [
         "agent",
-        "webapp"
+        "webapp",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -2765,7 +2837,8 @@
       "fixedIn": "6.15.2",
       "images": [
         "agent",
-        "webapp"
+        "webapp",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -3260,7 +3333,8 @@
       "fixedIn": "8.20.1",
       "images": [
         "agent",
-        "webapp"
+        "webapp",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -3279,7 +3353,8 @@
       "summary": "ws: Uninitialized memory disclosure",
       "fixedIn": "8.20.1",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -3317,7 +3392,8 @@
       "summary": "body-parser vulnerable to denial of service when invalid limit value silently disables size enforcement",
       "fixedIn": "1.20.6",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -3489,7 +3565,8 @@
       "summary": "Hono: Proxy Helper does not remove response headers listed in the `Connection` header",
       "fixedIn": "4.12.34",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -3508,7 +3585,8 @@
       "summary": "Hono added timing comparison hardening in basicAuth and bearerAuth",
       "fixedIn": "4.11.10",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -3527,7 +3605,8 @@
       "summary": "Hono has improper validation of NumericDate claims (exp, nbf, iat) in JWT verify()",
       "fixedIn": "4.12.18",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -3546,7 +3625,8 @@
       "summary": "multer vulnerable to file size limit bypass via async fileFilter race condition",
       "fixedIn": "2.3.0",
       "images": [
-        "agent"
+        "agent",
+        "core-api"
       ],
       "withdrawn": null
     },
@@ -3585,7 +3665,8 @@
       "fixedIn": "6.14.2",
       "images": [
         "agent",
-        "webapp"
+        "webapp",
+        "core-api"
       ],
       "withdrawn": null
     },

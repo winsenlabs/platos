@@ -271,6 +271,9 @@ const SHIPPING_EVIDENCE_PATHS = Object.freeze([
   "docs/audits/sbom/platos-agent.cdx.json",
   "docs/audits/sbom/platos-webapp.cdx.json",
   "docs/audits/sbom/platos-webapp.image-inventory.json",
+  // The core-api image joined the SBOM set as the fourth build candidate; the
+  // absence of the private importer is recomputed from its SBOM too.
+  "docs/audits/sbom/platos-core-api.cdx.json",
 ]);
 
 function localBytes(path, overrides = new Map()) {
