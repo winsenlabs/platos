@@ -495,7 +495,7 @@
       "path": "content/docs/self-hosting.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "e2ea2bd2e07bd11312ed12f4117a22e6c37efe5b912d6af646035be50636e772",
+      "sha256": "d5965d2ce096449d666bf8dc3bba1596176d50b0d8a2cb5058ba7982478ed066",
       "binds": "current-repository-truth"
     },
     {
@@ -1534,14 +1534,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "61e233ade9a2d6f1df6bf31fe887ec7b92c9bf50fc02d97b177d88b5b71b4f6c",
+      "sha256": "628942a5bcf7c15a5f65fdcf9b9e4c929fedaa75b0cdd51ab468b60aed74b6af",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "b36be149d5b5477ce65c65081d6a039e7292e946a52de3597d5a6147fdaa54e1",
+      "sha256": "93e6ca5c00b4373db1a3d97ed156647814b388db8c087c9a972dee00313fa542",
       "binds": "current-repository-truth"
     },
     {
@@ -1597,7 +1597,7 @@
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "c0ceabd55ec998cf3739ee2db7b76f254a8ee72b25419dcaec5cc5fdf0129e47",
+      "sha256": "b36ab795b078d6a960b00301590747e73374dbe2b8922a0bb1ab752e3ae72754",
       "binds": "current-repository-truth"
     },
     {
@@ -1611,7 +1611,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "d3b72a01cb3284b62c3de0be6d7da7481184315ff89e8c86c7aaacb5415320b7",
+      "sha256": "7c4b696d47f43f44445f63dfbef0fa0d126da2b97506a4b12701efab1d770ce5",
       "binds": "current-repository-truth"
     },
     {
