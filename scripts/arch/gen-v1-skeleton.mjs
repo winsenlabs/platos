@@ -1644,11 +1644,33 @@ const PROJECT_TEST_SCRIPTS = {
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
 };
 
+// Projects that get a `dev` script, and the script.
+//
+// ONE ENTRY, AND ITS SHAPE IS EXTRACTED RATHER THAN CHOSEN. No V1 project had a
+// `dev` script, so there was no V1 shape to copy. The repository's shape for a
+// package whose `build` is the TypeScript compiler is that same compiler with
+// `--watch` (`internal-packages/compute`, `run-engine` and `schedule-engine` all
+// spell `tsc --watch -p tsconfig.build.json`). Every V1 project builds with
+// `tsc -b`, so the translation is `tsc -b --watch` — and build mode watches the
+// whole project-reference graph, so this one watcher recompiles every context
+// and adapter the deployable composes, not just `apps/core-api/src`.
+//
+// IT COMPILES; IT DOES NOT SERVE. `start` still runs the built entry point, for
+// the reason given on `ADOPTED_APP_SCRIPTS` above. A serving `dev` would also
+// have to pick a port, and the configuration default (3030) is the port the
+// webapp's own `dev` binds, so `turbo run dev` would start two listeners on one
+// port. Choosing a different one is a decision this generator does not make.
+const PROJECT_DEV_SCRIPTS = {
+  "apps/core-api": "tsc -b --watch",
+};
+
 function scriptsFor(project, adopted) {
   if (!adoptedSet(adopted).has(project)) return BUILD_SCRIPTS;
   const base = APP_PROJECTS.has(project) ? ADOPTED_APP_SCRIPTS : ADOPTED_SCRIPTS;
   const override = PROJECT_TEST_SCRIPTS[project];
-  return override === undefined ? base : { ...base, test: override };
+  const scripts = override === undefined ? base : { ...base, test: override };
+  const dev = PROJECT_DEV_SCRIPTS[project];
+  return dev === undefined ? scripts : { ...scripts, dev };
 }
 
 function pascal(name) {

@@ -17,7 +17,7 @@ related:
 
 # Self-hosting
 
-`docker-compose.platos.yml` is the installation contract. It runs six long-lived product/data services, four one-shot initialization services, and one optional integration sidecar.
+`docker-compose.platos.yml` is the installation contract. It runs six long-lived product/data services, four one-shot initialization services, and one optional integration sidecar. One more long-lived service, `core-api`, is opt-in behind the `core-api` Compose profile and starts only when that profile is named.
 
 ## Service names
 
@@ -29,6 +29,7 @@ related:
 | `minio` | long-running | S3-compatible attachment and Artifact bytes |
 | `webapp` | long-running | Dashboard on host port 3030 |
 | `agent` | long-running | Agent runtime on loopback host port 3100 |
+| `core-api` | long-running, opt-in `core-api` profile | V1 composition root on loopback host port 3200; no existing path is routed to it |
 | `migrations-init` | one-shot | Postgres Prisma migrations |
 | `clickhouse-migrate` | one-shot | ClickHouse Goose migrations |
 | `clickhouse-ttl-apply` | one-shot | ClickHouse system-log TTLs |
@@ -49,6 +50,7 @@ Default memory limits are:
 | `minio` | 256 MiB |
 | `agent` | 2 GiB |
 | `webapp` | 2 GiB |
+| `core-api` (opt-in profile, not in the total below) | 1 GiB |
 
 That is approximately **9.5 GiB** before Docker, build, filesystem cache, and migration overhead. Use **12 GiB RAM as the practical minimum** and **16 GiB or more for production**. Platos does not publish a supported reduced-memory profile; lowering limits requires installation-specific load testing. In particular, the 4 GiB ClickHouse limit addresses observed merge OOMs.
 
@@ -69,6 +71,7 @@ Compose requires these variables through `${NAME:?required}`:
 - `PLATOS_INTERNAL_AUTH_TOKEN`
 - `PLATOS_ERASURE_HASH_SALT`
 - `MANAGED_WORKER_SECRET`
+- `PLATOS_ENVIRONMENT` — one of `development`, `test`, `staging`, `production`. Only `core-api` reads it, but Compose interpolates every service, so it is required even when the `core-api` profile is off.
 
 Production must also replace the default `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD`; the application rejects the development sentinels.
 
@@ -106,6 +109,16 @@ curl --fail http://127.0.0.1:3100/api/health
 ```
 
 Expect the six long-running services to be healthy, the four init/migration services to exit zero, and `docs-mcp-bridge` either to run with a valid entity secret or exit zero when disabled.
+
+To run the opt-in V1 composition root as well:
+
+```bash
+docker compose -f docker-compose.platos.yml --profile core-api up -d --build core-api
+curl --fail http://127.0.0.1:3200/livez
+curl http://127.0.0.1:3200/readyz
+```
+
+`/livez` answers 200 whenever the process is running, independent of any store. `/readyz` answers 503 until every declared adapter binding is satisfied, and some bindings are still generated interfaces that no configuration can satisfy, so a 503 there is the expected answer today rather than a failed install. The detailed body is returned only with `Authorization: Bearer $PLATOS_CORE_API_ADMIN_HEALTH_TOKEN`; the variables it reads are listed in `docs/env-vars.md`.
 
 ## Network boundary
 

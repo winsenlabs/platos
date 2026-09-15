@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { parseDocument } from "yaml";
@@ -357,6 +359,22 @@ const licenseDeterminismTestTarget = "node --test scripts/audit-licenses.test.mj
 // sentence is about.
 const agentBuildScriptTarget =
   'pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter "@platos/context-identity-access..." build && pnpm --filter "@platos/context-tools..." build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies';
+// The exact `build:platos:core-api`, spelled ONCE for the same reason as the
+// agent's above: the equality rule and its mutation control both read it.
+//
+// ONE FILTER, AND A COLD BUILD IS WHY THAT IS ENOUGH. `@platos/core-api...` is the
+// deployable and every workspace package it depends on, which includes
+// `@platos/tenancy-database`; pnpm runs that package's `prebuild` client
+// generation before its `build`, and runs the graph in dependency order. The
+// agent string above lists its prerequisites one by one because the agent's
+// strict build reaches packages that are not its dependencies; this graph has no
+// such reach. Proven on a fresh worktree with no dist anywhere, not on a warm tree.
+//
+// NOT YET A CANDIDATE. `build-candidate-core-api` needs a build-images.yml matrix
+// row, and the credential that landed this pin cannot write workflow files. Until
+// that row lands, `expectedCandidates` and the shipping Dockerfile tables above
+// stay at the three the matrix declares, rather than claiming a fourth it does not.
+const coreApiBuildScriptTarget = 'pnpm --filter "@platos/core-api..." build';
 const agentRuntimeSmokeInvocation =
   "tests/persisted-state-gate/smoke-agent-runtime-image.sh \\\n  2>&1 | tee artifacts/win235/agent-runtime-smoke.log";
 const expectedV1EvidenceCommands = [
@@ -1982,6 +2000,9 @@ function policyViolations(input) {
   }
   if (packageScripts["build:platos:agent"] !== agentBuildScriptTarget) {
     violations.push("package.json must build workload identity before the strict Agent shipping build");
+  }
+  if (packageScripts["build:platos:core-api"] !== coreApiBuildScriptTarget) {
+    violations.push("package.json must build the exact core-api workspace graph its image runs");
   }
   if (packageScripts["test:workload-identity-package"] !== workloadPackageTestTarget) {
     violations.push("package.json must wire the workload identity shipping package test");
@@ -4122,6 +4143,19 @@ test("CI policy controls fail under generated semantic source mutations", async 
         ),
     },
     {
+      name: "core-api image build graph narrowed",
+      expected: "package.json must build the exact core-api workspace graph its image runs",
+      // Dropping the trailing `...` builds the deployable without the contexts and
+      // adapters it composes, which a warm tree hides and a cold image build does not.
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "packageJson",
+          jsonEncoded(coreApiBuildScriptTarget),
+          jsonEncoded(coreApiBuildScriptTarget.replace('"@platos/core-api..."', "@platos/core-api"))
+        ),
+    },
+    {
       name: "workload identity package test wiring",
       expected: "package.json must wire the workload identity shipping package test",
       mutate: (input) =>
@@ -4940,12 +4974,17 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   those steps resolve to. Five rather than three because this job runs two
   //   commands: producing the 18 cells and saying what closing them means are
   //   different claims, and deleting either is how a number stops being stated.
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 = 386. The count is
+  //   CORE-API IMAGE, +1. The exact `build:platos:core-api` pin that
+  //   apps/core-api/Dockerfile's build step resolves to. The Dockerfile is NOT
+  //   yet in the shipping table above, because it is not yet a build-images.yml
+  //   matrix row, and that table is the matrix's Dockerfiles; see the note on
+  //   `coreApiBuildScriptTarget`.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 = 387. The count is
   // pinned rather than derived so that a control silently disappearing is a failure
   // rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    386,
+    387,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
@@ -5557,4 +5596,78 @@ test("the agent census fails when a suite is neither gated nor recorded", () => 
     [...UNGATED_AGENT_INTEGRATION_SUITES.keys()].sort(),
     "adding an unreachable suite must break the census"
   );
+});
+
+// ---------------------------------------------------------------------------
+// THE CANDIDATE VERIFIER NAMES EVERY MATRIX ROW, AND REFUSES AN UNNAMED ARCHIVE.
+//
+// `tests/persisted-state-gate/prepare-candidate-images.sh` verifies each OCI
+// archive's checksum, manifest digest and revision label before anything loads
+// or publishes it. It used to iterate a hand-written list of three, so a fourth
+// matrix row would have produced an archive that was downloaded next to the
+// others and verified by nothing. The list is now joined to the matrix here, and
+// the script itself refuses an archive it has no row for.
+// ---------------------------------------------------------------------------
+const candidatePreparationScript = "tests/persisted-state-gate/prepare-candidate-images.sh";
+
+function preparationCandidates(script) {
+  const block = script.match(/^candidates=\(\n([\s\S]*?)\n\)$/mu);
+  if (block === null) return [];
+  return block[1]
+    .split("\n")
+    .map((line) => line.trim().match(/^"(\S+) (\S+) (\S+)"$/u))
+    .map((match) => (match === null ? null : { name: match[1], env_name: match[2], image: match[3] }));
+}
+
+function matrixCandidateRows(workflowSource) {
+  return imageCandidates(workflowJobs(parseWorkflow(workflowSource, "build-images.yml", [])).get("build-candidates"))
+    .map(({ name, env_name, image }) => ({ name, env_name, image }));
+}
+
+test("the candidate verifier's list is the build-images matrix, row for row", () => {
+  const rows = preparationCandidates(source(candidatePreparationScript));
+  assert.ok(rows.length > 0, "the verifier's candidate selector must be non-empty");
+  assert.deepEqual(rows, matrixCandidateRows(source(".github/workflows/build-images.yml")));
+  assert.deepEqual(
+    rows.map(({ name }) => name),
+    expectedCandidates.map(({ name }) => name),
+    "the verifier must name the same reviewed candidates this policy pins"
+  );
+
+  // NEGATIVE CONTROL: dropping a row is detected.
+  const withoutMigrations = source(candidatePreparationScript).replace(
+    '  "migrations MIGRATIONS platos-migrations"\n',
+    ""
+  );
+  assert.notEqual(withoutMigrations, source(candidatePreparationScript), "the control must change the script");
+  assert.notDeepEqual(
+    preparationCandidates(withoutMigrations),
+    matrixCandidateRows(source(".github/workflows/build-images.yml"))
+  );
+});
+
+test("the candidate verifier refuses an archive it has no verification row for", () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "platos-candidate-archives-"));
+  try {
+    writeFileSync(path.join(directory, "unreviewed.oci.tar"), "not an image\n");
+    const result = spawnSync("bash", [path.join(repositoryRoot, candidatePreparationScript), directory, path.join(directory, "layout"), "false"], {
+      encoding: "utf8",
+      env: { ...process.env, PLATOS_CANDIDATE_SHA: "0".repeat(40), GITHUB_REPOSITORY_OWNER: "example" },
+    });
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, /unexpected candidate archive with no verification entry: unreviewed\.oci\.tar/u);
+
+    // CONTROL: an archive the list DOES name gets past the guard and fails later,
+    // on its missing env file, which is a different refusal with no such message.
+    rmSync(path.join(directory, "unreviewed.oci.tar"));
+    writeFileSync(path.join(directory, "migrations.oci.tar"), "not an image\n");
+    const named = spawnSync("bash", [path.join(repositoryRoot, candidatePreparationScript), directory, path.join(directory, "layout"), "false"], {
+      encoding: "utf8",
+      env: { ...process.env, PLATOS_CANDIDATE_SHA: "0".repeat(40), GITHUB_REPOSITORY_OWNER: "example" },
+    });
+    assert.notEqual(named.status, 0);
+    assert.doesNotMatch(named.stderr, /unexpected candidate archive/u);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

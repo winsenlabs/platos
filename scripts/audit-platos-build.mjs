@@ -22,6 +22,7 @@ const agentBuildTsconfig = JSON.parse(read("apps/agent/tsconfig.build.json"));
 const tenancyDatabasePackage = JSON.parse(read("internal-packages/tenancy-database/package.json"));
 const webappPackage = JSON.parse(read("apps/webapp/package.json"));
 const agentDockerfile = read("apps/agent/Dockerfile");
+const coreApiDockerfile = read("apps/core-api/Dockerfile");
 const webappDockerfile = read("apps/webapp/Dockerfile.platos");
 const agentEntrypoint = read("apps/agent/entrypoint.sh");
 const compose = read("docker-compose.platos.yml");
@@ -36,6 +37,11 @@ function sourceFiles(path) {
 check("root exposes build:platos", Boolean(packageJson.scripts?.["build:platos"]));
 check("root exposes build:platos:agent", Boolean(packageJson.scripts?.["build:platos:agent"]));
 check("root exposes build:platos:webapp", Boolean(packageJson.scripts?.["build:platos:webapp"]));
+check("root exposes build:platos:core-api", Boolean(packageJson.scripts?.["build:platos:core-api"]));
+check(
+  "build:platos includes the core-api graph",
+  /(?:^|&&\s*)pnpm run build:platos:core-api(?:\s*&&|$)/.test(packageJson.scripts?.["build:platos"] ?? "")
+);
 check(
   "agent build compiles the clean tenancy database dependency",
   /--filter @platos\/tenancy-database build/.test(packageJson.scripts?.["build:platos:agent"] ?? "")
@@ -75,6 +81,18 @@ check("agent image uses explicit Platos build graph", /build:platos:agent/.test(
 check("agent image does not copy the legacy database schema", !agentDockerfile.includes("internal-packages/database/prisma"));
 check("agent entrypoint does not generate the legacy database client", !agentEntrypoint.includes("@platos/database"));
 check("webapp image uses explicit Platos build graph", /build:platos:webapp/.test(webappDockerfile));
+check("core-api image uses explicit Platos build graph", /^RUN pnpm run build:platos:core-api$/m.test(coreApiDockerfile));
+// The image-production milestone asks for non-root images. Read the LAST `USER`
+// in the LAST stage: an earlier stage's account, or a `USER` that a later one
+// resets, is not what the container runs as.
+const coreApiRuntimeStage = coreApiDockerfile.slice(
+  [...coreApiDockerfile.matchAll(/^FROM\s/gm)].at(-1)?.index ?? coreApiDockerfile.length
+);
+const coreApiRuntimeUser = [...coreApiRuntimeStage.matchAll(/^USER\s+(\S+)\s*$/gm)].at(-1)?.[1] ?? "";
+check(
+  "core-api image runs its final stage as a non-root account",
+  coreApiRuntimeUser !== "" && !/^(?:root|0)(?::|$)/.test(coreApiRuntimeUser)
+);
 const webappCompose = compose.split(/^  (?=\S)/m).find((service) => service.startsWith("webapp:")) ?? "";
 check("webapp service receives the documented runtime heap variable", /WEBAPP_NODE_MAX_OLD_SPACE_SIZE_MB/.test(webappCompose));
 

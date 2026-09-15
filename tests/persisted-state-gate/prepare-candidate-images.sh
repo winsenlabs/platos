@@ -10,10 +10,31 @@ load_candidates="${3:-false}"
 
 mkdir -p "$layout_dir"
 
-for candidate in \
-  "agent AGENT platos-agent" \
-  "webapp WEBAPP platos-webapp" \
-  "migrations MIGRATIONS platos-migrations"; do
+# EVERY candidate build-images.yml archives, and nothing else. The list below is
+# that workflow's matrix, row for row, and scripts/ci-policy.test.mjs joins the
+# two so they cannot drift. An archive in the directory that this list does not
+# name is a candidate nobody would verify, so it fails here rather than being
+# skipped.
+candidates=(
+  "agent AGENT platos-agent"
+  "webapp WEBAPP platos-webapp"
+  "migrations MIGRATIONS platos-migrations"
+)
+expected_archives=""
+for candidate in "${candidates[@]}"; do
+  read -r name _ _ <<<"$candidate"
+  expected_archives="${expected_archives}${name}.oci.tar"$'\n'
+done
+for archive_path in "$candidate_dir"/*.oci.tar; do
+  test -e "$archive_path" || continue
+  archive_name="${archive_path##*/}"
+  if ! grep -Fxq -- "$archive_name" <<<"$expected_archives"; then
+    echo "unexpected candidate archive with no verification entry: $archive_name" >&2
+    exit 1
+  fi
+done
+
+for candidate in "${candidates[@]}"; do
   read -r name env_name repository_name <<<"$candidate"
   env_file="$candidate_dir/$name.env"
   archive="$candidate_dir/$name.oci.tar"

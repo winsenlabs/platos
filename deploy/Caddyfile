@@ -25,3 +25,12 @@ test.platos.dev {
 agent.test.platos.dev {
 	reverse_proxy localhost:3100
 }
+
+# core-api (the V1 composition root, docker-compose.platos.yml profile
+# `core-api`, loopback host port 3200) on a host of its own. No path above
+# changes target: pointing any existing route at core-api is the cutover, and
+# that is a separate decision. This hostname needs a DNS record before Caddy
+# can obtain its certificate.
+core.test.platos.dev {
+	reverse_proxy localhost:3200
+}

@@ -39,6 +39,11 @@ const EXPECTED_SHIPPED_CANDIDATES = [
     env_name: "MIGRATIONS",
   },
 ];
+// Image Dockerfiles that are not (yet) build-images.yml matrix rows. A file here
+// still produces a distributable image the moment anyone builds it, so it owes
+// the same Apache-2.0 s4 files. When its matrix row lands it moves into the list
+// above, and the exact-candidate assertion below makes that move mandatory.
+const PRE_CANDIDATE_IMAGE_DOCKERFILES = ["apps/core-api/Dockerfile"];
 const LEGAL_FILES = ["LICENSE", "NOTICE"];
 const EXPECTED_PUBLISHABLE_PACKAGES = [
   "packages/core/package.json",
@@ -228,6 +233,21 @@ test("every shipped image COPYs LICENSE and NOTICE into its final stage", () => 
       assert.ok(
         dockerfileCopies(df, f),
         `${dockerfile} never COPYs ${f} into its final stage, so the published image is distributed without it — Apache-2.0 §4 violation`
+      );
+    }
+  }
+});
+
+test("every pre-candidate image Dockerfile COPYs LICENSE and NOTICE into its final stage", () => {
+  const candidates = new Set(shippedCandidates(read(".github/workflows/build-images.yml")).map(({ dockerfile }) => dockerfile));
+  assert.ok(PRE_CANDIDATE_IMAGE_DOCKERFILES.length > 0, "the pre-candidate selector must be non-empty");
+  for (const dockerfile of PRE_CANDIDATE_IMAGE_DOCKERFILES) {
+    assert.equal(candidates.has(dockerfile), false, `${dockerfile} is now a matrix row; move it into EXPECTED_SHIPPED_CANDIDATES`);
+    const df = read(dockerfile);
+    for (const f of LEGAL_FILES) {
+      assert.ok(
+        dockerfileCopies(df, f),
+        `${dockerfile} never COPYs ${f} into its final stage, so any image built from it is distributed without it — Apache-2.0 §4 violation`
       );
     }
   }

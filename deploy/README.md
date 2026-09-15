@@ -18,6 +18,9 @@ Caddy runs on the **host** (systemd service, not a container) and terminates TLS
   `/api/v1/channels/*`, `/api/v1/agent/*`, **`/tools/sync*`**.
 - Everything else → the webapp (`localhost:3030`).
 - `agent.test.platos.dev` → the agent directly (`localhost:3100`).
+- `core.test.platos.dev` → core-api directly (`localhost:3200`, the opt-in `core-api` Compose
+  profile). No existing path routes to core-api; moving one onto it is the cutover, not this block.
+  The hostname needs a DNS record before Caddy can obtain its certificate.
 
 **`/tools/sync*` is the platools tool-sync WebSocket** (entity/artifacts connectors dial
 `wss://test.platos.dev/tools/sync`). It MUST route to the agent. Without this block the

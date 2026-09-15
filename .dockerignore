@@ -63,6 +63,12 @@ build
 #   openapi-meta-schema.mjs:59     META_SCHEMA_PATH
 !/docs/error-taxonomy.json
 !/docs/openapi-3.1-meta-schema.json
+# The core-api image (apps/core-api/Dockerfile) needs NO further re-include. Its
+# build is `build:platos:core-api`: `tsc -b` for each project in the
+# `@platos/core-api...` graph plus the tenancy database package's `prebuild`
+# client generation, which reads only that package's prisma/ schemas. No script
+# in that graph holds a path constant under /docs; the cold image build is the
+# proof, and it ran against exactly this file.
 /examples
 out
 
