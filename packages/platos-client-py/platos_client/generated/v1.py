@@ -1350,20 +1350,21 @@ class EnvironmentScopeV1Api:
     def __init__(self, transport: V1Transport) -> None:
         self._transport = transport
 
-    def resolve(self, environment_slug: str, organization_slug: str, project_slug: str) -> "ItemEnvelope_EnvironmentScopeResource":
+    def resolve(self, environment_slug: str, organization_slug: str, project_slug: str, access: str | None = None) -> "ItemEnvelope_EnvironmentScopeResource":
         """GET /api/v1/environments/by-slugs
 
         Query parameters:
             environmentSlug: required
             organizationSlug: required
             projectSlug: required
+            access: optional
         """
         return self._transport.send(
             {
                 "operation": _operation("get__api_v1_environments_by_slugs"),
                 "path": "/api/v1/environments/by-slugs",
                 "body": None,
-                "query": {name: value for name, value in {"environmentSlug": environment_slug, "organizationSlug": organization_slug, "projectSlug": project_slug}.items() if value is not None},
+                "query": {name: value for name, value in {"environmentSlug": environment_slug, "organizationSlug": organization_slug, "projectSlug": project_slug, "access": access}.items() if value is not None},
             }
         )
 

@@ -9921,6 +9921,14 @@
         "x-platos-mcp-tools": [],
         "parameters": [
           {
+            "name": "access",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "environmentSlug",
             "in": "query",
             "required": true,

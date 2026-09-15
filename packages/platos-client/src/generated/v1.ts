@@ -1336,7 +1336,7 @@ export class EnvironmentScopeV1Api {
   constructor(private readonly transport: V1Transport) {}
 
   /** GET /api/v1/environments/by-slugs */
-  async resolve(query: { readonly environmentSlug: string; readonly organizationSlug: string; readonly projectSlug: string }): Promise<ItemEnvelope_EnvironmentScopeResource> {
+  async resolve(query: { readonly environmentSlug: string; readonly organizationSlug: string; readonly projectSlug: string; readonly access?: string }): Promise<ItemEnvelope_EnvironmentScopeResource> {
     return this.transport.send<ItemEnvelope_EnvironmentScopeResource>({
       operation: operation("get__api_v1_environments_by_slugs"),
       path: "/api/v1/environments/by-slugs",

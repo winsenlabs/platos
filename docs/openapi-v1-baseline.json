@@ -2190,6 +2190,14 @@
         "parameters": [
           {
             "in": "query",
+            "name": "access",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "environmentSlug",
             "required": true,
             "schema": {
