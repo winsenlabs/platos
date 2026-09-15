@@ -2108,15 +2108,15 @@
     ]
   },
   "expected": {
-    "totalFiles": 5272,
+    "totalFiles": 5293,
     "areaCounts": {
       "apps-agent": 529,
-      "apps-core-api": 108,
+      "apps-core-api": 116,
       "apps-mcp-stdio": 8,
       "apps-webapp": 184,
       "docs-content": 745,
       "internal-packages": 1174,
-      "packages": 2193,
+      "packages": 2206,
       "root-infra": 331
     },
     "kindCounts": {
@@ -2128,14 +2128,14 @@
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2143,
-      "test": 1078
+      "source": 2157,
+      "test": 1085
     },
     "dispositionCounts": {
       "archive": 7,
       "move-refactor": 1690,
       "regenerate": 43,
-      "retain": 3530,
+      "retain": 3551,
       "unresolved": 2
     },
     "protectedCount": 1641,
@@ -2155,8 +2155,8 @@
       "apps-core-api.entry.composition-root": 2,
       "apps-core-api.infra.container": 1,
       "apps-core-api.source.process": 33,
-      "apps-core-api.source.transports": 30,
-      "apps-core-api.test.suites": 34,
+      "apps-core-api.source.transports": 36,
+      "apps-core-api.test.suites": 36,
       "apps-mcp-stdio.config.package": 2,
       "apps-mcp-stdio.doc.package": 1,
       "apps-mcp-stdio.entry.bin": 1,
@@ -2232,13 +2232,13 @@
       "packages.adapters.config": 58,
       "packages.adapters.doc": 15,
       "packages.adapters.fixture": 3,
-      "packages.adapters.source": 280,
-      "packages.adapters.test": 194,
+      "packages.adapters.source": 284,
+      "packages.adapters.test": 196,
       "packages.config.build": 29,
       "packages.contexts.config": 37,
       "packages.contexts.doc": 17,
-      "packages.contexts.source": 730,
-      "packages.contexts.test": 363,
+      "packages.contexts.source": 734,
+      "packages.contexts.test": 366,
       "packages.doc.package": 9,
       "packages.generated.release-history": 5,
       "packages.kernel.config": 3,
@@ -2279,6 +2279,6 @@
       "root-infra.tooling.scripts": 121,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "99f1a488a80d9a140384835afab1284b8f42bce93a8ef4b867895a04d563acf3"
+    "classificationSha256": "9735ce82938b86b29210b12b2fe50c0cabe812258450e995646f85b9c7d8128e"
   }
 }
