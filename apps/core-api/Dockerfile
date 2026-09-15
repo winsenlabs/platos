@@ -2,9 +2,10 @@
 #
 # Modelled on apps/agent/Dockerfile. Stage 1 (builder) installs the frozen
 # monorepo, builds the explicit core-api graph and runs `pnpm deploy`, which
-# writes a self-contained directory holding only the production dependency tree
-# with every workspace package resolved to a real copy. Stage 2 (runtime) copies
-# that bundle, the compiled entry point and the legal files, and runs as an
+# writes a self-contained directory with every workspace package resolved to a
+# real copy, then prunes that directory to core-api's production closure and
+# proves the result against pnpm-lock.yaml. Stage 2 (runtime) copies that
+# bundle, the compiled entry point and the legal files, and runs as an
 # unprivileged account.
 #
 # External base index audited and pinned 2026-08-24. It is the SAME digest
@@ -54,6 +55,18 @@ RUN pnpm run build:platos:core-api
 
 # Self-contained production bundle at /deploy.
 RUN pnpm --filter @platos/core-api deploy --prod --legacy /deploy
+
+# MINIMAL, AND PROVEN MINIMAL AGAINST THE LOCKFILE. A legacy deploy also installs
+# the workspace root manifest's own `dependencies` into the bundle (measured: 262
+# packages core-api never imports, the changesets CLI and prettier 2 among them).
+# `prune` deletes every store entry the bundle's own production dependencies do
+# not reach, and only deletes. `check` then compares what is left with
+# apps/core-api's production closure as pnpm-lock.yaml states it, and fails the
+# build on any package outside that closure, on any unreviewed closure package
+# that is missing, and on any link that leaves the bundle. The script's header
+# has the mechanism and the three reviewed absences.
+RUN node scripts/deploy-bundle-closure.mjs prune --bundle /deploy \
+    && node scripts/deploy-bundle-closure.mjs check --bundle /deploy --importer apps/core-api
 
 # ───────────────────────────────────────────────────────────
 # Runtime

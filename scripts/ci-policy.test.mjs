@@ -417,6 +417,11 @@ const expectedV1EvidenceCommands = [
   "node --test scripts/webapp-bff-matrix.test.mjs",
   "node scripts/operator-operations.mjs --check",
   "node --test scripts/license-distribution.test.mjs",
+  // The prune and the lockfile-closure check apps/core-api/Dockerfile runs on its
+  // deploy bundle, with their negative controls. Invoked directly for the same
+  // reason as the capability-matrix suite above: root package.json is a webapp
+  // image build input.
+  "node --test scripts/deploy-bundle-closure.test.mjs",
   "node scripts/arch/gen-v1-skeleton.mjs --check",
   "pnpm test:v1-foundation",
   "pnpm test:install-git-hooks",

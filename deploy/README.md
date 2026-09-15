@@ -20,7 +20,9 @@ Caddy runs on the **host** (systemd service, not a container) and terminates TLS
 - `agent.test.platos.dev` → the agent directly (`localhost:3100`).
 - `core.test.platos.dev` → core-api directly (`localhost:3200`, the opt-in `core-api` Compose
   profile). No existing path routes to core-api; moving one onto it is the cutover, not this block.
-  The hostname needs a DNS record before Caddy can obtain its certificate.
+  The hostname needs a DNS record before Caddy can obtain its certificate. The block strips
+  `Set-Cookie`: core-api does not trust the proxy for the Secure-cookie decision, so it would
+  otherwise issue the operator session cookie without `Secure` behind TLS.
 
 **`/tools/sync*` is the platools tool-sync WebSocket** (entity/artifacts connectors dial
 `wss://test.platos.dev/tools/sync`). It MUST route to the agent. Without this block the

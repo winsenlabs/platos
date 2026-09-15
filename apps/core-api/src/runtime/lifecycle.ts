@@ -187,6 +187,11 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
     rawBody: true,
   });
 
+  // NO FRAMEWORK BANNER. Express stamps `X-Powered-By: Express` on every
+  // response unless told otherwise. No client reads it; a scanner does.
+  const framework: { disable(setting: string): unknown } = nest.getHttpAdapter().getInstance();
+  framework.disable("x-powered-by");
+
   // WIN-267 R1. `/api/v1` — the ONE place this process decides its REST major.
   //
   // BEFORE `listen()`, because `enableVersioning` is read when the router is

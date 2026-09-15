@@ -135,6 +135,14 @@ describe("the process starts and serves", () => {
     expect((await fetch(harness.url("/healthz"))).status).toBe(200);
   });
 
+  it("names no framework in any response, served, refused or unrouted", async () => {
+    const harness = await start();
+    for (const path of ["/livez", "/readyz", "/no-such-route"]) {
+      const response = await fetch(harness.url(path));
+      expect(response.headers.get("x-powered-by"), path).toBeNull();
+    }
+  });
+
   it("emits structured startup lifecycle events", async () => {
     const harness = await start();
     const messages = harness.lines().map((line) => line["message"]);
