@@ -18,15 +18,17 @@
     "coreApiInstall": "pnpm --filter @platos/core-api exec vitest run src/composition/installation.test.ts"
   },
   "baseline": {
-    "packages/adapters/channel-discord": "106/106 across 5 files",
+    "packages/adapters/channel-discord": "110/110 across 5 files",
     "apps/core-api": "494/494 unit (vitest, integration excluded)",
     "scripts/arch/composition-root.mjs": "ok: 62 bindings"
   },
   "history": [
     "FIRST SWEEP (45 adapter rows): 44/45 killed. D32 'the global limit binds interaction followups' SURVIVED: the route carried a `globalBound` flag, and no case could tell it from its negation because a followup's rate-limit identity is a digest of the interaction token, never the bot token, so no bot's global block is ever looked up for it. The flag was dead logic and was DELETED from rate-limit.ts; the row was replaced by 'a global 429 is treated as an ordinary bucket 429', which is killed. Recorded rather than rewritten, because a survivor that removed code is the most useful thing a sweep finds.",
-    "The same first run also motivated three cases before it was counted: trailing garbage after a genuine signature and after a genuine key (Buffer.from hex truncation), and an unreadable 200 answer on a READ. Without them D08, D09 and D38 would have been equivalent mutants under node:crypto's own length checks."
+    "The same first run also motivated three cases before it was counted: trailing garbage after a genuine signature and after a genuine key (Buffer.from hex truncation), and an unreadable 200 answer on a READ. Without them D08, D09 and D38 would have been equivalent mutants under node:crypto's own length checks.",
+    "VERIFIER ROUND 1 (head e974ac12) found three mutations the 52-row plan did not contain, each against behaviour this directory's own comments describe, and each SURVIVED the full suite: V3 a 429 naming no X-RateLimit-Bucket leaves its route free; V4 a thread-typed channel with no parent_id is keyed under an absent parent (`discord:undefined:<thread>`); V7 the rate-limit sweep deletes live windows. '52/52 killed' was true of the plan and overstated the suite. Round 2 added a case for each (discord-transport 33 -> 36 static cases, normalize 20 -> 21) and the three rows as D46, D47 and D48.",
+    "WRITING THE V7 CASE FOUND A LEAK. `bucketOfRoute` (route -> bucket) was never swept, and the sweep itself only ran once `resetAtByBucket` held 1024 windows. A followup's rate-limit identity is a digest of its interaction token, new for every slash command, so every followup whose answer named a bucket added one route entry for the life of the process. Measured on the e974ac12 build: 5000 followups on 5000 tokens -> bucketOfRoute 5000, resetAtByBucket 0, and no sweep ever ran. Round 2 counts all three tables towards the bound, records each window's (credential, bucket) group, drops a route entry once no window in its group is live (no `admit` answer changes: without a live window the route is admitted either way), and sweeps expired global blocks. Rows D49-D54 prove each half of that sweep can fail."
   ],
-  "summary": "52/52 killed",
+  "summary": "61/61 killed",
   "mutations": [
     {
       "name": "D01 the replay window becomes one-sided",
@@ -291,6 +293,7 @@
       "outcome": "killed",
       "killedCases": [
         "the ordinary path, so the failures below are not vacuous > posts a THREAD reply to the thread's own channel id, not to its parent",
+        "Discord's rate limits, read from Discord's headers > holds a route whose 429 named NO bucket, on that channel only, until the wait has passed",
         "Discord's rate limits, read from Discord's headers > splits a bucket by channel, so one busy channel does not silence another"
       ]
     },
@@ -362,7 +365,10 @@
       "outcome": "killed",
       "killedCases": [
         "Discord's rate limits, read from Discord's headers > refuses the next call on that bucket BEFORE opening a socket, until the wait has passed",
-        "Discord's rate limits, read from Discord's headers > stops on X-RateLimit-Remaining: 0 from a SUCCESS, before Discord has to refuse"
+        "Discord's rate limits, read from Discord's headers > holds a route whose 429 named NO bucket, on that channel only, until the wait has passed",
+        "Discord's rate limits, read from Discord's headers > stops on X-RateLimit-Remaining: 0 from a SUCCESS, before Discord has to refuse",
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > sweeps reset windows and expired global blocks once full, keeping the window and the block still live",
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > forgets a followup route once nothing behind it is live, so interaction tokens do not accumulate"
       ]
     },
     {
@@ -384,7 +390,9 @@
       "exit": 1,
       "outcome": "killed",
       "killedCases": [
+        "Discord's rate limits, read from Discord's headers > holds a route whose 429 named NO bucket, on that channel only, until the wait has passed",
         "Discord's rate limits, read from Discord's headers > splits a bucket by channel, so one busy channel does not silence another",
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > sweeps reset windows and expired global blocks once full, keeping the window and the block still live",
         "Discord's own refusals, in this context's vocabulary > gives four DISTINGUISHABLE codes for the four outcomes"
       ]
     },
@@ -396,7 +404,9 @@
       "exit": 1,
       "outcome": "killed",
       "killedCases": [
-        "Discord's rate limits, read from Discord's headers > stops on X-RateLimit-Remaining: 0 from a SUCCESS, before Discord has to refuse"
+        "Discord's rate limits, read from Discord's headers > stops on X-RateLimit-Remaining: 0 from a SUCCESS, before Discord has to refuse",
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > sweeps reset windows and expired global blocks once full, keeping the window and the block still live",
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > forgets a followup route once nothing behind it is live, so interaction tokens do not accumulate"
       ]
     },
     {
@@ -407,7 +417,8 @@
       "exit": 1,
       "outcome": "killed",
       "killedCases": [
-        "Discord's rate limits, read from Discord's headers > holds every bot route on a GLOBAL 429, except interaction followups, and only for that bot"
+        "Discord's rate limits, read from Discord's headers > holds every bot route on a GLOBAL 429, except interaction followups, and only for that bot",
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > sweeps reset windows and expired global blocks once full, keeping the window and the block still live"
       ]
     },
     {
@@ -633,6 +644,111 @@
       "outcome": "killed",
       "killedCases": [
         "the anchor contract platform.ts decides with > proves each declared default survives the real loader, not just the table"
+      ]
+    },
+    {
+      "name": "D46 a 429 naming no bucket leaves its route free",
+      "guards": "a refusal with no X-RateLimit-Bucket still holds the next call on that route before a socket opens (verifier round 1 V3)",
+      "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Discord's rate limits, read from Discord's headers > holds a route whose 429 named NO bucket, on that channel only, until the wait has passed",
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > sweeps reset windows and expired global blocks once full, keeping the window and the block still live"
+      ]
+    },
+    {
+      "name": "D47 a thread with no parent_id is keyed under an absent parent",
+      "guards": "a thread-typed channel without parent_id is keyed on itself (verifier round 1 V4)",
+      "file": "packages/adapters/channel-discord/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a chat-input command becomes an InboundMessage > keys a thread whose partial channel names NO parent on ITSELF, never under an invented one"
+      ]
+    },
+    {
+      "name": "D48 the sweep deletes live windows too",
+      "guards": "a window that has not reset survives a sweep (verifier round 1 V7, on the round 2 table shape)",
+      "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > sweeps reset windows and expired global blocks once full, keeping the window and the block still live",
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > forgets a followup route once nothing behind it is live, so interaction tokens do not accumulate"
+      ]
+    },
+    {
+      "name": "D49 the sweep never runs",
+      "guards": "the tables are bounded at all",
+      "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > sweeps reset windows and expired global blocks once full, keeping the window and the block still live",
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > forgets a followup route once nothing behind it is live, so interaction tokens do not accumulate"
+      ]
+    },
+    {
+      "name": "D50 the sweep is started by windows alone, as before round 2",
+      "guards": "route entries count towards the bound, so one per interaction token cannot grow unswept",
+      "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > sweeps reset windows and expired global blocks once full, keeping the window and the block still live",
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > forgets a followup route once nothing behind it is live, so interaction tokens do not accumulate"
+      ]
+    },
+    {
+      "name": "D51 route entries are never swept",
+      "guards": "a followup route nothing live stands behind is forgotten (the round 2 leak restored)",
+      "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > sweeps reset windows and expired global blocks once full, keeping the window and the block still live",
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > forgets a followup route once nothing behind it is live, so interaction tokens do not accumulate"
+      ]
+    },
+    {
+      "name": "D52 the sweep drops the route that finds a live window",
+      "guards": "a route whose (credential, bucket) group still has a live window keeps its bucket, so the window still refuses",
+      "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > sweeps reset windows and expired global blocks once full, keeping the window and the block still live",
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > forgets a followup route once nothing behind it is live, so interaction tokens do not accumulate"
+      ]
+    },
+    {
+      "name": "D53 expired global blocks are never swept",
+      "guards": "a reset global block is forgotten by a sweep",
+      "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > sweeps reset windows and expired global blocks once full, keeping the window and the block still live"
+      ]
+    },
+    {
+      "name": "D54 the sweep drops a live global block",
+      "guards": "a global block that has not reset survives a sweep",
+      "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the remembered rate-limit state is bounded, and a sweep never forgets a live limit > sweeps reset windows and expired global blocks once full, keeping the window and the block still live"
       ]
     }
   ]

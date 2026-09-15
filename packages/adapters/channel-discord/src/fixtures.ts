@@ -139,6 +139,18 @@ export const COMMAND_IN_ANNOUNCEMENT_THREAD_BODY = interaction({
   data: { id: "1181888000000000001", name: "ask", type: 1, options: [{ name: "question", type: 3, value: "news?" }] },
 });
 
+/** A private thread (type 12) whose partial channel names NO parent. Keyed on itself. */
+export const ORPHAN_THREAD_ID = "1181000000000000220";
+export const COMMAND_IN_ORPHAN_THREAD_BODY = interaction({
+  id: "1181999000000000014",
+  type: 2,
+  guild_id: GUILD_ID,
+  channel_id: ORPHAN_THREAD_ID,
+  channel: { id: ORPHAN_THREAD_ID, type: 12, guild_id: GUILD_ID },
+  member: { user, roles: [] },
+  data: { id: "1181888000000000001", name: "ask", type: 1, options: [{ name: "question", type: 3, value: "whose thread?" }] },
+});
+
 /** A sub-command with nested options, in a DM: `/agent ask topic:rivers depth:3`. */
 export const SUBCOMMAND_IN_DM_BODY = interaction({
   id: "1181999000000000020",
@@ -218,6 +230,7 @@ export const ALL_FIXTURE_BODIES: ReadonlyArray<readonly [string, string]> = Obje
   ["command_in_thread", COMMAND_IN_THREAD_BODY],
   ["second_command_in_thread", SECOND_COMMAND_IN_THREAD_BODY],
   ["command_in_announcement_thread", COMMAND_IN_ANNOUNCEMENT_THREAD_BODY],
+  ["command_in_orphan_thread", COMMAND_IN_ORPHAN_THREAD_BODY],
   ["subcommand_in_dm", SUBCOMMAND_IN_DM_BODY],
   ["component", COMPONENT_BODY],
   ["autocomplete", AUTOCOMPLETE_BODY],

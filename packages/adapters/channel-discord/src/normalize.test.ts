@@ -18,6 +18,7 @@ import {
   BOT_COMMAND_BODY,
   COMMAND_IN_ANNOUNCEMENT_THREAD_BODY,
   COMMAND_IN_CHANNEL_BODY,
+  COMMAND_IN_ORPHAN_THREAD_BODY,
   COMMAND_IN_THREAD_BODY,
   COMPONENT_BODY,
   DM_CHANNEL_ID,
@@ -25,6 +26,7 @@ import {
   MESSAGE_COMMAND_BODY,
   NO_CHANNEL_COMMAND_BODY,
   NO_ID_COMMAND_BODY,
+  ORPHAN_THREAD_ID,
   PING_BODY,
   SECOND_COMMAND_IN_THREAD_BODY,
   signDiscordDelivery,
@@ -104,6 +106,17 @@ describe("a chat-input command becomes an InboundMessage", () => {
     const key = (await verify(COMMAND_IN_ANNOUNCEMENT_THREAD_BODY)).message?.channelThreadKey ?? "";
     expect(key).toBe("discord:1181000000000000110:1181000000000000210");
     expect(extractPlatformChannelId(key)).toBe("1181000000000000110");
+  });
+
+  it("keys a thread whose partial channel names NO parent on ITSELF, never under an invented one", async () => {
+    // The type alone says "thread"; the parent is what the key is built from. A
+    // key with an absent parent would carry the text `undefined` as a channel id,
+    // and a routing rule would be matched against it.
+    const delivery = await verify(COMMAND_IN_ORPHAN_THREAD_BODY);
+    const key = delivery.message?.channelThreadKey ?? "";
+    expect(key).toBe(`discord:${ORPHAN_THREAD_ID}`);
+    expect(extractPlatformChannelId(key)).toBe(ORPHAN_THREAD_ID);
+    expect(delivery.message?.platformChannelId).toBe(ORPHAN_THREAD_ID);
   });
 
   it("keys a DM on the DM channel and descends into sub-command options for the text", async () => {

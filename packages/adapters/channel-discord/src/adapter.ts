@@ -4,11 +4,17 @@
 // `channel-runtime.ts` says a new provider is "a new directory satisfying this
 // interface and a row in the registry, and not one line inside `channels`", and
 // records that with one implementation the claim was "asserted and not
-// exercised". This directory exercises it: it satisfies `ChannelRuntime` and
-// `ChannelAdapter` through `@platos/context-channels/application/ports/index.js`
-// alone, and `git diff -- packages/contexts/channels` over the commit that added
-// it is empty. What it could NOT do without a change inside `channels` is written
-// down below rather than worked around.
+// exercised". This directory exercises it AT THE PORT and NO FURTHER: it satisfies
+// `ChannelRuntime` and `ChannelAdapter` through
+// `@platos/context-channels/application/ports/index.js` alone, and
+// `git diff -- packages/contexts/channels` over the commits that added it is
+// empty. That emptiness is not the clause closed. An empty diff is what any branch
+// that never touched Core would show, whether or not the adapter is usable; and
+// this one is NOT usable for production inbound without a change inside
+// `channels` (2 below). The sentence is therefore true of the port and of the
+// outbound half, and false of inbound admission until `channels` decides how a
+// Discord delivery is owned. What it could NOT do without a change inside
+// `channels` is written down below rather than worked around.
 //
 // INTERACTIONS OVER HTTP, AND NOTHING HELD OPEN. This object owns no socket, no
 // timer and no subscription between calls, so there is nothing to reconnect and

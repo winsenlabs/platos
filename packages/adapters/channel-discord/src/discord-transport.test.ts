@@ -32,6 +32,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createChannelDiscordAdapter, type ChannelDiscordAdapter } from "./adapter.js";
 import { APPLICATION_ID, TEXT_CHANNEL_ID, THREAD_ID } from "./fixtures.js";
 import { FAR_SIDE_INSTANT, FarSide, snowflakeAt } from "./far-side.js";
+import { DiscordRateLimits, MAX_REMEMBERED_WINDOWS, type ObservedResponse, type RateLimitRoute } from "./rate-limit.js";
 import { snowflakeInstant } from "./send.js";
 import { DISCORD_API_URL } from "./vendor.js";
 
@@ -258,6 +259,21 @@ describe("Discord's rate limits, read from Discord's headers", () => {
     expect(farSide.created).toHaveLength(1);
   });
 
+  it("holds a route whose 429 named NO bucket, on that channel only, until the wait has passed", async () => {
+    // No `X-RateLimit-Bucket` on the refusal: the route stands in for the bucket.
+    farSide.next({ kind: "rateLimited", retryAfter: 2 });
+    failure(await adapter.send(CREDENTIAL, message()));
+    const held = failure(await adapter.send(CREDENTIAL, message()));
+    expect(held.retryAfterSeconds).toBe(2);
+    expect(farSide.received).toHaveLength(1);
+    const thread = message({ channelThreadKey: `discord:${TEXT_CHANNEL_ID}:${THREAD_ID}` as OutboundMessage["channelThreadKey"] });
+    expect((await adapter.send(CREDENTIAL, thread)).ok).toBe(true);
+    expect(farSide.received).toHaveLength(2);
+    clock.advanceSeconds(2);
+    expect((await adapter.send(CREDENTIAL, message())).ok).toBe(true);
+    expect(farSide.received).toHaveLength(3);
+  });
+
   it("stops on X-RateLimit-Remaining: 0 from a SUCCESS, before Discord has to refuse", async () => {
     farSide.next({ kind: "ok", limit: { bucket: "abcd1234", remaining: 0, resetAfter: 3 } });
     expect((await adapter.send(CREDENTIAL, message())).ok).toBe(true);
@@ -300,6 +316,53 @@ describe("Discord's rate limits, read from Discord's headers", () => {
     expect(outcome.ok).toBe(true);
     expect(sends).toBe(2);
     expect(farSide.created).toHaveLength(1);
+  });
+});
+
+describe("the remembered rate-limit state is bounded, and a sweep never forgets a live limit", () => {
+  const answer = (status: number, headers: Record<string, string>, global = false): ObservedResponse => ({
+    status,
+    header: (name) => headers[name.toLowerCase()] ?? null,
+    retryAfter: status === 429 ? Number(headers["retry-after"]) : null,
+    global,
+  });
+  const exhausted = (seconds: number) =>
+    answer(200, { "x-ratelimit-bucket": "b", "x-ratelimit-remaining": "0", "x-ratelimit-reset-after": String(seconds) });
+  const channel = (resource: string): RateLimitRoute => ({ identity: "bot", template: "POST channels/{channel}/messages", resource });
+  const read = (identity: string): RateLimitRoute => ({ identity, template: "GET users/@me", resource: identity });
+
+  it("sweeps reset windows and expired global blocks once full, keeping the window and the block still live", () => {
+    const limits = new DiscordRateLimits(clock.now);
+    limits.observe(channel("live"), exhausted(60));
+    limits.observe(read("live-bot"), answer(429, { "retry-after": "60" }, true));
+    limits.observe(read("gone-bot"), answer(429, { "retry-after": "1" }, true));
+    // Bounded, not "until full": a table that stopped growing must fail here, not hang.
+    for (let next = 1; next <= MAX_REMEMBERED_WINDOWS - 6; next += 1) limits.observe(channel(`c${next}`), exhausted(1));
+    expect(limits.size).toBe(MAX_REMEMBERED_WINDOWS);
+
+    clock.advanceSeconds(2);
+    limits.observe(channel("after-reset"), answer(200, {}));
+    // WHAT SURVIVED THE SWEEP, BY NAME: the live window and the route that finds
+    // it, and the live global block. Every reset window, the gone bot's block and
+    // both bots' routes (no window behind either) are gone.
+    expect(limits.size).toBe(3);
+    expect(limits.admit(channel("live"))).toMatchObject({ admitted: false, retryAfterSeconds: 58 });
+    expect(limits.admit(read("live-bot"))).toMatchObject({ admitted: false, retryAfterSeconds: 58 });
+    expect(limits.admit(read("gone-bot"))).toEqual({ admitted: true });
+    expect(limits.admit(channel("c1"))).toEqual({ admitted: true });
+  });
+
+  it("forgets a followup route once nothing behind it is live, so interaction tokens do not accumulate", () => {
+    // A followup's rate-limit identity is its interaction token, new per command.
+    const limits = new DiscordRateLimits(clock.now);
+    const followup = (token: string): RateLimitRoute => ({ identity: token, template: "POST webhooks/{application}/{token}", resource: `1:${token}` });
+    const named = answer(200, { "x-ratelimit-bucket": "wh", "x-ratelimit-remaining": "4", "x-ratelimit-reset-after": "2" });
+    limits.observe(followup("still-limited"), exhausted(60));
+    for (let token = 0; token < 2 * MAX_REMEMBERED_WINDOWS; token += 1) limits.observe(followup(`t${token}`), named);
+    // Swept as t1022 and t2044 arrived, each time at 1024 entries, keeping only the
+    // two still limiting: 2 + t2044..t2047 = 6. Without the route sweep, 2 + 2048.
+    expect(limits.size).toBe(6);
+    expect(limits.admit(followup("still-limited"))).toMatchObject({ admitted: false, retryAfterSeconds: 60 });
   });
 });
 

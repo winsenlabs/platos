@@ -414,5 +414,77 @@
     "from": "          requestMaxAgeSeconds: Number(read(\"PLATOS_CHANNELS_DISCORD_REQUEST_MAX_AGE_S\")),",
     "to": "          requestMaxAgeSeconds: Number(read(\"PLATOS_CHANNELS_WEBHOOK_TIMEOUT_MS\")),",
     "command": "coreApiConfig"
+  },
+  {
+    "name": "D46 a 429 naming no bucket leaves its route free",
+    "guards": "a refusal with no X-RateLimit-Bucket still holds the next call on that route before a socket opens (verifier round 1 V3)",
+    "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+    "from": "    if (named !== null || response.status === 429) this.bucketOfRoute.set(",
+    "to": "    if (named !== null) this.bucketOfRoute.set(",
+    "command": "discordTx"
+  },
+  {
+    "name": "D47 a thread with no parent_id is keyed under an absent parent",
+    "guards": "a thread-typed channel without parent_id is keyed on itself (verifier round 1 V4)",
+    "file": "packages/adapters/channel-discord/src/normalize.ts",
+    "from": "DISCORD_THREAD_CHANNEL_TYPES.has(type) && isSnowflake(parent)",
+    "to": "DISCORD_THREAD_CHANNEL_TYPES.has(type)",
+    "command": "discordNorm"
+  },
+  {
+    "name": "D48 the sweep deletes live windows too",
+    "guards": "a window that has not reset survives a sweep (verifier round 1 V7, on the round 2 table shape)",
+    "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+    "from": "      if (window.until <= at) this.resetAtByBucket.delete(key);\n      else liveGroups.add(window.group);",
+    "to": "      this.resetAtByBucket.delete(key);",
+    "command": "discordTx"
+  },
+  {
+    "name": "D49 the sweep never runs",
+    "guards": "the tables are bounded at all",
+    "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+    "from": "    if (this.size < MAX_REMEMBERED_WINDOWS) return;",
+    "to": "    if (this.size < MAX_REMEMBERED_WINDOWS || MAX_REMEMBERED_WINDOWS > 0) return;",
+    "command": "discordTx"
+  },
+  {
+    "name": "D50 the sweep is started by windows alone, as before round 2",
+    "guards": "route entries count towards the bound, so one per interaction token cannot grow unswept",
+    "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+    "from": "    if (this.size < MAX_REMEMBERED_WINDOWS) return;",
+    "to": "    if (this.resetAtByBucket.size < MAX_REMEMBERED_WINDOWS) return;",
+    "command": "discordTx"
+  },
+  {
+    "name": "D51 route entries are never swept",
+    "guards": "a followup route nothing live stands behind is forgotten (the round 2 leak restored)",
+    "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+    "from": "      if (!liveGroups.has(remembered.group)) this.bucketOfRoute.delete(key);",
+    "to": "      if (liveGroups.size < 0) this.bucketOfRoute.delete(key);",
+    "command": "discordTx"
+  },
+  {
+    "name": "D52 the sweep drops the route that finds a live window",
+    "guards": "a route whose (credential, bucket) group still has a live window keeps its bucket, so the window still refuses",
+    "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+    "from": "      if (!liveGroups.has(remembered.group)) this.bucketOfRoute.delete(key);",
+    "to": "      if (liveGroups.size >= 0) this.bucketOfRoute.delete(key);",
+    "command": "discordTx"
+  },
+  {
+    "name": "D53 expired global blocks are never swept",
+    "guards": "a reset global block is forgotten by a sweep",
+    "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+    "from": "if (until <= at) this.globalResetAt.delete(identity);",
+    "to": "if (until < 0) this.globalResetAt.delete(identity);",
+    "command": "discordTx"
+  },
+  {
+    "name": "D54 the sweep drops a live global block",
+    "guards": "a global block that has not reset survives a sweep",
+    "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+    "from": "if (until <= at) this.globalResetAt.delete(identity);",
+    "to": "if (until >= 0) this.globalResetAt.delete(identity);",
+    "command": "discordTx"
   }
 ]

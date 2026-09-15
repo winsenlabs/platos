@@ -95,15 +95,32 @@ export interface ObservedResponse {
   readonly global: boolean;
 }
 
-/** How many live windows are held before expired ones are swept. */
+/** How many entries, across the three tables below, are held before a sweep. */
 export const MAX_REMEMBERED_WINDOWS = 1024;
 
+/** The route a bucket was learned from, and the (credential, bucket) group it belongs to. */
+interface RememberedBucket {
+  readonly bucket: string;
+  readonly group: string;
+}
+
+/** One exhausted (credential, bucket, resource) window and the group it holds back. */
+interface RememberedWindow {
+  readonly until: number;
+  readonly group: string;
+}
+
 export class DiscordRateLimits {
-  private readonly bucketOfRoute = new Map<string, string>();
-  private readonly resetAtByBucket = new Map<string, number>();
+  private readonly bucketOfRoute = new Map<string, RememberedBucket>();
+  private readonly resetAtByBucket = new Map<string, RememberedWindow>();
   private readonly globalResetAt = new Map<string, number>();
 
   constructor(private readonly now: () => number) {}
+
+  /** Entries held across every table: the figure `MAX_REMEMBERED_WINDOWS` bounds. */
+  get size(): number {
+    return this.bucketOfRoute.size + this.resetAtByBucket.size + this.globalResetAt.size;
+  }
 
   admit(route: RateLimitRoute): RateLimitAdmission {
     const at = this.now();
@@ -111,9 +128,9 @@ export class DiscordRateLimits {
     if (globalUntil > at) {
       return { admitted: false, retryAfterSeconds: wholeSeconds(globalUntil - at), reason: "global rate limit" };
     }
-    const bucket = this.bucketOfRoute.get(this.routeKey(route));
+    const bucket = this.bucketOfRoute.get(this.routeKey(route))?.bucket;
     if (bucket === undefined) return { admitted: true };
-    const until = this.resetAtByBucket.get(this.bucketKey(route, bucket)) ?? 0;
+    const until = this.resetAtByBucket.get(this.bucketKey(route, bucket))?.until ?? 0;
     if (until > at) {
       return { admitted: false, retryAfterSeconds: wholeSeconds(until - at), reason: "bucket exhausted" };
     }
@@ -132,29 +149,44 @@ export class DiscordRateLimits {
     // the route itself stands in for the bucket it did not name.
     const named = response.header(DISCORD_RATE_LIMIT_HEADER.bucket);
     const bucket = named ?? `route:${route.template}`;
-    if (named !== null || response.status === 429) this.bucketOfRoute.set(this.routeKey(route), bucket);
+    const group = `${route.identity} ${bucket}`;
+    if (named !== null || response.status === 429) this.bucketOfRoute.set(this.routeKey(route), { bucket, group });
 
     const resetAfter = readSeconds(response.header(DISCORD_RATE_LIMIT_HEADER.resetAfter));
     const remaining = readSeconds(response.header(DISCORD_RATE_LIMIT_HEADER.remaining));
     if (named !== null && remaining === 0 && resetAfter !== null) {
-      this.resetAtByBucket.set(this.bucketKey(route, bucket), at + resetAfter * 1000);
+      this.resetAtByBucket.set(this.bucketKey(route, bucket), { until: at + resetAfter * 1000, group });
     }
 
     if (response.status !== 429) return;
     const wait = requestedWaitSeconds(response);
     const global = response.global || response.header(DISCORD_RATE_LIMIT_HEADER.global) === "true";
     if (global) this.globalResetAt.set(route.identity, at + wait * 1000);
-    else this.resetAtByBucket.set(this.bucketKey(route, bucket), at + wait * 1000);
+    else this.resetAtByBucket.set(this.bucketKey(route, bucket), { until: at + wait * 1000, group });
   }
 
   /**
-   * Forget windows that have already reset, once the table is large. The keys
-   * grow with the number of CHANNELS a process has written to, and a limit that
-   * has cleared carries no information: `admit` already treats it as absent.
+   * Forget what no longer limits anything, once the tables are large.
+   *
+   * A window that has reset carries no information: `admit` already treats it as
+   * absent. A ROUTE's remembered bucket is only the way to FIND a window, so once
+   * no window in its (credential, bucket) group is live, dropping it changes no
+   * answer `admit` gives — and it is the table that grows fastest, because a
+   * followup's credential is its interaction token and every slash command brings
+   * a new one. Sweeping windows alone would leave one route entry per interaction
+   * the process ever answered. An expired global block goes the same way.
    */
   private prune(at: number): void {
-    if (this.resetAtByBucket.size < MAX_REMEMBERED_WINDOWS) return;
-    for (const [key, until] of this.resetAtByBucket) if (until <= at) this.resetAtByBucket.delete(key);
+    if (this.size < MAX_REMEMBERED_WINDOWS) return;
+    const liveGroups = new Set<string>();
+    for (const [key, window] of this.resetAtByBucket) {
+      if (window.until <= at) this.resetAtByBucket.delete(key);
+      else liveGroups.add(window.group);
+    }
+    for (const [key, remembered] of this.bucketOfRoute) {
+      if (!liveGroups.has(remembered.group)) this.bucketOfRoute.delete(key);
+    }
+    for (const [identity, until] of this.globalResetAt) if (until <= at) this.globalResetAt.delete(identity);
   }
 
   private routeKey(route: RateLimitRoute): string {

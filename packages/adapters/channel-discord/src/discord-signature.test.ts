@@ -63,7 +63,7 @@ describe("Discord's construction, as Discord's own library reads it", () => {
   it("accepts every fixture through discord-interactions AND verifies each one here", async () => {
     // One case walking every fixture rather than a generated table: the test-case
     // census counts rows statically, and the fixture list is a module value.
-    expect(ALL_FIXTURE_BODIES.length).toBeGreaterThanOrEqual(12);
+    expect(ALL_FIXTURE_BODIES.length).toBeGreaterThanOrEqual(13);
     for (const [name, body] of ALL_FIXTURE_BODIES) {
       const delivery = signDiscordDelivery(body);
       expect(await discordAccepts(delivery), name).toBe(true);
