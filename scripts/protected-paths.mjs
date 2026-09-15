@@ -133,10 +133,20 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // reason its three predecessors were not: the selection protects the EVIDENCE a
 // gate reads, not the gate.
 //
+// THE CORE-API SBOM adds ONE, no removals and no content substitutions, taking the
+// set from 799 to 800:
+//   docs/audits/sbom/platos-core-api.cdx.json  (the fourth build candidate's
+//                                               CycloneDX SBOM, beside the agent
+//                                               and webapp SBOMs)
+// It falls inside the existing `docs/**` selection rather than widening it, and the
+// difference was verified SET-WISE against the committed 799-path manifest at
+// 55da5505: the 800 paths are exactly those 799 plus that one, with nothing
+// removed and nothing substituted.
+//
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "df52e403740aba88a43f783dc415d344264681d0cf08d47e93de95000258dff1";
+export const EXPECTED_PATH_SET_SHA256 = "f7e9a90a8eba9f268bca2b1247b5f943a4bc6445ccd0df4c2227231bd13f9db8";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",

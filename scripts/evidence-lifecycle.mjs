@@ -99,6 +99,9 @@ export const EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS = Object.freeze([
   "docs/audits/sbom/license-overlay.json",
   "docs/audits/sbom/license-policy.json",
   "docs/audits/sbom/platos-agent.cdx.json",
+  // The fourth build candidate's SBOM, ACCEPTED like its two siblings: audit:sbom:check
+  // regenerates it from the lockfile and the reviewed bundle absences on every run.
+  "docs/audits/sbom/platos-core-api.cdx.json",
   "docs/audits/sbom/platos-webapp.cdx.json",
   "docs/audits/sbom/platos-webapp.image-inventory.json",
   "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json",

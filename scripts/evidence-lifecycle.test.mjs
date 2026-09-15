@@ -103,8 +103,13 @@ test("committed lifecycle manifest classifies every approved evidence path exact
   // own source on each run and fails when the tree and the file disagree in EITHER
   // direction, so a dated snapshot is precisely what it must not be.
   // POINT-IN-TIME, SUPERSEDED-BY and DRAFT are unchanged.
-  assert.equal(manifest.entryCount, 257, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, the WIN-260 M2.5 milestone note, the WIN-268 MCP store-ownership register, the WIN-269 tool-lifecycle register, and the WIN-272 stream vocabulary census");
-  assert.deepEqual(manifest.counts, { ACCEPTED: 231, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
+  // CORE-API SBOM: 257 -> 258 and ACCEPTED 231 -> 232. ONE addition,
+  // docs/audits/sbom/platos-core-api.cdx.json, the fourth build candidate's SBOM,
+  // ACCEPTED beside the agent and webapp SBOMs for their reason: audit:sbom:check
+  // regenerates it on every run and fails on a byte of drift. POINT-IN-TIME,
+  // SUPERSEDED-BY and DRAFT are unchanged.
+  assert.equal(manifest.entryCount, 258, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, the WIN-260 M2.5 milestone note, the WIN-268 MCP store-ownership register, the WIN-269 tool-lifecycle register, the WIN-272 stream vocabulary census, and the core-api image SBOM");
+  assert.deepEqual(manifest.counts, { ACCEPTED: 232, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
   assert.equal(POINT_IN_TIME_PATHS.length, 21);
   assert.equal(Object.keys(SUPERSESSIONS).length, 4);
   assert.deepEqual(Object.keys(manifest.counts), STATUSES);
