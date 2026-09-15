@@ -1549,14 +1549,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "c9956c9e4d99c62a6a7ce5b9d179611abfb8d6255aff3fa4da3866602e39af38",
+      "sha256": "2439d7401d7c86eb119e554d6aeacb7b1cb2a7b4d9ad6d5aab11714bdf8a1592",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "bed25ce3be579543781a7ac9d2f44a8080785a8e32837930914841968f2c5116",
+      "sha256": "fa2b8adc17fce5799fb64575a5c2039fd4d653df8316a46dbef55d55cf6685da",
       "binds": "current-repository-truth"
     },
     {
@@ -1584,14 +1584,14 @@
       "path": "docs/audits/win-269-tool-lifecycle-reach.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "135253bbc01d16941faae0cc1d761757253277453876a9334da609ba98cb4566",
+      "sha256": "5fa935b57e9b3465f78f74244b585654ad7acd03299d11679fe654eb8e69d66c",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-269-tool-lifecycle-reach.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "c6c71642ff3d6d63cd56cf032d3d9392294e3a645fc4943690d31b695da94dda",
+      "sha256": "17448273e5be4f71adb7b24dbd9d8222d4977355db420c07e3dff1d42433f9aa",
       "binds": "current-repository-truth"
     },
     {
@@ -1626,7 +1626,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "a27d30ccf77b2c1cfc6f5a4a54244c9112894bc0f13bccc4d0554e31f1f36235",
+      "sha256": "58fc0dcb35f3549ab14ff68f0c0abcbabacc49c30f17d5e61046ccac31e90bf6",
       "binds": "current-repository-truth"
     },
     {

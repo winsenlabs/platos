@@ -2108,10 +2108,10 @@
     ]
   },
   "expected": {
-    "totalFiles": 5292,
+    "totalFiles": 5297,
     "areaCounts": {
-      "apps-agent": 529,
-      "apps-core-api": 127,
+      "apps-agent": 532,
+      "apps-core-api": 129,
       "apps-mcp-stdio": 8,
       "apps-webapp": 184,
       "docs-content": 746,
@@ -2128,14 +2128,14 @@
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2160,
-      "test": 1079
+      "source": 2162,
+      "test": 1082
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1690,
+      "move-refactor": 1693,
       "regenerate": 43,
-      "retain": 3550,
+      "retain": 3552,
       "unresolved": 2
     },
     "protectedCount": 1642,
@@ -2147,16 +2147,16 @@
       "apps-agent.entry.process": 1,
       "apps-agent.generated.contract-artifacts": 2,
       "apps-agent.infra.container": 1,
-      "apps-agent.source.runtime": 280,
-      "apps-agent.test.suites": 214,
+      "apps-agent.source.runtime": 281,
+      "apps-agent.test.suites": 216,
       "apps-agent.tooling.scripts": 13,
       "apps-core-api.config.package": 8,
       "apps-core-api.doc.package": 1,
       "apps-core-api.entry.composition-root": 2,
       "apps-core-api.infra.container": 1,
-      "apps-core-api.source.process": 50,
+      "apps-core-api.source.process": 51,
       "apps-core-api.source.transports": 30,
-      "apps-core-api.test.suites": 35,
+      "apps-core-api.test.suites": 36,
       "apps-mcp-stdio.config.package": 2,
       "apps-mcp-stdio.doc.package": 1,
       "apps-mcp-stdio.entry.bin": 1,
@@ -2279,6 +2279,6 @@
       "root-infra.tooling.scripts": 121,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "f5a56c42afeca6f9e68d84d381ddb229c00a605b2b0ebf91c75c18ffb8365d9f"
+    "classificationSha256": "3fa2aa073d4d79d808ad733985f55115c471df5ed5bd95dfa9f4e7d38340e181"
   }
 }
