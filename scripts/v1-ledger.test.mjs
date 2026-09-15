@@ -864,7 +864,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // arrival (0 -> 1). Every other file the change touches -- the root and core-api
     // manifests, the compose file, the Caddyfile, the self-hosting page and the
     // suites that pin them -- is an EDIT.
-    "apps-core-api": 97,
+    //
+    // IDENTITY/TENANCY REST REMAINDER 97 -> 105 (2026-09-15). EIGHT files: five
+    // controllers and `session-cookie-value.ts` under `src/transports/rest` and
+    // `src/transports/bff` (the `transports` source rule, 30 -> 36), and two suites
+    // (`identity-tenancy-rest.test.ts` and the real-servers
+    // `composition/identity-tenancy-rest.integration.test.ts`, the `suites` rule
+    // 34 -> 36). NO LEDGER RULE CHANGED.
+    "apps-core-api": 105,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1564,7 +1571,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // two planners and its new refusals, the service, the double, the bearer store and
     // `harness.ts`'s one opt-in variable add no file. 1550 + 6 = 1556, and NO LEDGER
     // RULE CHANGED.
-    packages: 1556,
+    // IDENTITY/TENANCY REST REMAINDER 1556 -> 1569 (2026-09-15). THIRTEEN files:
+    // `notifier-email`'s four source modules and two suites (the adapter source and
+    // test rules, 280 -> 284 and 194 -> 196), and seven in the two contexts — the
+    // `MagicLinkDelivery` port, the administration gate and two tenancy read models
+    // (context source 730 -> 734) and three suites (context test 363 -> 366). NO
+    // LEDGER RULE CHANGED.
+    packages: 1569,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2390,7 +2403,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // on their areas' deltas above: three in `root-infra` (the smoke script, its
   // suite, the shared shipping-components derivation) and one in `docs-content`
   // (the core-api SBOM): 15 + 1 + 97 + 4 + 10 + 1556 + 25 + 95 = 1803.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1803);
+  //
+  // AND THE IDENTITY/TENANCY REST REMAINDER — 1803 -> 1824. TWENTY-ONE files,
+  // itemised on their areas' deltas above: eight in `apps-core-api` and thirteen in
+  // `packages`: 15 + 1 + 105 + 4 + 10 + 1569 + 25 + 95 = 1824.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1824);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2699,7 +2716,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // AND THE CORE-API BUNDLE CLOSURE — 1797 -> 1799, the script and its suite.
     // AND THE CORE-API CANDIDATE SMOKE AND SBOM — 1799 -> 1803, moved in the same
     // edit as the total and both area deltas: three root-infra files and one SBOM.
-    rulesDocument.baseline.totalFiles + 1803
+    // AND THE IDENTITY/TENANCY REST REMAINDER — 1803 -> 1824, moved in the same edit
+    // as the total and both area deltas: eight apps-core-api files, thirteen packages.
+    rulesDocument.baseline.totalFiles + 1824
   );
 });
 
