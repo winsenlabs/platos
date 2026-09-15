@@ -242,6 +242,14 @@ const v1ReleaseGateCommands = [
   // `SameSite=None` credential, the per-agent cookie scope and the guest session
   // expiry could every one of them be broken with a green CI.
   "pnpm test:public-guest-boundary",
+  // M2/M4 INTEGRATION, +1. THE AUTHORED DOCS EXAMPLES AND THE QUICKSTART ENVIRONMENT.
+  // `test:docs-examples` checks every authored request and SDK example against the
+  // generated contracts, and that the documented `cp .env.example .env` gives a
+  // Compose model that evaluates (`docker compose config`, no daemon) with the
+  // parent shell's variables stripped. It passed locally and ran in no workflow, so
+  // the quickstart could lose a required variable with a green CI. Its script
+  // already existed, so root package.json does not move.
+  "pnpm test:docs-examples",
   // WIN-267 (M4.1), +1. THE COMPATIBILITY-ALIAS DEPRECATION SIGNAL, read back off
   // a real socket. WIN-267's acceptance asks that "aliases preserve old clients and
   // emit deprecation metadata", and ADR M0.4 §4.2's REST row names the wire signal
@@ -548,6 +556,14 @@ const expectedV1EvidenceCommands = [
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:public-guest-boundary",
+  // M2/M4 INTEGRATION, +1. THE AUTHORED DOCS EXAMPLES AND THE QUICKSTART ENVIRONMENT.
+  // `test:docs-examples` checks every authored request and SDK example against the
+  // generated contracts, and that the documented `cp .env.example .env` gives a
+  // Compose model that evaluates (`docker compose config`, no daemon) with the
+  // parent shell's variables stripped. It passed locally and ran in no workflow, so
+  // the quickstart could lose a required variable with a green CI. Its script
+  // already existed, so root package.json does not move.
+  "pnpm test:docs-examples",
   // WIN-267 (M4.1), +1. THE COMPATIBILITY-ALIAS DEPRECATION SIGNAL, read back off
   // a real socket. WIN-267's acceptance asks that "aliases preserve old clients and
   // emit deprecation metadata", and ADR M0.4 §4.2's REST row names the wire signal
@@ -798,6 +814,9 @@ const expectedV1PackageScripts = new Map([
   // WIN-299 (M2.6): test:advisory now covers the disposition gate's unit suite
   // alongside the receipt suite, the same two-file shape test:webapp-image-inventory
   // already uses above.
+  // M2/M4 INTEGRATION: the docs-examples gate joins the V1 release gate selector,
+  // so the command its CI line resolves to is pinned here too.
+  ["test:docs-examples", "node --test scripts/docs-examples.test.mjs"],
   ["test:advisory", "node --test scripts/audit-advisory.test.mjs scripts/advisory-dispositions.test.mjs"],
   ["audit:advisory:check", "node scripts/audit-advisory.mjs --check"],
   ["audit:advisory:nonvacuity", "node scripts/verify-advisory-nonvacuity.mjs"],
@@ -2763,10 +2782,12 @@ test("committed CI and image-build policy is executable, correlated, and complet
   //      `x-platos-sunset` against the manifest's own rows — was folded into
   //      `scripts/arch/contract-map.mjs`, which is already a gate here, rather
   //      than minting a second script for a sibling clause of the same section.
-  // 26 + 2 + 4 + 2 + 2 + 2 + 2 + 1 + 1 = 42.
+  //   +1 M2/M4 INTEGRATION: the authored docs examples and the quickstart
+  //      environment (`test:docs-examples`). See its own note in the list above.
+  // 26 + 2 + 4 + 2 + 2 + 2 + 2 + 1 + 1 + 1 = 43, measured on the integrated tree.
   assert.equal(
     v1ReleaseGateCommands.length,
-    42,
+    43,
     "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate, the secret-response census, the MCP store-ownership register and the tool-lifecycle register"
   );
   assert.equal(
@@ -5085,12 +5106,16 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   core-api candidate. ONE for its `setup-node` step (build-images' count 1 -> 2),
   //   and THREE for its rules: the smoke command skipped, the verified candidate set
   //   narrowed, and the job gated off.
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 = 394. The count is
-  // pinned rather than derived so that a control silently disappearing is a failure
-  // rather than a smaller number nobody reads.
+  //   DOCS EXAMPLES (M2/M4 integration), +2. `pnpm test:docs-examples` joins the V1
+  //   release gate selector, which derives its `|| true` control, and the exact
+  //   script table, which derives one for the command it resolves to. Measured at 396
+  //   on the integrated tree before this line was written.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 2 = 396. The
+  // count is pinned rather than derived so that a control silently disappearing is a
+  // failure rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    394,
+    396,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
