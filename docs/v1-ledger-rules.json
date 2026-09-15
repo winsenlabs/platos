@@ -2108,37 +2108,37 @@
     ]
   },
   "expected": {
-    "totalFiles": 5268,
+    "totalFiles": 5272,
     "areaCounts": {
       "apps-agent": 529,
       "apps-core-api": 108,
       "apps-mcp-stdio": 8,
       "apps-webapp": 184,
-      "docs-content": 744,
+      "docs-content": 745,
       "internal-packages": 1174,
       "packages": 2193,
-      "root-infra": 328
+      "root-infra": 331
     },
     "kindCounts": {
       "asset": 155,
       "config": 317,
       "doc": 612,
       "fixture": 6,
-      "generated": 47,
+      "generated": 48,
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2142,
-      "test": 1076
+      "source": 2143,
+      "test": 1078
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1687,
-      "regenerate": 42,
+      "move-refactor": 1690,
+      "regenerate": 43,
       "retain": 3530,
       "unresolved": 2
     },
-    "protectedCount": 1640,
+    "protectedCount": 1641,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2184,7 +2184,7 @@
       "docs-content.evidence.adr": 2,
       "docs-content.evidence.audit-history": 13,
       "docs-content.evidence.audit-notes": 14,
-      "docs-content.evidence.audit-receipts": 22,
+      "docs-content.evidence.audit-receipts": 23,
       "docs-content.evidence.lifecycle-controls": 2,
       "docs-content.generated.audit": 2,
       "docs-content.governance.root-manifest": 2,
@@ -2273,12 +2273,12 @@
       "root-infra.pin.public-proxy-example": 1,
       "root-infra.pin.submodule-index": 1,
       "root-infra.release.changesets": 16,
-      "root-infra.test.harness": 70,
+      "root-infra.test.harness": 72,
       "root-infra.test.script-suites": 35,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 120,
+      "root-infra.tooling.scripts": 121,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "1d542fd58cd84a9d0798cd031091f3845d4d131961fcca007ca5cadc009b0ca0"
+    "classificationSha256": "99f1a488a80d9a140384835afab1284b8f42bce93a8ef4b867895a04d563acf3"
   }
 }
