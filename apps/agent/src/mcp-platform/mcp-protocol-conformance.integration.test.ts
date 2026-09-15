@@ -308,7 +308,7 @@ describeWithServices("MCP protocol conformance of the Platos servers", () => {
               }
               // The one error a session may raise, and only where it is pinned in
               // RECORDED_NON_CONFORMANCE: the optional GET stream answered 404. The
-              // SDK reports that once from the attempt and once from its caller.
+              // SDK reports that once where the stream is opened and once from its caller.
               if (transport === "streamable-http" && server !== "docs") {
                 expect(session.tap.errors.length).toBeGreaterThan(0);
                 for (const message of session.tap.errors) {

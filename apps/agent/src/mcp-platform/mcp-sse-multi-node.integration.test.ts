@@ -306,7 +306,7 @@ describeWithServices("legacy MCP SSE across two agent processes sharing one Redi
   it("RECORDED: the docs server's SSE sessions are process-local, so a POST to the other node is 404", async () => {
     // `DocsMcpController` keeps its sessions in a module-level Map. It is
     // unauthenticated and read-only, so it was never routed through Redis; a
-    // deployment with more than one agent replica behind a balancer that does
+    // install with more than one agent replica behind a balancer that does
     // not pin the session's POSTs to the node holding its stream cannot serve it.
     const tap = new WireTap("192.0.2.30");
     const stream = await tap.fetch(new URL("/mcp/docs/sse", nodeA.baseUrl), {

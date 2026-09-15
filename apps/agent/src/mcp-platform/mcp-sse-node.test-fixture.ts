@@ -7,8 +7,8 @@
  * claim of a Redis-routed transport, and the one thing an in-process test cannot
  * make: two Nest applications in one process share a module cache, an event
  * loop and every in-memory map, so a transport that secretly routed through
- * process memory (the docs server's does) would pass there and fail in a
- * deployment.
+ * process memory (the docs server's does) would pass there and fail on any
+ * install with more than one agent replica.
  *
  * The node reports on stdout, one JSON record per line behind `NODE_LINE_PREFIX`:
  * `ready` once it listens, and one `publish` record for EVERY Redis PUBLISH it

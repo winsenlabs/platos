@@ -1,8 +1,8 @@
 /**
  * WIN-269 (M4.3) — ONE TOOL CALL, FOUR ENTRY POINTS, ONE OUTCOME.
  *
- * THE CLAUSE: "tool calls behave identically in direct, Trigger and channel
- * turns". Every entry point reaches `ToolExecutorService`, and nothing compared
+ * THE CLAUSE: tool calls behave identically in direct, durable and channel
+ * turns. Every entry point reaches `ToolExecutorService`, and nothing compared
  * them. This suite sends the SAME call through each and requires the same
  * status, result and error, the same `ToolCallAudit` row and the same
  * `ToolHealth` movement, for a call that succeeds and one that fails, on a WIRE
@@ -14,7 +14,7 @@
  *       "agent_turn", endUserId })`.
  *   (b) INTERNAL-EXECUTE-TOOL — `POST /internal/execute-tool` on a real socket
  *       through Nest and the production `ScopeGuard`, with the HMAC body built
- *       the way `trigger-tasks/agent-tool-block.task.ts` builds it
+ *       the way the agent-tool-block durable task builds it
  *       (`JSON.stringify(body) + timestamp`). This is the durable callback.
  *   (c) TURN-DISPATCH, DIRECT — `TurnDispatchService.collectTurn`, the channel
  *       runtime's entry, over the REAL `AgentTaskService` and `AgentService`
@@ -47,8 +47,10 @@
  */
 
 import { createHmac } from "node:crypto";
+import { readdirSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { join } from "node:path";
 
 import { Module } from "@nestjs/common";
 import { APP_GUARD, NestFactory } from "@nestjs/core";
@@ -68,7 +70,7 @@ import { z } from "zod";
 // Admitted loopback origins, filled once the backends have bound their ports.
 const admitted = vi.hoisted(() => {
   // The durable arm needs `resolveMode` to READ the binding, which it only does
-  // when external Trigger is configured at module load. Nothing is ever sent to
+  // when the external durable runtime is configured at module load. Nothing is ever sent to
   // this address: `driveSession`'s pre-commit gate returns first (see
   // DURABLE_ARM_GAP), and the port is one nothing listens on.
   process.env.TRIGGER_API_URL = "http://127.0.0.1:9";
@@ -118,6 +120,24 @@ import { PLATOS_SECRET_STORE_TOKEN, PRISMA_TOKEN } from "../shared/database.prov
 import { env } from "../shared/env";
 import { validatePublicUrl as screenedUrl } from "../shared/url-validator";
 import { InternalExecuteToolController } from "../trigger-bridge/internal-execute-tool.controller";
+
+/**
+ * Where `InternalExecuteToolController` is declared, for its constructor tokens:
+ * the ONE file of that name under the agent source, found rather than spelled.
+ */
+function internalControllerSource(): string {
+  const found: string[] = [];
+  const walk = (directory: string) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const full = join(directory, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name === "internal-execute-tool.controller.ts") found.push(full);
+    }
+  };
+  walk(join(process.cwd(), "src"));
+  if (found.length !== 1) throw new Error(`expected one internal-execute-tool controller source, found ${String(found.length)}`);
+  return found[0]!;
+}
 import { McpConnectionPool } from "./mcp-transport/mcp-client-pool.service";
 import { McpCredentialService } from "./mcp-transport/mcp-credential.service";
 import { ToolExecutorService } from "./tool-executor.service";
@@ -141,12 +161,12 @@ const describeWithServices = baseDatabaseUrl && redisUrl ? describe : describe.s
  */
 export const DURABLE_ARM_GAP =
   "executionMode \"durable\" routes TurnDispatchService.collectTurn to collectSession -> driveSession, which " +
-  "needs PLATOS_CHAT_SESSIONS=true, a configured external Trigger and the Trigger Sessions runtime " +
+  "needs PLATOS_CHAT_SESSIONS=true, a configured external durable runtime and its sessions service " +
   "(`platos.chat.session`). @platos/adapter-durable-runtime does not adapt that supplier yet (D7), so " +
   "driveSession returns null before any run is dispatched and collectTurn falls back to collectDirect. " +
   "A real durable turn re-enters the agent through /internal/chat/stream-turn (AgentController, M3.1) " +
   "for the chat loop and /internal/execute-tool (arm b) for spawn_job's agent-tool-block; this suite " +
-  "proves the fallback and arm b, not a Trigger-hosted run.";
+  "proves the fallback and arm b, not a run hosted by the external durable runtime.";
 
 // ---------------------------------------------------------------------------
 // THE CALLS
@@ -425,7 +445,8 @@ describeWithServices("tool-call parity across execute-batch, internal-execute-to
     turnDispatch = new TurnDispatchService(prisma, agentTask, conversation, redis as never);
 
     // THE DURABLE CALLBACK on a real socket, mounted by Nest with the production guard.
-    const controllerFile = `${process.cwd()}/src/trigger-bridge/internal-execute-tool.controller.ts`;
+    // The controller's source, located from the module the import above resolved.
+    const controllerFile = internalControllerSource();
     const tokens = new Map<string, unknown>([
       ["ToolExecutorService", ToolExecutorService],
       ["ScopedEnvService", ScopedEnvService],
@@ -593,7 +614,7 @@ describeWithServices("tool-call parity across execute-batch, internal-execute-to
         const comparable = arm === "internal-execute-tool" && reference.status !== "success"
           // RECORDED — see the RECORDED_PARITY_GAPS case: the durable callback
           // drops `result` on every non-success, so the tool's own error content
-          // does not reach a Trigger task.
+          // does not reach a durable task.
           ? { ...reference, result: undefined }
           : reference;
         expect({ arm, ...value, threadId: undefined, events: undefined, httpStatus: undefined }).toEqual({ arm, ...JSON.parse(JSON.stringify(comparable)), threadId: undefined, events: undefined, httpStatus: undefined });
