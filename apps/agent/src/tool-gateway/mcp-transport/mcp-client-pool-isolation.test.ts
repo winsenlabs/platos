@@ -36,12 +36,17 @@
  *     read, and a database would add latency to the timing bounds below without
  *     adding a claim.
  *
- * WHY THE TIMING BOUNDS WOULD FAIL WITHOUT ISOLATION. The hung server holds its
- * call until the client's own `MCP_CALL_TIMEOUT_MS` (set to 2 s here) expires. The
- * healthy server records WHEN its call arrived, measured from the moment the batch
- * started, and the hung entity is listed FIRST — so a batch that ran its calls one
- * after another, or a pool that serialised builds across entities, would deliver
- * the healthy call no earlier than 2 s in. The bound is 1 s.
+ * WHY THE TIMING BOUNDS WOULD FAIL WITHOUT ISOLATION. A hung server holds the
+ * client until the client's own clock expires: `MCP_CALL_TIMEOUT_MS` for a server
+ * that hangs in `tools/call`, `MCP_DISCOVERY_TIMEOUT_MS` for one that hangs in the
+ * `initialize` handshake (both 2 s here). The healthy server records WHEN its call
+ * arrived, measured from the moment the batch started, and the hung entity is
+ * listed FIRST. So a batch that ran its calls one after another would deliver the
+ * healthy call no earlier than 2 s in, and that is what the `tools/call` case
+ * catches. A pool that serialised session BUILDS across entities would do the same,
+ * but only while the hung entity is still building. A server that hangs in
+ * `tools/call` has already finished its handshake by then, so only the
+ * handshake case catches that. The bound is 1 s.
  */
 
 import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from "node:http";
@@ -94,7 +99,7 @@ vi.mock("../../shared/url-validator", async (importOriginal) => {
 });
 
 type Transport = "remote-http" | "remote-sse";
-type Behaviour = "answer" | "hang" | "crash";
+type Behaviour = "answer" | "hang" | "hang-initialize" | "crash";
 
 /**
  * One remote MCP server on a real listener.
@@ -103,7 +108,8 @@ type Behaviour = "answer" | "hang" | "crash";
  * unknown one with 404, which is the SDK's documented server shape and what a
  * restarted server does. `crash` answers `initialize` normally and then, on the
  * first `tools/call`, destroys every socket and stops listening — a process that
- * died mid-call, not a tool that reported an error.
+ * died mid-call, not a tool that reported an error. `hang-initialize` accepts the
+ * `initialize` request and never answers it, so the client never gets a session.
  */
 class RemoteMcpServer {
   readonly calls: Array<{ tool: string; atMs: number }> = [];
@@ -185,6 +191,8 @@ class RemoteMcpServer {
       return;
     }
     if (isInitializeRequest(parsed)) this.initializes += 1;
+    // The request stays open with no answer until `stop()` destroys its socket.
+    if (this.behaviour === "hang-initialize" && isInitializeRequest(parsed)) return;
 
     if (this.transport === "remote-sse") {
       const url = new URL(request.url ?? "/", "http://127.0.0.1");
@@ -435,6 +443,40 @@ describe.each<Transport>(["remote-http", "remote-sse"])(
       // own timeout, and the hung call is reported as exactly that.
       expect(hung.server.calls).toHaveLength(1);
       expect(results[0]).toMatchObject({ tool: "hung.work", status: "timeout" });
+      expect(batchMs).toBeGreaterThanOrEqual(CALL_TIMEOUT_MS - 100);
+    }, 30_000);
+
+    it("a server HUNG IN THE HANDSHAKE times out building its own session while the healthy entity's call arrives inside the bound", async () => {
+      const hung: Entity = {
+        pk: "entity-hung-handshake",
+        externalId: "hung-handshake",
+        toolName: "hung.handshake",
+        server: await remote(transport, "hung.handshake", "hang-initialize"),
+        transport,
+      };
+      const healthy: Entity = {
+        pk: "entity-healthy",
+        externalId: "healthy",
+        toolName: "healthy.work",
+        server: await remote(transport, "healthy.work", "answer"),
+        transport,
+      };
+      const { executor } = executorFor([hung, healthy]);
+
+      const startedAt = Date.now();
+      const results = await executor.executeBatch([call(hung), call(healthy)], SCOPE);
+      const batchMs = Date.now() - startedAt;
+
+      expect(results[1]).toMatchObject({ tool: "healthy.work", status: "success" });
+      expect(healthy.server.calls).toHaveLength(1);
+      expect(healthy.server.calls[0]!.atMs - startedAt).toBeLessThan(ISOLATION_BOUND_MS);
+
+      // The handshake really was reached and really hung: the hung server saw
+      // `initialize` and nothing after it, and its entity is reported as a timeout
+      // only once its own 2 s build deadline passed.
+      expect(hung.server.initializes).toBe(1);
+      expect(hung.server.calls).toHaveLength(0);
+      expect(results[0]).toMatchObject({ tool: "hung.handshake", status: "timeout" });
       expect(batchMs).toBeGreaterThanOrEqual(CALL_TIMEOUT_MS - 100);
     }, 30_000);
 
