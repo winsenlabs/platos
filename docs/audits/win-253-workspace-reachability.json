@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "4771bf7c795c18623b35686a12980e5a7280bf94689db4742aaab3c68bf69c23",
+  "evidenceSha256": "e8551189436e0ed1eb5ff20f58e741e778e2480483ed7828ec693f2e134082a3",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "856c90f00c1402932515d2e0e8767a3af9036af319e04fdceed6f9f81606a91f",
+    "aggregateSha256": "052e5b1d4b5188baeee5c521950847591ec5a4b736dbafd5313030ef3fba4cf9",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -271,7 +271,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "d33c7c337bab80e8652ee826e66b51abe725a419a39e1c65208614e30e4c537a"
+        "sha256": "d492d9c20bf2d7ff521ded7fa669723ee162c10e613f9c095ad8ac109f5c8ccd"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -1039,7 +1039,7 @@
       },
       {
         "path": "apps/agent/src/http/api-surface.ts",
-        "sha256": "ad1248b3db8a70a33fcc903f96bfad88b556537fe458d85c94057d16997cb9dd"
+        "sha256": "7b986a47c3ffdf21ba9aa8dbadabc9951fe9e078f5924a6013aa9a4e8411d89c"
       },
       {
         "path": "apps/agent/src/http/deprecation-signal.test.ts",
@@ -1059,11 +1059,11 @@
       },
       {
         "path": "apps/agent/src/http/request-body-limits.test.ts",
-        "sha256": "8cf44c4c0671c61d5d850ef6d2927c175badcc33359985ca4ac7363c23aa39ec"
+        "sha256": "0c481655ec9edfa71fd90c87feec8a8e454f952acbad14d0048ca5f9fb468d8f"
       },
       {
         "path": "apps/agent/src/http/request-body-limits.ts",
-        "sha256": "c4c7a6403f73087fb6af914e0485dd073cfff74de3b4a3aa7386550df07aa9f4"
+        "sha256": "eac33be3e495ab7c35efc4ed8d2600d88d34f9be004f66cd569e28b6eb50e5aa"
       },
       {
         "path": "apps/agent/src/integration/non-browser-completion-postgres.integration.test.ts",
@@ -1071,7 +1071,7 @@
       },
       {
         "path": "apps/agent/src/main.ts",
-        "sha256": "301cd0eda9cc3c1e5c97a4301c4cbc076a73e7311899b056602adaf8ecf7b891"
+        "sha256": "2cdc566fde9b253ff3132d7433f85a75683106e698fb6f364c8245828a2b0715"
       },
       {
         "path": "apps/agent/src/mcp-docs/docs-mcp.controller.ts",
@@ -2287,7 +2287,7 @@
       },
       {
         "path": "apps/agent/src/tool-gateway/mcp-transport/mcp-client-pool-isolation.test.ts",
-        "sha256": "e6c55da5425aeefa5f14abd939ee204ba407fa06bd9cc401c35205ebb82d2d42"
+        "sha256": "9a1aee452817fb4f3f9aa07207da95caf4943894d07235672571f08bf7797c18"
       },
       {
         "path": "apps/agent/src/tool-gateway/mcp-transport/mcp-client-pool.service.ts",
@@ -2719,11 +2719,11 @@
       },
       {
         "path": "apps/core-api/src/http/mcp-body-cap.test.ts",
-        "sha256": "1a1b2529de59ef646738a9f35136067d8cc9a52e34b9cfc1eb08a72d33cc6cd0"
+        "sha256": "f235aaf883aac28c756aa359aa8a0f8ee6b60e916111bcdd9efedfd4f8244619"
       },
       {
         "path": "apps/core-api/src/http/mcp-body-cap.ts",
-        "sha256": "a1f2244ef7512e18371f981c436d02737ed8ca3664369b69c7df25c2ba9f50a9"
+        "sha256": "10456605865d0a111292ecf6fd1f7be5921eb5fba89350ceb72f98a0e591372d"
       },
       {
         "path": "apps/core-api/src/http/not-found.controller.ts",
@@ -2775,7 +2775,7 @@
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.ts",
-        "sha256": "babcb8d21cb735a38b1946edb4a41965bb1a83443d8ca6714ca0721ae6b33338"
+        "sha256": "4bc54088d5ca89a7687420716f01db7441e3a0b66c7aa0501c7a74a1411aeec3"
       },
       {
         "path": "apps/core-api/src/runtime/log-redaction.test.ts",
@@ -20499,7 +20499,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "9305c15960de08eb84a27b6ac4b5819f2f6f45b64cb237787895eb56611f47bd"
+        "sha256": "94089ce7489a197e73f2323aa7b6022c1bcdedc8ecd699cfc37da49dfe3df838"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -23761,7 +23761,7 @@
             {
               "from": "apps/agent/src/http/request-body-limits.test.ts",
               "kind": "workspace-owned-file",
-              "line": 383
+              "line": 453
             },
             {
               "from": "apps/agent/src/integration/non-browser-completion-postgres.integration.test.ts",
@@ -26299,7 +26299,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "49eb5cad3d1c256920d7bc3e8e41b43e0acc0270fdba923d458e71194f471727",
+      "evidenceSha256": "741913d4b61a5149bf8d16081a3b6be4daaec40e1f7e36e4e4089986e77c0e83",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -91754,7 +91754,7 @@
             {
               "from": "apps/core-api/src/http/mcp-body-cap.test.ts",
               "kind": "reference",
-              "line": 35
+              "line": 38
             },
             {
               "from": "apps/core-api/src/http/rest-chassis.test.ts",
@@ -95265,7 +95265,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "339d1453113c0eec88b6ddafd983f5296afca45c288bb4936bf392eaefcdd2e0",
+      "evidenceSha256": "e784ba91f3af59c62c9cad07de698c1f710bc31acf6fc19426efe06ee9421027",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
@@ -97996,7 +97996,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 5882
+              "line": 5887
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -98061,7 +98061,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "aefbf14bd56801afa065a8d8a902c63ba372944a66d6c73ca56f0fb8cd85a641",
+      "evidenceSha256": "7ce051aa209c3971f85723078fd6dfba8c21c31ae3f573d45b8fbca720768d40",
       "manifestSha256": "41a33c2dfbf68f8484c8edc61f4490d1467d92783932dc10c91413b30c210162",
       "name": "@platosdev/token-mint",
       "ociImageClosure": {
