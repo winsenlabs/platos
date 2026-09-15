@@ -5836,11 +5836,14 @@ test("the candidate verifier's subset selection refuses an unknown name and an a
 // dropped quietly.
 //
 // TWO SIDES, NEITHER A LIST ONLY THIS FILE HOLDS. The step table below is checked
-// against `ci.yml`; and, independently, every agent suite that IMPORTS one of the
-// gated subject modules — found by walking `apps/agent/src` and resolving each
-// relative import — must be named by some agent Vitest run in the workflow. A new
-// suite for the body cap, the terminal frame, the tool-sync frames or the MCP
-// pool that no job names turns this red without anybody editing this table.
+// against `ci.yml`; and, independently, every agent suite (`*.test.ts` or
+// `*.spec.ts`) that IMPORTS one of the gated subject modules — found by walking
+// `apps/agent/src` and resolving each relative import — must be named ON THE STEP
+// OF THE CLAUSE THAT SUBJECT BELONGS TO, not merely by some agent Vitest run
+// somewhere in the workflow. A new suite for the body cap, the terminal frame, the
+// tool-sync frames or the MCP pool that its clause's step does not name turns this
+// red without anybody editing this table, and so does one named only by an
+// unrelated step.
 // ---------------------------------------------------------------------------
 
 const AGENT_PACKAGE_ROOT = "apps/agent";
@@ -5853,6 +5856,7 @@ const M4_GATE_STEPS = Object.freeze([
     job: "typecheck",
     name: "WIN-272 legacy SSE terminal-frame and duplicate tool-result suites",
     suites: ["src/streaming/streaming-terminal-frame.test.ts", "src/tool-gateway/tool-sync-ws.test.ts"],
+    subjects: ["src/streaming/streaming.service", "src/tool-gateway/tool-sync-ws.service"],
     after: ["pnpm --filter @platos/tenancy-database build", "pnpm --filter @internal/workload-identity build"],
   },
   {
@@ -5862,6 +5866,7 @@ const M4_GATE_STEPS = Object.freeze([
       "src/tool-gateway/mcp-transport/mcp-client-pool-isolation.test.ts",
       "src/tool-gateway/mcp-transport/mcp-connected-entity.acceptance.test.ts",
     ],
+    subjects: ["src/tool-gateway/mcp-transport/mcp-client-pool.service"],
     after: ["pnpm --filter @platos/tenancy-database build", "pnpm --filter @internal/workload-identity build"],
   },
   {
@@ -5878,6 +5883,7 @@ const M4_GATE_STEPS = Object.freeze([
       "src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
       "src/mcp-platform/tools/end-users-tenancy-postgres.integration.test.ts",
     ],
+    subjects: ["src/http/request-body-limits"],
     // D21's core-api mirror is the same clause in the other deployable, so it is
     // the step's SECOND command rather than a line in another job.
     coreApiSuites: ["src/http/mcp-body-cap.test.ts"],
@@ -5892,14 +5898,10 @@ const M4_GATE_STEPS = Object.freeze([
 
 /**
  * The gated SUBJECTS, as agent-root-relative module paths without extension. A
- * suite importing one of these is a suite about a gated rule.
+ * suite importing one of these is a suite about a gated rule, and it belongs on
+ * the step whose `subjects` list it (above).
  */
-const M4_GATED_SUBJECTS = Object.freeze([
-  "src/http/request-body-limits",
-  "src/streaming/streaming.service",
-  "src/tool-gateway/tool-sync-ws.service",
-  "src/tool-gateway/mcp-transport/mcp-client-pool.service",
-]);
+const M4_GATED_SUBJECTS = Object.freeze(M4_GATE_STEPS.flatMap((gate) => gate.subjects));
 
 /** The gated core-api subject, core-api-root-relative without extension (D21). */
 const M4_GATED_CORE_API_SUBJECTS = Object.freeze(["src/http/mcp-body-cap"]);
@@ -5974,29 +5976,59 @@ function m4GateViolations(workflowText, readSuite) {
   return violations;
 }
 
-/** Every `*.test.ts` under `packageRoot` that imports one of `subjects`, relative to that root. */
-function suitesImportingSubjects(packageRoot, subjects, readFile = (file) => readFileSync(path.join(repositoryRoot, packageRoot, file), "utf8")) {
+/** A Vitest suite file name. apps/agent writes both suffixes (`turn-dispatch.service.spec.ts`). */
+const SUITE_FILE = /\.(?:test|spec)\.ts$/u;
+
+/** Every suite file under `packageRoot/src`, relative to that root. */
+function suiteFilesUnder(packageRoot) {
   const found = [];
   const walk = (relativeDirectory) => {
     for (const entry of readdirSync(path.join(repositoryRoot, packageRoot, relativeDirectory), { withFileTypes: true })) {
       if (entry.name === "node_modules" || entry.name === "dist") continue;
       const next = path.posix.join(relativeDirectory, entry.name);
-      if (entry.isDirectory()) {
-        walk(next);
-        continue;
-      }
-      if (!entry.name.endsWith(".test.ts")) continue;
-      for (const match of readFile(next).matchAll(/from\s+["'](\.{1,2}\/[^"']+)["']/gu)) {
-        const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(next), match[1])).replace(/\.(?:js|ts)$/u, "");
-        if (subjects.includes(resolved)) {
-          found.push(next);
-          break;
-        }
-      }
+      if (entry.isDirectory()) walk(next);
+      else if (SUITE_FILE.test(entry.name)) found.push(next);
     }
   };
   walk("src");
   return found.sort();
+}
+
+/** The subjects among `subjects` that `suite`'s relative imports resolve to. */
+function subjectsImportedBy(suite, subjects, source) {
+  const imported = new Set();
+  for (const match of source.matchAll(/from\s+["'](\.{1,2}\/[^"']+)["']/gu)) {
+    const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(suite), match[1])).replace(/\.(?:js|ts)$/u, "");
+    if (subjects.includes(resolved)) imported.add(resolved);
+  }
+  return [...imported].sort();
+}
+
+/** Every suite (`*.test.ts` or `*.spec.ts`) under `packageRoot` that imports one of `subjects`, relative to that root. */
+function suitesImportingSubjects(packageRoot, subjects, readFile = (file) => readFileSync(path.join(repositoryRoot, packageRoot, file), "utf8")) {
+  return suiteFilesUnder(packageRoot).filter((suite) => subjectsImportedBy(suite, subjects, readFile(suite)).length > 0);
+}
+
+/**
+ * Each agent suite importing a gated subject, joined to the step of the clause that
+ * subject belongs to: `[suite, step name]` for every pair where that step's agent
+ * Vitest run does not name the suite. A suite named only by another step counts as
+ * unnamed.
+ */
+function agentSuitesOffTheirClauseStep(workflowText, readFile = readAgentSuite) {
+  const violations = [];
+  const workflow = parseWorkflow(workflowText, ".github/workflows/ci.yml", violations);
+  const jobs = workflowJobs(workflow);
+  const missing = [];
+  for (const suite of suitesImportingSubjects(AGENT_PACKAGE_ROOT, M4_GATED_SUBJECTS, readFile)) {
+    const imported = subjectsImportedBy(suite, M4_GATED_SUBJECTS, readFile(suite));
+    for (const gate of M4_GATE_STEPS.filter((candidate) => candidate.subjects.some((subject) => imported.includes(subject)))) {
+      const step = workflowSteps(jobs.get(gate.job)).find((candidate) => candidate.name === gate.name);
+      const named = typeof step?.run === "string" ? normalizedShellCommands(step.run).flatMap(agentVitestFiles) : [];
+      if (!named.includes(suite)) missing.push([suite, gate.name]);
+    }
+  }
+  return missing;
 }
 
 const agentSuitesImportingGatedSubjects = () => suitesImportingSubjects(AGENT_PACKAGE_ROOT, M4_GATED_SUBJECTS);
@@ -6044,7 +6076,14 @@ test("M4 gates: the three dark clauses are each named by one fail-fast step, aft
   ]);
 });
 
-test("M4 gates: every agent suite importing a gated subject is named by an agent Vitest run", () => {
+test("M4 gates: every agent suite importing a gated subject is named on its clause's step", () => {
+  // NON-VACUITY for the suffix: the walk sees apps/agent's `.spec.ts` suites too.
+  assert.ok(
+    suiteFilesUnder(AGENT_PACKAGE_ROOT).includes("src/agent-runtime/turn-dispatch.service.spec.ts"),
+    "the suite walk no longer sees apps/agent's .spec.ts suites"
+  );
+  // Every step's subjects are distinct from every other step's: one clause per subject.
+  assert.equal(new Set(M4_GATED_SUBJECTS).size, M4_GATED_SUBJECTS.length);
   const importing = agentSuitesImportingGatedSubjects();
   // NON-VACUITY: the walk and the resolver find the suites this tranche wrote.
   for (const expected of [
@@ -6055,11 +6094,10 @@ test("M4 gates: every agent suite importing a gated subject is named by an agent
   ]) {
     assert.ok(importing.includes(expected), `the subject walk no longer finds ${expected}`);
   }
-  const named = agentVitestFilesNamedAnywhere(ciWorkflowText());
   assert.deepEqual(
-    importing.filter((suite) => !named.has(suite)),
+    agentSuitesOffTheirClauseStep(ciWorkflowText()),
     [],
-    "an apps/agent suite tests a gated M4 subject and no CI job names it; add it to its clause's step"
+    "an apps/agent suite tests a gated M4 subject and its clause's step does not name it; add it to that step"
   );
 
   // The same join for core-api's D21 mirror, held to the WIN-268 step itself: a
@@ -6143,9 +6181,35 @@ test("M4 gates: the checkers fail on the mutations they exist to catch", () => {
   const unnamed = pristine
     .replaceAll("src/streaming/streaming-terminal-frame.test.ts", "src/streaming/elsewhere.test.ts")
     .replaceAll("src/http/request-body-limits.test.ts", "src/http/elsewhere.test.ts");
-  const stillNamed = agentVitestFilesNamedAnywhere(unnamed);
-  const dark = agentSuitesImportingGatedSubjects().filter((suite) => !stillNamed.has(suite));
-  assert.deepEqual(dark, ["src/http/request-body-limits.test.ts", "src/streaming/streaming-terminal-frame.test.ts"]);
+  assert.deepEqual(agentSuitesOffTheirClauseStep(unnamed), [
+    ["src/http/request-body-limits.test.ts", "WIN-268 MCP auth, isolation and body-limit regression suite"],
+    ["src/streaming/streaming-terminal-frame.test.ts", "WIN-272 legacy SSE terminal-frame and duplicate tool-result suites"],
+  ]);
+
+  // The subject join, asked about a workflow that still names a gated suite, but
+  // only on an UNRELATED step: named somewhere is not named on its clause's step.
+  const elsewhere = pristine
+    .replace(" src/tool-gateway/tool-sync-ws.test.ts\n", "\n")
+    .replace(
+      "vitest run chat-session.task.test.ts internal-chat-turn-options.test.ts",
+      "vitest run chat-session.task.test.ts internal-chat-turn-options.test.ts src/tool-gateway/tool-sync-ws.test.ts"
+    );
+  assert.notEqual(elsewhere, pristine);
+  assert.ok(agentVitestFilesNamedAnywhere(elsewhere).has("src/tool-gateway/tool-sync-ws.test.ts"));
+  assert.deepEqual(agentSuitesOffTheirClauseStep(elsewhere), [
+    ["src/tool-gateway/tool-sync-ws.test.ts", "WIN-272 legacy SSE terminal-frame and duplicate tool-result suites"],
+  ]);
+
+  // The suffix: a `.spec.ts` suite importing a gated subject is a suite like any
+  // other. Asked through an injected reader, the real turn-dispatch spec that
+  // "imports" the MCP pool must be named on the WIN-269 step.
+  const specImportsPool = (file) =>
+    file === "src/agent-runtime/turn-dispatch.service.spec.ts"
+      ? 'import { McpConnectionPool } from "../tool-gateway/mcp-transport/mcp-client-pool.service";\n'
+      : readAgentSuite(file);
+  assert.deepEqual(agentSuitesOffTheirClauseStep(pristine, specImportsPool), [
+    ["src/agent-runtime/turn-dispatch.service.spec.ts", "WIN-269 external MCP failure isolation against real remote MCP servers"],
+  ]);
 
   // The core-api join, asked about a workflow whose WIN-268 step no longer names
   // the mirror (and which names it in a DIFFERENT step instead, which must not count).
