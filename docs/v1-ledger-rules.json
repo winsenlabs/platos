@@ -851,6 +851,20 @@
         "evidence": "Python packaging metadata read by the build and publish steps."
       },
       {
+        "id": "packages.python.ci-requirements",
+        "match": [
+          "packages/*/requirements-ci.in",
+          "packages/*/requirements-ci.txt"
+        ],
+        "kind": "config",
+        "owner_capability": "Public SDKs",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "WIN-270 (M4.4): the hashed lock .github/workflows/ci.yml installs with --require-hashes --no-deps before running the package's pytest suite, and the exact pins it is compiled from."
+      },
+      {
         "id": "packages.doc.package",
         "match": [
           "packages/*/**/*.md"
@@ -2108,7 +2122,7 @@
     ]
   },
   "expected": {
-    "totalFiles": 5272,
+    "totalFiles": 5287,
     "areaCounts": {
       "apps-agent": 529,
       "apps-core-api": 108,
@@ -2116,26 +2130,26 @@
       "apps-webapp": 184,
       "docs-content": 745,
       "internal-packages": 1174,
-      "packages": 2193,
-      "root-infra": 331
+      "packages": 2201,
+      "root-infra": 338
     },
     "kindCounts": {
       "asset": 155,
-      "config": 317,
+      "config": 322,
       "doc": 612,
       "fixture": 6,
       "generated": 48,
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2143,
-      "test": 1078
+      "source": 2147,
+      "test": 1084
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1690,
+      "move-refactor": 1702,
       "regenerate": 43,
-      "retain": 3530,
+      "retain": 3533,
       "unresolved": 2
     },
     "protectedCount": 1641,
@@ -2246,11 +2260,12 @@
       "packages.kernel.source": 23,
       "packages.kernel.test": 7,
       "packages.legal.attribution": 11,
+      "packages.python.ci-requirements": 2,
       "packages.python.metadata": 4,
-      "packages.python.sources": 39,
-      "packages.source.typescript": 299,
+      "packages.python.sources": 40,
+      "packages.source.typescript": 300,
       "packages.style.sheet": 1,
-      "packages.test.suites": 64,
+      "packages.test.suites": 68,
       "packages.tooling.scripts": 1,
       "root-infra.automation.renovate": 1,
       "root-infra.build.workspace": 6,
@@ -2272,13 +2287,13 @@
       "root-infra.lockfile.workspace": 1,
       "root-infra.pin.public-proxy-example": 1,
       "root-infra.pin.submodule-index": 1,
-      "root-infra.release.changesets": 16,
-      "root-infra.test.harness": 72,
+      "root-infra.release.changesets": 19,
+      "root-infra.test.harness": 74,
       "root-infra.test.script-suites": 35,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 121,
+      "root-infra.tooling.scripts": 123,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "99f1a488a80d9a140384835afab1284b8f42bce93a8ef4b867895a04d563acf3"
+    "classificationSha256": "94f2319fb64db66d3d6b8547fc9e097b53e87593445199a4aecdefaae97b3899"
   }
 }

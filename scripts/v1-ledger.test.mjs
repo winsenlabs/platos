@@ -1564,7 +1564,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // two planners and its new refusals, the service, the double, the bearer store and
     // `harness.ts`'s one opt-in variable add no file. 1550 + 6 = 1556, and NO LEDGER
     // RULE CHANGED.
-    packages: 1556,
+    //
+    // WIN-270 (M4.4) / WIN-272 (M4.6), THE SDK LANE — 1556 -> 1564. EIGHT files:
+    // `packages/platools-js/tests/protocol-fixture.test.ts` and
+    // `packages/platools-py/tests/test_protocol_fixture.py` (the two readers of the
+    // shared platools protocol fixture, on `packages.test.suites`);
+    // `packages/platools-py/requirements-ci.{in,txt}` (the hashed pytest lock CI
+    // installs, on the ONE new rule `packages.python.ci-requirements`, because no
+    // existing packages rule matched a requirements file);
+    // `packages/platos-client/src/v1-stream.ts` (`packages.source.typescript`) and
+    // `packages/platos-client/tests/v1-stream.test.ts` (`packages.test.suites`);
+    // `packages/platos-client-py/platos_client/v1_stream.py`
+    // (`packages.python.sources`) and `packages/platos-client-py/tests/test_v1_stream.py`
+    // (`packages.test.suites`). 1556 + 8 = 1564.
+    packages: 1564,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2098,7 +2111,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and `scripts/lib/shipping-components.mjs`, the one derivation of each shipping
     // image's component set that the SBOM and the advisory scan share, on
     // `root-infra.tooling.scripts`. NO LEDGER RULE CHANGED.
-    "root-infra": 95,
+    //
+    // WIN-270 (M4.4) / WIN-272 (M4.6), THE SDK LANE — 95 -> 102. SEVEN files:
+    // `scripts/sdk/changeset-gate.mjs` and its suite; the two hand-stated
+    // cross-language fixtures `tests/sdk-contract/platools-protocol.json` and
+    // `tests/sdk-contract/v1-stream-resume.json`; and three changesets
+    // (`.changeset/platools-sdk-tenancy-id-docs.md`,
+    // `platos-client-post-retry-guard.md`, `platos-client-v1-event-streams.md`).
+    // All on existing root-infra rules. 95 + 7 = 102.
+    "root-infra": 102,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2390,7 +2411,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // on their areas' deltas above: three in `root-infra` (the smoke script, its
   // suite, the shared shipping-components derivation) and one in `docs-content`
   // (the core-api SBOM): 15 + 1 + 97 + 4 + 10 + 1556 + 25 + 95 = 1803.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1803);
+  //
+  // AND THE SDK LANE — 1803 -> 1818. FIFTEEN files, itemised on their areas' deltas
+  // above: eight in `packages` and seven in `root-infra`:
+  // 15 + 1 + 97 + 4 + 10 + 1564 + 25 + 102 = 1818.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1818);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2699,7 +2724,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // AND THE CORE-API BUNDLE CLOSURE — 1797 -> 1799, the script and its suite.
     // AND THE CORE-API CANDIDATE SMOKE AND SBOM — 1799 -> 1803, moved in the same
     // edit as the total and both area deltas: three root-infra files and one SBOM.
-    rulesDocument.baseline.totalFiles + 1803
+    // AND THE SDK LANE — 1803 -> 1818, eight packages and seven root-infra files,
+    // moved in the same edit as the total and both area deltas.
+    rulesDocument.baseline.totalFiles + 1818
   );
 });
 
