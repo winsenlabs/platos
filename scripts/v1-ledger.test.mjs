@@ -594,7 +594,19 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `streaming.service.ts`, `tool-registry.service.ts`, `tool-sync-ws.test.ts`,
     // `agent-runtime.module.ts`, `api-surface.test.ts`, `generate-control-plane.mjs`
     // and every generated artifact are edited IN PLACE and add no file.
-    "apps-agent": 15,
+    //
+    // M4 GATES (lane gates) 15 -> 18. THREE files, and NO LEDGER RULE CHANGED — they
+    // land on `apps-agent.source.runtime` (+1, 280 -> 281) and
+    // `apps-agent.test.suites` (+2, 214 -> 216), the same two rules as above.
+    //   `http/request-body-limits.ts` — the unauthenticated body cap and its parser
+    //   order, extracted out of `main.ts` so it can be driven over a socket.
+    //   `http/request-body-limits.test.ts` — WIN-268's body limit: 413 before auth.
+    //   `tool-gateway/mcp-transport/mcp-client-pool-isolation.test.ts` — WIN-269's
+    //   external MCP isolation against real remote MCP servers (D13: no stdio).
+    // `main.ts`, `mcp-client-pool.service.ts`, `tool-executor.service.ts`,
+    // `entity-mcp-discovery.service.ts`, `tool-sync-ws.test.ts` and
+    // `mcp-connected-entity.acceptance.test.ts` are EDITS and add no file.
+    "apps-agent": 18,
     // WIN-272 (M4.6) 0 -> 1. `test/publicGuestBoundary.test.ts`: the public-guest
     // and embed boundary over two real `node:http` listeners with `fetch`
     // unstubbed. It is the FIRST file this programme has added under
@@ -864,7 +876,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // arrival (0 -> 1). Every other file the change touches -- the root and core-api
     // manifests, the compose file, the Caddyfile, the self-hosting page and the
     // suites that pin them -- is an EDIT.
-    "apps-core-api": 97,
+    //
+    // M4 GATES (founder decision D21) 97 -> 99. TWO files under `apps/core-api/src/http/`:
+    // `mcp-body-cap.ts` on `apps-core-api.source.process` (33 -> 34) and its real-socket
+    // suite on `apps-core-api.test.suites` (34 -> 35). NO LEDGER RULE CHANGED.
+    // `runtime/lifecycle.ts`, which installs the cap, is an EDIT. The three V1 source
+    // censuses that count these files moved with them and say so where they live:
+    // `EXPECTED_FILE_COUNT` in `scripts/arch/env-access.mjs` (1701 -> 1703),
+    // `arch-boundaries.test.mjs` (1701 -> 1703) and `max-file-lines.test.mjs`
+    // (1653 -> 1655).
+    "apps-core-api": 99,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -2390,7 +2411,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // on their areas' deltas above: three in `root-infra` (the smoke script, its
   // suite, the shared shipping-components derivation) and one in `docs-content`
   // (the core-api SBOM): 15 + 1 + 97 + 4 + 10 + 1556 + 25 + 95 = 1803.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1803);
+  //
+  // AND THE M4 GATES LANE — 1803 -> 1808. FIVE files, itemised on their areas'
+  // deltas above: three in `apps-agent` (the body-limit module and its suite, the
+  // external-MCP isolation suite) and two in `apps-core-api` (the D21 MCP body cap and
+  // its suite): 18 + 1 + 99 + 4 + 10 + 1556 + 25 + 95 = 1808.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1808);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2699,7 +2725,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // AND THE CORE-API BUNDLE CLOSURE — 1797 -> 1799, the script and its suite.
     // AND THE CORE-API CANDIDATE SMOKE AND SBOM — 1799 -> 1803, moved in the same
     // edit as the total and both area deltas: three root-infra files and one SBOM.
-    rulesDocument.baseline.totalFiles + 1803
+    // AND THE M4 GATES LANE — 1803 -> 1808, moved in the same edit as the total and as
+    // both area deltas: apps-agent +3 and apps-core-api +2, summed per area here.
+    rulesDocument.baseline.totalFiles + 1808
   );
 });
 
