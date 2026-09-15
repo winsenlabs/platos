@@ -52,6 +52,7 @@
 // being invisible to every boundary check. Every import in this file and in
 // `factory-entries/` is a literal the checks can read.
 
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -333,8 +334,8 @@ describe("the importability partition, derived rather than typed", () => {
 // factories and compares the figure to `UNIMPORTABLE_CONTEXT_FACTORIES`.
 //
 // WHERE IT READS. Every `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.mjs`, `.cjs` and
-// `.md` file under the repository root, skipping `node_modules`, `dist`,
-// `generated` and the tool caches. Not V1 projects only: its first version
+// `.md` file git lists (tracked, or untracked and not ignored), skipping
+// `node_modules`, `dist`, `generated` and the tool caches. Not V1 projects only: its first version
 // read those plus `scripts/arch`, and a stale count in `docs/` or a legacy app
 // would have passed. JSON is not read. It is data, and the mutation ledgers
 // quote each stale wording verbatim as the text a mutation put back.
@@ -361,10 +362,11 @@ describe("the importability partition, derived rather than typed", () => {
 //   read. With no figure before, the first figure AFTER the word is read, when
 //   it is within six words and a "factory" or "factories" stands between.
 //
-//   ACTIVE verbs "can import", "cannot import", "can resolve" and "cannot
-//   resolve". The count comes AFTER these, so the figure read is the first one
-//   between the verb and "factory" or "factories", with the nearest one before
-//   the verb as a fallback.
+//   ACTIVE verbs "can import", "cannot import", "can resolve", "cannot
+//   resolve", and "reach(es)" with or without "cannot" or "does not". The count
+//   comes AFTER these, so the figure read is the first one between the verb and
+//   "factory" or "factories", with the nearest one before the verb as a
+//   fallback. And "out of reach", negative, with its figure before it.
 //
 // Every form except the bare "importable" family counts only in a clause that
 // also says "factory" or "factories", because a sentence such as "this package
@@ -378,8 +380,9 @@ describe("the importability partition, derived rather than typed", () => {
 //
 // HONEST LIMITATIONS, each pinned by a planted row in the first case below. A
 // count with none of those words, such as "the root composes all nine of them",
-// is not read. Neither is a figure across a colon, as in "importable factories:
-// eleven". A figure within twelve words before the word is read as its count
+// "importability" or "eleven factories import cleanly", is not read. Neither is
+// a figure across a colon, on either side: "importable factories: eleven", or
+// "OPEN FOR SIX CONTEXTS: each factory cannot be imported". A figure within twelve words before the word is read as its count
 // even when it counts something else nearby, which over-reports rather than
 // under-reports. The partition case above is still the authority on the figure.
 // This block only stops the prose from contradicting it.
@@ -418,6 +421,8 @@ const FIGURE = new RegExp(
 const ADJECTIVE = "importable|reachable|resolvable|nameable";
 const CLAIM = new RegExp(
   [
+    `(?<![\\w-])out of reach\\b`,
+    `(?<![\\w-])(?:(?:cannot|can't|can not|can|do not|does not|did not|don't|doesn't|no longer|now|still|only) )?reach(?:es)?\\b`,
     `(?<![\\w-])(?:un|not |no longer |never )?(?:${ADJECTIVE})\\b`,
     `(?<![\\w-])(?:cannot|can't|can not|can)(?: (?:no longer|not|only|still|now))? be (?:imported|reached|resolved|named)\\b`,
     `(?<![\\w-])(?:cannot|can't|can not|can)(?: (?:no longer|not|only|still|now))? (?:import|resolve)\\b`,
@@ -425,13 +430,13 @@ const CLAIM = new RegExp(
   ].join("|"),
   "giu",
 );
-const ACTIVE = /^(?:cannot|can't|can not|can)(?: \w+(?: \w+)?)? (?:import|resolve)$/u;
-const NEGATIVE_FORM = /^(?:un|not |no longer |never |cannot|can't|can not|do not|does not|did not|don't|doesn't)/u;
+const ACTIVE = /^(?:(?:cannot|can't|can not|can)(?: \w+(?: \w+)?)? (?:import|resolve)|(?:[\w' ]+ )?reach(?:es)?)$/u;
+const NEGATIVE_FORM = /^(?:un|not |no longer |never |cannot|can't|can not|do not|does not|did not|don't|doesn't|out of reach)/u;
 const NEGATOR_BEFORE = /(?:\bnot|n't|\bno longer|\bnever)\s+(?:\w+\s+)?$/iu;
 const BARE_IMPORTABLE = /^(?:un|not |no longer |never )?importable$/u;
 const FACTORY_WORD = /\bfactor(?:y|ies)\b/iu;
 /** Cheap test for a file or block that could hold a claim at all. */
-const MAY_CLAIM = /importable|reachable|resolvable|nameable|be (?:imported|reached|resolved|named)|can(?:not|'t| not)? (?:import|resolve)|resolves? from/iu;
+const MAY_CLAIM = /importable|reachable|resolvable|nameable|be (?:imported|reached|resolved|named)|can(?:not|'t| not)? (?:import|resolve)|resolves? from|\breach(?:es)?\b/iu;
 
 /** The figures in a stretch of text, in order, with where each sits. */
 const figuresIn = (text: string, offset: number): Figure[] =>
@@ -666,28 +671,37 @@ function countClaims(
   return { claims, unbalanced };
 }
 
-/** Directory names the walk never enters: dependencies, build output, generated code, tool caches. */
+/** Path segments the readback never reads under: dependencies, build output, generated code, tool caches. */
 const NOT_PROSE = new Set(["node_modules", "dist", "generated", ".git", ".turbo", ".next", ".cache", ".output", ".vercel", "coverage"]);
 
 /**
- * Every file under the repository root that can hold prose this block reads.
+ * Every file in the repository that can hold prose this block reads.
  *
  * The whole tree rather than a list of projects. A list is a statement about
  * where somebody expected the claim to be, and the claim has already turned up
  * in a generator script outside every V1 project.
+ *
+ * ENUMERATED BY GIT, not by walking the disk: tracked files plus untracked ones
+ * git does not ignore (`ls-files --cached --others --exclude-standard`, the
+ * enumeration `scripts/workspace-reachability.mjs` uses). A disk walk read
+ * gitignored build output in a warm checkout (`packages/core/.tshy-build/`,
+ * `packages/core/src/v3/vendor/`), which a cold CI checkout does not have, so
+ * the same commit could go red locally and green in CI. A new file nobody has
+ * committed yet is still read. `NOT_PROSE` still applies, to tracked
+ * machine-generated files such as the OTLP protobuf output.
  */
 function proseFiles(): string[] {
-  const files: string[] = [];
-  const walk = (directory: string): void => {
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      if (NOT_PROSE.has(entry.name)) continue;
-      const full = join(directory, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (entry.isFile() && /\.(?:ts|tsx|mts|cts|js|mjs|cjs|md)$/u.test(entry.name)) files.push(full);
-    }
-  };
-  walk(ROOT);
-  return files;
+  const listed = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
+    cwd: ROOT,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  return [...new Set(listed.split("\0"))]
+    .filter((path) => path !== "" && /\.(?:ts|tsx|mts|cts|js|mjs|cjs|md)$/u.test(path))
+    .filter((path) => !path.split("/").some((segment) => NOT_PROSE.has(segment)))
+    .map((path) => join(ROOT, path))
+    .filter((full) => existsSync(full))
+    .sort();
 }
 
 describe("prose that counts importable context factories", () => {
@@ -723,6 +737,10 @@ describe("prose that counts importable context factories", () => {
       ["// Eleven factories are nameable from the composition root.", "planted.ts", { claim: "importable", figure: 11 }],
       ['matcher(/"/gu); // SIX are unimportable', "planted.ts", { claim: "unimportable", figure: 6 }],
       ["Six context factories are not importable from apps/core-api.\n", "planted.md", { claim: "unimportable", figure: 6 }],
+      // TWO THAT EVADED THE SECOND VERSION (the round-2 verifier's P10 and P14, verbatim).
+      ["// ... so the root reaches only eleven factories.", "planted.ts", { claim: "importable", figure: 11 }],
+      ["// Six contexts keep their create*Contract factory out of reach of apps/core-api.", "planted.ts", { claim: "unimportable", figure: 6 }],
+      ["// This root cannot reach six of the factories.", "planted.ts", { claim: "unimportable", figure: 6 }],
     ];
     for (const [source, file, expected] of seen) {
       expect(stale(source, file), `must be SEEN: ${source}`).toEqual([expected]);
@@ -742,6 +760,9 @@ describe("prose that counts importable context factories", () => {
       ["const text = `// NINE are importable ${value}`; const after = 2;", "planted.ts"],
       ["const pattern = /\\/\\/ NINE are importable/u;", "planted.ts"],
       ["```\nSix context factories are not importable.\n```\n", "planted.md"],
+      // "reach" about something other than a count of factories.
+      ["// the request reaches the factory before its guard runs", "planted.ts"],
+      ["// A buffer that reaches 3 entries flushes; nothing here is a factory.", "planted.ts"],
     ];
     for (const [source, file] of passed) {
       expect(stale(source, file), `must NOT be read as a stale count: ${source}`).toEqual([]);
@@ -753,6 +774,11 @@ describe("prose that counts importable context factories", () => {
     const unseen: readonly string[] = [
       "// The root composes all nine of them.",
       "// Importable factories: eleven.",
+      // The round-2 verifier's other three probes, verbatim: no claim word
+      // ("Importability", "import cleanly from"), or a figure across a colon.
+      "// Importability: eleven of seventeen factories.",
+      "// Eleven factories import cleanly from apps/core-api.",
+      "// WIN-297'S FINDING IS OPEN FOR SIX CONTEXTS: each factory cannot be imported by the root.",
     ];
     for (const source of unseen) {
       expect(stale(source), `a documented limit, not seen: ${source}`).toEqual([]);
