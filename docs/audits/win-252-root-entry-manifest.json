@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "generatedBy": "scripts/root-entry-manifest.mjs",
   "enumeration": "git ls-files -z --cached --others --exclude-standard; pathname bytes validated as UTF-8; absent index paths removed with lstat; UTF-8 byte sort",
-  "rootEntryCount": 49,
+  "rootEntryCount": 50,
   "corpusExclusions": [
     "docs/audits/win-252-root-entry-manifest.json",
     "docs/audits/win-252-root-entry-manifest.md",
@@ -50,6 +50,16 @@
       "evidence": "Repository indexing boundary discovered by fixed filename.",
       "fixedName": true,
       "externalBoundary": "Cursor"
+    },
+    {
+      "entry": ".dependency-cruiser.agent-areas.cjs",
+      "kind": "file",
+      "disposition": "regenerate",
+      "owner": "Architecture",
+      "consumer": "dependency-cruiser",
+      "evidence": "Generated from scripts/arch/agent-area-cycles.mjs and byte-checked by its --check. A second config beside the one below rather than more rules inside it: the runtime/tool/MCP layering it encodes is scoped to apps/agent, which scripts/arch/arch-boundaries.mjs — the zero-dependency enforcer that shares boundary-rules.mjs with .dependency-cruiser.js — deliberately does not scan.",
+      "fixedName": false,
+      "externalBoundary": "dependency-cruiser"
     },
     {
       "entry": ".dependency-cruiser.js",

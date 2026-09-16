@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "950bccafe20569c6f3ae8d3588544c5dc6881f61ffd0327d8ea9241103e75035",
+  "evidenceSha256": "2903a2bce907ece570edbc4e7240f01d37179502d5174edaabe69185578ba826",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 40,
@@ -117,7 +117,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "f8d32743692da6a6b132f43813cf6a8b064e83010926caa52e1977fbcfce0f1a",
+    "aggregateSha256": "8d848840712ac1a76b8eb96ea589e3b100e8d55cd65e473c5b6f1889c5809cc3",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4761,15 +4761,15 @@
       },
       {
         "path": "docs/audits/win-234-route-capability-parity.json",
-        "sha256": "c569164ab261412cc73f24ed1a62cc0ff0a835a545015859ab7fa355e0458a1c"
+        "sha256": "a07f2913fdb5f610ba3cef237b58e50d31ebe1d8a6487dc3d82c0bbdeb59d8b2"
       },
       {
         "path": "docs/audits/win-252-root-entry-manifest.json",
-        "sha256": "1c38f01b5c08b22b9283923ecb880b94495591f80f5ff9579752e6c65645fbb4"
+        "sha256": "c98efc18badbeed9e7da410e7524aeaf6487d8cf91f7a3b7c9765c8e02cb24e5"
       },
       {
         "path": "docs/audits/win-252-root-entry-manifest.md",
-        "sha256": "db013073bb0308d3c9553ce0df5baa194f4cac9b8974685402d11722f1688618"
+        "sha256": "36c8ee5641b2f427e7d55cacf7066b96fc81bdee006c082dad4314f19b0178ac"
       },
       {
         "path": "docs/audits/win-259-secret-response-census.json",
@@ -21037,7 +21037,7 @@
       },
       {
         "path": "scripts/evidence-lifecycle.test.mjs",
-        "sha256": "07f926ea18ffcfeb87b74ade96b29ff67cdf4bfbc38489e69b11dc61efb65dcb"
+        "sha256": "abfb3d169f574e86d38295fdfeea2b17ab14c33a4090450e21d771f9412ecffa"
       },
       {
         "path": "scripts/hook-policy.mjs",
@@ -21205,11 +21205,11 @@
       },
       {
         "path": "scripts/root-entry-manifest.mjs",
-        "sha256": "3d3645229fdc1875b1eb0993bc12aa536c5650a9799c57cea802a72f0b0d6cc4"
+        "sha256": "59d3cd38a9ccf521ca90be388613ead86e43e019139d98da05d594fe0f9bffc5"
       },
       {
         "path": "scripts/root-entry-manifest.test.mjs",
-        "sha256": "ea435f02bf9b0fa307916b86e5bb422d55ef692303df17d0fba97aef0f502c63"
+        "sha256": "3b648d79fa494aff95faa2153ebc63ff0a8c87221b983726453fcd32239ea348"
       },
       {
         "path": "scripts/route-capability-completion-audit.mjs",
@@ -22933,6 +22933,16 @@
               "line": 1722
             },
             {
+              "from": "docs/audits/win-252-root-entry-manifest.json",
+              "kind": "reference",
+              "line": 60
+            },
+            {
+              "from": "docs/audits/win-252-root-entry-manifest.md",
+              "kind": "reference",
+              "line": 11
+            },
+            {
               "from": "docs/audits/win-259-secret-response-census.json",
               "kind": "reference",
               "line": 11
@@ -23326,6 +23336,14 @@
               "docs/audits/win-234-route-capability-parity.json"
             ],
             [
+              "docs/audits/win-252-root-entry-manifest.json",
+              "docs/audits/win-252-root-entry-manifest.json"
+            ],
+            [
+              "docs/audits/win-252-root-entry-manifest.md",
+              "docs/audits/win-252-root-entry-manifest.md"
+            ],
+            [
               "docs/audits/win-259-secret-response-census.json",
               "docs/audits/win-259-secret-response-census.json"
             ],
@@ -23556,6 +23574,8 @@
             "docs/audits/sbom/closure-receipts.json",
             "docs/audits/sbom/licence-resolution.json",
             "docs/audits/win-234-route-capability-parity.json",
+            "docs/audits/win-252-root-entry-manifest.json",
+            "docs/audits/win-252-root-entry-manifest.md",
             "docs/audits/win-259-secret-response-census.json",
             "docs/audits/win-268-mcp-disposition-register.json",
             "docs/audits/win-268-mcp-disposition-register.md",
@@ -23619,6 +23639,10 @@
               "kind": "explicit-generated-header-reference"
             },
             {
+              "from": "docs/audits/win-252-root-entry-manifest.md",
+              "kind": "explicit-generated-header-reference"
+            },
+            {
               "from": "docs/audits/win-268-mcp-store-ownership.md",
               "kind": "explicit-generated-header-reference"
             },
@@ -23641,6 +23665,10 @@
               "docs/audits/M0.4-design-contract-map.md"
             ],
             [
+              "docs/audits/win-252-root-entry-manifest.md",
+              "docs/audits/win-252-root-entry-manifest.md"
+            ],
+            [
               "docs/audits/win-268-mcp-store-ownership.md",
               "docs/audits/win-268-mcp-store-ownership.md"
             ],
@@ -23653,6 +23681,7 @@
             ".env.example",
             "content/docs/openapi-and-rest.md",
             "docs/audits/M0.4-design-contract-map.md",
+            "docs/audits/win-252-root-entry-manifest.md",
             "docs/audits/win-268-mcp-store-ownership.md",
             "docs/audits/win-269-tool-lifecycle-reach.md"
           ]
@@ -25331,6 +25360,11 @@
               "line": 22
             },
             {
+              "from": "scripts/evidence-lifecycle.test.mjs",
+              "kind": "reference",
+              "line": 124
+            },
+            {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
               "line": 26
@@ -25349,6 +25383,11 @@
               "from": "scripts/rest-census-independent.test.mjs",
               "kind": "reference",
               "line": 112
+            },
+            {
+              "from": "scripts/root-entry-manifest.test.mjs",
+              "kind": "reference",
+              "line": 38
             },
             {
               "from": "scripts/route-capability-parity.test.mjs",
@@ -26559,6 +26598,10 @@
               "scripts/docs-examples.test.mjs"
             ],
             [
+              "scripts/evidence-lifecycle.test.mjs",
+              "scripts/evidence-lifecycle.test.mjs"
+            ],
+            [
               "scripts/license-distribution.test.mjs",
               "scripts/license-distribution.test.mjs"
             ],
@@ -26573,6 +26616,10 @@
             [
               "scripts/rest-census-independent.test.mjs",
               "scripts/rest-census-independent.test.mjs"
+            ],
+            [
+              "scripts/root-entry-manifest.test.mjs",
+              "scripts/root-entry-manifest.test.mjs"
             ],
             [
               "scripts/route-capability-parity.test.mjs",
@@ -26938,10 +26985,12 @@
             "scripts/deploy-platos.test.mjs",
             "scripts/differential-coverage.test.mjs",
             "scripts/docs-examples.test.mjs",
+            "scripts/evidence-lifecycle.test.mjs",
             "scripts/license-distribution.test.mjs",
             "scripts/openapi-compat.test.mjs",
             "scripts/openapi-schema-derivation.test.mjs",
             "scripts/rest-census-independent.test.mjs",
+            "scripts/root-entry-manifest.test.mjs",
             "scripts/route-capability-parity.test.mjs",
             "scripts/sdk/changeset-gate.test.mjs",
             "scripts/v1-ledger.test.mjs",
@@ -27016,7 +27065,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "e38dbe73b4431a91563f425d63122603d259e102dfd28d61c27e86f80c2d9ee7",
+      "evidenceSha256": "ad43c228d03fee61f723b8c58662b78fba559e606d26f728d331790e88c47292",
       "manifestSha256": "62a01ecf9b08b7e8a45da3d5eb7bf45b96dfdcf939fa66b76d0960580a51babc",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -31113,7 +31162,7 @@
             {
               "from": "scripts/root-entry-manifest.test.mjs",
               "kind": "reference",
-              "line": 157
+              "line": 165
             },
             {
               "from": "scripts/route-capability-completion-audit.test.mjs",
@@ -31729,7 +31778,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "68123fe3ceed6f008b14bac420dbecc0f844411d8dbaf20a5f50504c1983baa6",
+      "evidenceSha256": "391dacea87cfd4c0fbb9407a688928b17275b80dca235e5d3ba126563c57f749",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -32498,7 +32547,7 @@
             {
               "from": "docs/audits/win-252-root-entry-manifest.md",
               "kind": "workspace-owned-file",
-              "line": 38
+              "line": 39
             },
             {
               "from": "docs/audits/win-259-secret-response-census.json",
@@ -37692,7 +37741,7 @@
             {
               "from": "scripts/root-entry-manifest.test.mjs",
               "kind": "reference",
-              "line": 146
+              "line": 154
             },
             {
               "from": "scripts/route-capability-completion-audit.test.mjs",
@@ -38142,7 +38191,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "1cfd0877324280a21688bf15345339b30a2fa12ef8d827341398103d01f31c5d",
+      "evidenceSha256": "a2984d0f46f09bd82251bdacec8ea66404b36f22b866f9aab2770d37006355f7",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -44891,7 +44940,7 @@
             {
               "from": "scripts/root-entry-manifest.test.mjs",
               "kind": "reference",
-              "line": 158
+              "line": 166
             },
             {
               "from": "scripts/route-capability-parity.test.mjs",
@@ -45741,7 +45790,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "75846fdb04d0fe0f03737c7989971f80295a5a36f160527ec55d68bf00af43ab",
+      "evidenceSha256": "f97270850c8bc9516022585585d3bdd1eb8e610e811f5acb748e8260124d07d2",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {

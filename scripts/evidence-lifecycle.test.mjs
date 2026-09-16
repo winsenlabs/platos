@@ -121,8 +121,18 @@ test("committed lifecycle manifest classifies every approved evidence path exact
   // ask the adopted SDK and the candidate the same questions and requires the file
   // byte for byte; it records no date, so POINT-IN-TIME would misdescribe it.
   // POINT-IN-TIME, SUPERSEDED-BY and DRAFT are unchanged.
-  assert.equal(manifest.entryCount, 260, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, the WIN-260 M2.5 milestone note, the WIN-268 MCP store-ownership register, the WIN-268 MCP SDK candidate compatibility result, the WIN-269 tool-lifecycle register, the WIN-272 stream vocabulary census, the core-api image SBOM, and the M2/M4 delegated-decisions ADR");
-  assert.deepEqual(manifest.counts, { ACCEPTED: 234, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
+  // MCP DISPOSITION REGISTER AND apps/agent LAYERING REGISTER: 260 -> 264 and
+  // ACCEPTED 234 -> 238. FOUR additions, two registers with a rendered report
+  // each: docs/audits/win-268-mcp-disposition-register.{json,md} and
+  // docs/audits/win-269-agent-area-cycles.{json,md}. ACCEPTED for the reason the
+  // two ORM registers above them are — every row is re-derived on each run from
+  // the control-plane manifest, the contracts and the import graph, and each
+  // `--check` fails on a byte of drift — and for one of their own: the layering
+  // register records which upward import edge is allowlisted RIGHT NOW, so it must
+  // change the day M3.1 removes it. Neither file records a date, so POINT-IN-TIME
+  // would misdescribe both. POINT-IN-TIME, SUPERSEDED-BY and DRAFT are unchanged.
+  assert.equal(manifest.entryCount, 264, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, the WIN-260 M2.5 milestone note, the WIN-268 MCP store-ownership register, the WIN-268 MCP SDK candidate compatibility result, the WIN-268 MCP disposition register, the WIN-269 tool-lifecycle register, the WIN-269 apps/agent layering register, the WIN-272 stream vocabulary census, the core-api image SBOM, and the M2/M4 delegated-decisions ADR");
+  assert.deepEqual(manifest.counts, { ACCEPTED: 238, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
   assert.equal(POINT_IN_TIME_PATHS.length, 21);
   assert.equal(Object.keys(SUPERSESSIONS).length, 4);
   assert.deepEqual(Object.keys(manifest.counts), STATUSES);

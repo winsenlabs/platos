@@ -34,7 +34,15 @@ function committedDocument() {
 test("committed JSON and Markdown exactly describe the final root", () => {
   assert.deepEqual(run(repositoryRoot, "check"), []);
   const document = committedDocument();
-  assert.equal(document.rootEntryCount, 49);
+  // 49 -> 50 with `.dependency-cruiser.agent-areas.cjs`, the dependency-cruiser
+  // config the apps/agent layering gate emits. The count is pinned rather than
+  // read off the document so that an entry APPEARING at the repository root — the
+  // failure this suite exists to catch — is red here and not merely regenerated.
+  assert.equal(document.rootEntryCount, 50);
+  assert.equal(
+    document.entries.find((row) => row.entry === ".dependency-cruiser.agent-areas.cjs")?.disposition,
+    "regenerate",
+  );
   assert.equal(Object.hasOwn(document, "semanticConsumerCount"), false);
   assert.ok(document.entries.every((row) => !Object.hasOwn(row, "semanticConsumers")));
   assert.equal(document.entries.find((row) => row.entry === ".gstack")?.disposition, "regenerate");

@@ -37,6 +37,7 @@ export const ROOT_DECISIONS = [
   d(".configs", "directory", "retain", "Build Platform", "TypeScript project graph", "Shared compiler configuration extended by tracked projects."),
   d(".cursor", "directory", "retain", "Developer Experience", "Cursor", "Repository guidance discovered by its fixed directory name.", true, "Cursor"),
   d(".cursorignore", "file", "retain", "Developer Experience", "Cursor", "Repository indexing boundary discovered by fixed filename.", true, "Cursor"),
+  d(".dependency-cruiser.agent-areas.cjs", "file", "regenerate", "Architecture", "dependency-cruiser", "Generated from scripts/arch/agent-area-cycles.mjs and byte-checked by its --check. A second config beside the one below rather than more rules inside it: the runtime/tool/MCP layering it encodes is scoped to apps/agent, which scripts/arch/arch-boundaries.mjs — the zero-dependency enforcer that shares boundary-rules.mjs with .dependency-cruiser.js — deliberately does not scan.", false, "dependency-cruiser"),
   d(".dependency-cruiser.js", "file", "regenerate", "Architecture", "dependency-cruiser", "Generated from scripts/arch/boundary-rules.mjs and byte-checked.", true, "dependency-cruiser"),
   d(".dockerignore", "file", "retain", "Infrastructure", "Docker builders", "Build-context and legal-distribution boundary.", true, "Docker"),
   d(".env.example", "file", "retain", "Infrastructure", "Contributors and Compose", "Safe configuration template with non-secret sentinels.", true),
