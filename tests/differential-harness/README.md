@@ -278,11 +278,36 @@ with the same identifiers.
 and the `PlatosAuthService` calls beside it. A differential whose oracle has been
 deleted does not go red, it goes QUIET, which is the worst failure this class of
 harness has. So every live oracle answer is written to `oracle-transcripts.json`
-with the digest of each source that produced it. While those sources exist a
-changed digest fails until the transcript is re-recorded; once they are gone the
-transcript is the frozen record the candidate keeps being compared against, and
-`oracle-transcripts.test.mjs` proves both halves of that life without a Docker
-daemon. No token is ever transcribed.
+with the digest of each source that produced it, and `oracle-transcripts.test.mjs`
+proves both halves of its life without a Docker daemon. No token is ever
+transcribed.
+
+There are **two comparisons, and they are not the same one**. Round-2 review
+found this section claiming the second while only the first existed:
+
+| | compares | dies when | proves |
+|---|---|---|---|
+| `compareTranscripts` | the recording against the **live oracle** | T8 deletes the sources | the recording has not gone stale |
+| `recordedOracleSubject` → `twinRun` | the **candidate** against the frozen recording | never | the candidate still answers what the deleted code answered |
+
+A step is recorded as a whole twin-run observation — `status`, `facts`, `auth`
+**and `store`** — passed through the normaliser register on the way in. Recording
+`store` is the load-bearing part: `transport-environment-variable-set` has one
+fact, `{"written": true}`, and everything the scenario means is the row it left
+behind. Recording through the normalisers is what lets `twinRun` read the step
+back as a subject (`normalise` is idempotent over its own output, asserted as a
+case) and what keeps a session `tokenHash` out of a committed artifact —
+`digest-ordinal` has already replaced it with `<digest:0>`.
+
+Two controls, both mutations run in round 2. Perturbing one recorded row in
+`oracle-transcripts.json` turns **both** cases red. And `compareTranscripts`
+itself was found to be nearly vacuous: it compared with
+`JSON.stringify(value, Object.keys(value).sort())`, whose second argument is a
+key FILTER applied at every depth rather than a key ORDER, so everything below
+the top level serialised to `{}` and two transcripts differing in every fact,
+every principal and every stored row compared equal. It uses a canonical
+serialisation now, with a case that perturbs a nested fact, a stored row and an
+auth decision in turn.
 
 ### Two registries, and one declared weakening
 

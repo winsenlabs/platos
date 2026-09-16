@@ -18,8 +18,8 @@
     },
     {
       "id": "http",
-      "derivation": "the test file issues a request whose method and normalised path land on the cell's route template; literal template segments must match exactly and a path matching more than one cell joins none",
-      "limit": "a URL composed at run time from values this parser cannot see is invisible, so a tested cell can read as residue; that is the safe direction. The other direction is real too and is narrower: this is a text scan, so a route written in a COMMENT counts exactly as one written in code, and a file whose subject is this parser has to keep its fixtures fictional"
+      "derivation": "the test file contains a request primitive (fetch, inject, supertest, a WebSocket, an http.request or a raw socket write), and a method+path pair reaches one of six request SHAPES — a call to a helper the file itself declares, a supertest-style .post(), a {method,url} option object, a bare fetch(), or an HTTP/1.1 request line — whose normalised path lands on the cell's route template; literal template segments must match exactly and a path matching more than one cell joins none",
+      "limit": "a URL composed at run time from values this parser cannot see is invisible, so a tested cell can read as residue; that is the safe direction, and it is now taken twice over — a helper IMPORTED from a shared test module is not a declared name, and a method/path pair written as an ARRAY ELEMENT is treated as a data table rather than a request, because whether a table drives a request is beyond a text scan. The other direction is real too and is narrower: this is a text scan, so a route written in a COMMENT counts exactly as one written in code, and a file whose subject is this parser has to keep its fixtures fictional"
     }
   ],
   "statedLimit": "an evidence row proves a test file EXECUTES the cell, not that it asserts anything about it; the register is a lower bound on execution and therefore an upper bound on nothing — residue is the set of cells no tracked test file touches at all",
@@ -30,36 +30,36 @@
     "countedAs": "neither covered nor residue; the third number is published so the carve-out cannot read as progress"
   },
   "telemetry": {
-    "httpSites": 278,
-    "ambiguousSites": 7,
+    "httpSites": 151,
+    "ambiguousSites": 3,
     "testFiles": 1059
   },
   "summary": {
     "cells": 322,
-    "covered": 115,
-    "residue": 55,
+    "covered": 101,
+    "residue": 69,
     "m31Dependency": 152,
     "joinable": 170,
     "byEvidenceKind": {
       "handler": 82,
-      "http": 69
+      "http": 24
     },
     "byDeployable": {
       "apps/agent": {
         "cells": 301,
-        "covered": 95,
-        "uncovered": 54,
+        "covered": 80,
+        "uncovered": 69,
         "m3.1-dependency": 152
       },
       "apps/core-api": {
         "cells": 28,
-        "covered": 27,
-        "uncovered": 1,
+        "covered": 28,
+        "uncovered": 0,
         "m3.1-dependency": 0
       }
     }
   },
-  "digest": "632c3122a10006b6",
+  "digest": "1ee0d6e1ed3aa0b4",
   "rows": [
     {
       "id": "DELETE /api/v1/agent/access-key",
@@ -74,16 +74,7 @@
         "apps/agent/src/agent-runtime/agent.controller.ts"
       ],
       "status": "m3.1-dependency",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/core-api/src/http/idempotency-policy.test.ts"
-        }
-      ],
+      "evidence": [],
       "blockedBy": "WIN-261 (M3.1)",
       "reason": "served by AgentController, which M3.1 owns (decision D14); this register records the dependency rather than counting the cell as covered"
     },
@@ -100,12 +91,7 @@
         "apps/agent/src/agent-runtime/agent.controller.ts"
       ],
       "status": "m3.1-dependency",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/core-api/src/http/idempotency-policy.test.ts"
-        }
-      ],
+      "evidence": [],
       "blockedBy": "WIN-261 (M3.1)",
       "reason": "served by AgentController, which M3.1 owns (decision D14); this register records the dependency rather than counting the cell as covered"
     },
@@ -181,7 +167,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "DELETE /api/v1/agent/clusters/:clusterId",
@@ -285,10 +271,6 @@
         {
           "kind": "handler",
           "file": "apps/agent/src/agent-runtime/jobs.controller.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "packages/platos-client/tests/generated-contracts.test.ts"
         }
       ]
     },
@@ -358,7 +340,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "DELETE /api/v1/agent/skills/:id",
@@ -375,7 +357,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "DELETE /api/v1/agent/skills/agent/:agentId/:id",
@@ -392,7 +374,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "DELETE /api/v1/agent/threads/:threadId",
@@ -498,10 +480,6 @@
         {
           "kind": "handler",
           "file": "apps/core-api/src/transports/mcp/token-lifecycle.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/agent/src/http/request-body-limits.test.ts"
         }
       ]
     },
@@ -522,10 +500,6 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/core-api/src/http/mcp-body-cap.test.ts"
         }
       ]
     },
@@ -541,13 +515,10 @@
       "sources": [
         "apps/agent/src/oauth/oauth.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /.well-known/oauth-authorization-server/entity/:entityId",
@@ -584,7 +555,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/agent/access-key",
@@ -599,16 +570,7 @@
         "apps/agent/src/agent-runtime/agent.controller.ts"
       ],
       "status": "m3.1-dependency",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/core-api/src/http/idempotency-policy.test.ts"
-        }
-      ],
+      "evidence": [],
       "blockedBy": "WIN-261 (M3.1)",
       "reason": "served by AgentController, which M3.1 owns (decision D14); this register records the dependency rather than counting the cell as covered"
     },
@@ -664,7 +626,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/agent/agent-versions",
@@ -849,12 +811,7 @@
         "apps/agent/src/agent-runtime/agent.controller.ts"
       ],
       "status": "m3.1-dependency",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "packages/platos-client/tests/generated-contracts.test.ts"
-        }
-      ],
+      "evidence": [],
       "blockedBy": "WIN-261 (M3.1)",
       "reason": "served by AgentController, which M3.1 owns (decision D14); this register records the dependency rather than counting the cell as covered"
     },
@@ -871,12 +828,7 @@
         "apps/agent/src/agent-runtime/agent.controller.ts"
       ],
       "status": "m3.1-dependency",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "packages/platos-client/tests/generated-contracts.test.ts"
-        }
-      ],
+      "evidence": [],
       "blockedBy": "WIN-261 (M3.1)",
       "reason": "served by AgentController, which M3.1 owns (decision D14); this register records the dependency rather than counting the cell as covered"
     },
@@ -915,7 +867,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/agent/channel-apps/:id/installations",
@@ -932,7 +884,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/agent/channel-apps/:id/installations/status",
@@ -969,7 +921,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/agent/channels/:id",
@@ -1267,7 +1219,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/agent/files/threads/:threadId/attachments",
@@ -1338,7 +1290,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/agent/jobs",
@@ -1357,10 +1309,6 @@
         {
           "kind": "handler",
           "file": "apps/agent/src/agent-runtime/jobs.controller.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "packages/platos-client/tests/generated-contracts.test.ts"
         }
       ]
     },
@@ -1381,10 +1329,6 @@
         {
           "kind": "handler",
           "file": "apps/agent/src/agent-runtime/jobs.controller.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "packages/platos-client/tests/generated-contracts.test.ts"
         }
       ]
     },
@@ -1520,12 +1464,7 @@
         "apps/agent/src/agent-runtime/agent.controller.ts"
       ],
       "status": "m3.1-dependency",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "packages/platos-client/tests/generated-contracts.test.ts"
-        }
-      ],
+      "evidence": [],
       "blockedBy": "WIN-261 (M3.1)",
       "reason": "served by AgentController, which M3.1 owns (decision D14); this register records the dependency rather than counting the cell as covered"
     },
@@ -1542,12 +1481,7 @@
         "apps/agent/src/agent-runtime/agent.controller.ts"
       ],
       "status": "m3.1-dependency",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "packages/platos-client/tests/generated-contracts.test.ts"
-        }
-      ],
+      "evidence": [],
       "blockedBy": "WIN-261 (M3.1)",
       "reason": "served by AgentController, which M3.1 owns (decision D14); this register records the dependency rather than counting the cell as covered"
     },
@@ -1768,12 +1702,7 @@
         "apps/agent/src/agent-runtime/agent.controller.ts"
       ],
       "status": "m3.1-dependency",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "packages/platos-client/tests/generated-contracts.test.ts"
-        }
-      ],
+      "evidence": [],
       "blockedBy": "WIN-261 (M3.1)",
       "reason": "served by AgentController, which M3.1 owns (decision D14); this register records the dependency rather than counting the cell as covered"
     },
@@ -1860,7 +1789,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/agent/postman-templates",
@@ -1913,10 +1842,6 @@
         {
           "kind": "handler",
           "file": "apps/agent/src/providers/providers.controller.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
         }
       ]
     },
@@ -2023,7 +1948,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/agent/skills/:id",
@@ -2040,7 +1965,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/agent/skills/agent/:agentId",
@@ -2057,7 +1982,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/agent/skills/health",
@@ -2074,7 +1999,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/agent/threads",
@@ -2140,12 +2065,7 @@
         "apps/agent/src/agent-runtime/agent.controller.ts"
       ],
       "status": "m3.1-dependency",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ],
+      "evidence": [],
       "blockedBy": "WIN-261 (M3.1)",
       "reason": "served by AgentController, which M3.1 owns (decision D14); this register records the dependency rather than counting the cell as covered"
     },
@@ -2297,13 +2217,10 @@
       "sources": [
         "apps/agent/src/channels/channels-inbound.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/channels/link/:nonce",
@@ -2317,13 +2234,10 @@
       "sources": [
         "apps/agent/src/channels/channel-link.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/channels/link/callback",
@@ -2340,7 +2254,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/channels/oauth/:appId/callback",
@@ -2354,13 +2268,10 @@
       "sources": [
         "apps/agent/src/channels/channel-app-oauth.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/channels/oauth/:appId/install",
@@ -2374,13 +2285,10 @@
       "sources": [
         "apps/agent/src/channels/channel-app-oauth.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /api/v1/environments/:environmentId/end-users",
@@ -2418,10 +2326,13 @@
       "sources": [
         "apps/core-api/src/transports/ws/streams.controller.ts"
       ],
-      "status": "uncovered",
-      "evidence": [],
-      "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "status": "covered",
+      "evidence": [
+        {
+          "kind": "http",
+          "file": "apps/core-api/src/composition/stream-lane.integration.test.ts"
+        }
+      ]
     },
     {
       "id": "GET /api/v1/environments/:environmentId/variables",
@@ -2832,10 +2743,6 @@
         {
           "kind": "handler",
           "file": "apps/agent/src/http/mcp-surface.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
         }
       ]
     },
@@ -2856,10 +2763,6 @@
         {
           "kind": "handler",
           "file": "apps/agent/src/http/mcp-surface.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
         }
       ]
     },
@@ -2875,13 +2778,10 @@
       "sources": [
         "apps/agent/src/mcp-docs/docs-mcp.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /mcp/entity",
@@ -2898,7 +2798,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /mcp/entity/:entityId/config",
@@ -2915,7 +2815,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /mcp/entity/:entityId/events/subscribe",
@@ -2929,13 +2829,10 @@
       "sources": [
         "apps/agent/src/mcp-platform/mcp-entity.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /mcp/entity/:entityId/sse",
@@ -2952,7 +2849,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /mcp/entity/:entityId/tokens",
@@ -2977,10 +2874,6 @@
         {
           "kind": "handler",
           "file": "apps/core-api/src/transports/mcp/token-lifecycle.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
         }
       ]
     },
@@ -3019,7 +2912,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /mcp/platform/environments/:environmentId/policies",
@@ -3056,7 +2949,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /mcp/platform/sse",
@@ -3070,17 +2963,10 @@
       "sources": [
         "apps/agent/src/mcp-platform/mcp-platform.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/agent/src/http/request-body-limits.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /mcp/platform/tokens",
@@ -3101,10 +2987,6 @@
         {
           "kind": "handler",
           "file": "apps/core-api/src/transports/mcp/token-lifecycle.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/core-api/src/http/mcp-body-cap.test.ts"
         }
       ]
     },
@@ -3123,7 +3005,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /metrics",
@@ -3140,7 +3022,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /oauth/authorize",
@@ -3157,7 +3039,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /oauth/consent",
@@ -3174,7 +3056,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "GET /oauth/entity/:entityId/authorize",
@@ -3193,10 +3075,6 @@
         {
           "kind": "handler",
           "file": "apps/agent/src/oauth/oauth.controller.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
         }
       ]
     },
@@ -3217,10 +3095,6 @@
         {
           "kind": "handler",
           "file": "apps/agent/src/oauth/oauth.controller.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
         }
       ]
     },
@@ -3259,7 +3133,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "PATCH /api/v1/agent/agents/:agentId",
@@ -3364,7 +3238,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "PATCH /api/v1/agent/clusters/:clusterId",
@@ -3468,10 +3342,6 @@
         {
           "kind": "handler",
           "file": "apps/agent/src/agent-runtime/jobs.controller.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "packages/platos-client/tests/generated-contracts.test.ts"
         }
       ]
     },
@@ -3507,7 +3377,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "PATCH /api/v1/agent/threads/:threadId",
@@ -3595,7 +3465,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "PATCH /mcp/entity/:entityId/config",
@@ -3632,7 +3502,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "PATCH /mcp/entity/:entityId/identity",
@@ -3649,7 +3519,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "PATCH /mcp/entity/:entityId/inject-context",
@@ -3663,13 +3533,10 @@
       "sources": [
         "apps/agent/src/mcp-platform/mcp-entity.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "PATCH /mcp/entity/:entityId/tool-acl/:toolId",
@@ -3686,7 +3553,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /api/v1/agent/access-key",
@@ -3701,16 +3568,7 @@
         "apps/agent/src/agent-runtime/agent.controller.ts"
       ],
       "status": "m3.1-dependency",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/core-api/src/http/idempotency-policy.test.ts"
-        }
-      ],
+      "evidence": [],
       "blockedBy": "WIN-261 (M3.1)",
       "reason": "served by AgentController, which M3.1 owns (decision D14); this register records the dependency rather than counting the cell as covered"
     },
@@ -3727,16 +3585,7 @@
         "apps/agent/src/agent-runtime/agent.controller.ts"
       ],
       "status": "m3.1-dependency",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/core-api/src/http/idempotency-policy.test.ts"
-        }
-      ],
+      "evidence": [],
       "blockedBy": "WIN-261 (M3.1)",
       "reason": "served by AgentController, which M3.1 owns (decision D14); this register records the dependency rather than counting the cell as covered"
     },
@@ -3850,12 +3699,7 @@
         "apps/agent/src/agent-runtime/agent.controller.ts"
       ],
       "status": "m3.1-dependency",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/core-api/src/http/idempotency-policy.test.ts"
-        }
-      ],
+      "evidence": [],
       "blockedBy": "WIN-261 (M3.1)",
       "reason": "served by AgentController, which M3.1 owns (decision D14); this register records the dependency rather than counting the cell as covered"
     },
@@ -3891,7 +3735,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /api/v1/agent/agents/:agentId/messages",
@@ -3923,12 +3767,7 @@
         "apps/agent/src/agent-runtime/agent.controller.ts"
       ],
       "status": "m3.1-dependency",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "packages/platos-client/tests/generated-contracts.test.ts"
-        }
-      ],
+      "evidence": [],
       "blockedBy": "WIN-261 (M3.1)",
       "reason": "served by AgentController, which M3.1 owns (decision D14); this register records the dependency rather than counting the cell as covered"
     },
@@ -4025,7 +3864,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /api/v1/agent/channel-apps/:id/installations/import",
@@ -4467,10 +4306,6 @@
         {
           "kind": "handler",
           "file": "apps/agent/src/agent-runtime/jobs.controller.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "packages/platos-client/tests/generated-contracts.test.ts"
         }
       ]
     },
@@ -4491,10 +4326,6 @@
         {
           "kind": "handler",
           "file": "apps/agent/src/agent-runtime/jobs.controller.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "packages/platos-client/tests/generated-contracts.test.ts"
         }
       ]
     },
@@ -4717,7 +4548,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /api/v1/agent/providers/keys/:id/rotate-secret",
@@ -4776,7 +4607,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /api/v1/agent/skills/agent/:agentId/:id",
@@ -4793,7 +4624,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /api/v1/agent/skills/import",
@@ -4810,7 +4641,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /api/v1/agent/threads",
@@ -4825,12 +4656,7 @@
         "apps/agent/src/agent-runtime/agent.controller.ts"
       ],
       "status": "m3.1-dependency",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ],
+      "evidence": [],
       "blockedBy": "WIN-261 (M3.1)",
       "reason": "served by AgentController, which M3.1 owns (decision D14); this register records the dependency rather than counting the cell as covered"
     },
@@ -5069,10 +4895,6 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/core-api/src/http/idempotency-policy.test.ts"
         }
       ]
     },
@@ -5097,10 +4919,6 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/core-api/src/http/idempotency-policy.test.ts"
         }
       ]
     },
@@ -5149,10 +4967,6 @@
         {
           "kind": "handler",
           "file": "apps/agent/src/channels/channel-app-events.controller.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
         }
       ]
     },
@@ -5168,13 +4982,10 @@
       "sources": [
         "apps/agent/src/channels/channels-inbound.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /api/v1/entities/:entityId/session-tokens",
@@ -5197,14 +5008,6 @@
         {
           "kind": "handler",
           "file": "apps/agent/src/connections/connections.gateway-auth.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/core-api/src/http/idempotency-policy.test.ts"
         }
       ]
     },
@@ -5327,7 +5130,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /api/v1/memory/extract",
@@ -5528,7 +5331,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /api/v1/platos/memory/extract",
@@ -5626,13 +5429,10 @@
       "sources": [
         "apps/agent/src/auth/public-guest-token.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /internal/batch-turn",
@@ -5649,7 +5449,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /internal/env/invalidate",
@@ -5666,7 +5466,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /internal/execute-tool",
@@ -5683,7 +5483,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /internal/subagent-turn",
@@ -5700,7 +5500,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /mcp",
@@ -5719,10 +5519,6 @@
         {
           "kind": "handler",
           "file": "apps/agent/src/http/mcp-surface.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
         }
       ]
     },
@@ -5758,13 +5554,10 @@
       "sources": [
         "apps/agent/src/mcp-docs/docs-mcp.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /mcp/entity/:entityId",
@@ -5780,10 +5573,6 @@
       ],
       "status": "covered",
       "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        },
         {
           "kind": "http",
           "file": "apps/agent/src/http/request-body-limits.test.ts"
@@ -5844,13 +5633,10 @@
       "sources": [
         "apps/agent/src/mcp-platform/mcp-entity.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /mcp/messages",
@@ -5867,7 +5653,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /mcp/platform",
@@ -5883,10 +5669,6 @@
       ],
       "status": "covered",
       "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        },
         {
           "kind": "http",
           "file": "apps/agent/src/http/request-body-limits.test.ts"
@@ -5908,7 +5690,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /mcp/platform/tokens",
@@ -5929,10 +5711,6 @@
         {
           "kind": "handler",
           "file": "apps/core-api/src/transports/mcp/token-lifecycle.test.ts"
-        },
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
         },
         {
           "kind": "http",
@@ -5977,7 +5755,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /oauth/entity/:entityId/authorize/anonymous",
@@ -5991,13 +5769,10 @@
       "sources": [
         "apps/agent/src/oauth/oauth.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /oauth/entity/:entityId/register",
@@ -6011,13 +5786,10 @@
       "sources": [
         "apps/agent/src/oauth/oauth.controller.ts"
       ],
-      "status": "covered",
-      "evidence": [
-        {
-          "kind": "http",
-          "file": "apps/agent/src/auth/scope.guard.test.ts"
-        }
-      ]
+      "status": "uncovered",
+      "evidence": [],
+      "blockedBy": "WIN-267",
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /oauth/entity/:entityId/revoke",
@@ -6034,7 +5806,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /oauth/entity/:entityId/token",
@@ -6051,7 +5823,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /oauth/introspect",
@@ -6068,7 +5840,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /oauth/register",
@@ -6085,7 +5857,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /oauth/revoke",
@@ -6102,7 +5874,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "POST /oauth/token",
@@ -6119,7 +5891,7 @@
       "status": "uncovered",
       "evidence": [],
       "blockedBy": "WIN-267",
-      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, which is why the row states what was MEASURED rather than claiming nothing exercises the cell"
+      "reason": "no tracked test file yields either join: none binds an implementing controller and calls its handler, and no resolvable request site lands on this route template. A suite that composes its URL at run time from a value this parser cannot read reaches here too, and so does one that drives its route from a TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than claiming nothing exercises the cell"
     },
     {
       "id": "PUT /api/v1/agent/postman-templates/:id",

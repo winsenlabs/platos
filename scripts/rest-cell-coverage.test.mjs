@@ -24,10 +24,12 @@ import {
   TEST_FILE_PATTERN,
   buildRegister,
   callsHandler,
+  declaredNames,
   enumerateTestFiles,
   extractControllerBindings,
   extractHttpCallSites,
   extractLocalTemplates,
+  issuesRequests,
   matchesRouteTemplate,
   normalisePathExpression,
   registerDigest,
@@ -107,25 +109,99 @@ test("a leading interpolation is a base URL and is dropped; an inner one is exac
   assert.equal(normalisePathExpression("${everything}"), null, "a path with no literal at all resolves to nothing");
 });
 
-test("request sites are read from all five call forms", () => {
+test("request sites are read from all six request forms", () => {
   // Fictional paths, for the reason above: a real one here would be read as a
   // real request site by the register that reads this file.
   const sites = extractHttpCallSites(`
+    async function call(method, path, options) { return fetch(\`\${base}\${path}\`, { method, ...options }); }
     const variables = (environment) => \`/fixtures/\${environment}/variables\`;
     await call("POST", "/fixtures/session", { body });
     await call("GET", variables(id));
     await request(app).delete("/fixtures/tokens");
     await server.inject({ method: "PATCH", url: "/fixtures/x/members/y" });
     await fetch(\`\${base}/fixtures/livez\`);
+    socket.write(\`GET /fixtures/probe/one HTTP/1.1\\r\\n\`);
   `);
   const seen = sites.map((site) => `${site.method} ${site.path}`).sort();
   assert.deepEqual(seen, [
     "DELETE /fixtures/tokens",
     "GET /fixtures/*/variables",
     "GET /fixtures/livez",
+    "GET /fixtures/probe/one",
     "PATCH /fixtures/x/members/y",
     "POST /fixtures/session",
   ]);
+});
+
+// ---------------------------------------------------------------------------
+// ER-1: `http` must measure what it DECLARES — a request, not a tuple
+// ---------------------------------------------------------------------------
+
+test("a file that issues no request yields no http evidence, whatever tuples it contains", () => {
+  // THE DEFECT THIS CLOSES, found in round-2 review. `scope.guard.test.ts`
+  // drives pure predicates over `it.each` tuple tables and speaks to no server;
+  // the first version of this parser read 33 of its tuples as request sites and
+  // put 14 cells in `covered` on the strength of them alone — several from
+  // NEAR-MISS tables whose whole assertion is that the route is NOT public.
+  const predicateTable = `
+    it.each([
+      ["GET", "/fixtures/oauth/metadata"],
+      ["POST", "/fixtures/public/guest-token"],
+    ])("%s %s is public", (method, url) => {
+      expect(isPublicFixtureRoute(method, url)).toBe(true);
+    });
+  `;
+  assert.equal(issuesRequests(predicateTable), false);
+  assert.deepEqual(extractHttpCallSites(predicateTable), []);
+});
+
+test("a method+path pair passed to an IMPORTED name is not a request, even in a file that fetches", () => {
+  // `idempotency-policy.test.ts` calls the real
+  // `classifyRequest("POST", "/api/v1/bff/magic-link")` — a pure predicate over
+  // a literal route. Only a helper the file DECLARES is believed to issue.
+  const text = `
+    import { classifyFixture } from "./fixture-policy.js";
+    async function call(method, path) { return fetch(\`\${base}\${path}\`, { method }); }
+    expect(classifyFixture("POST", "/fixtures/session")).toBe("accepted");
+    await call("GET", "/fixtures/organizations");
+  `;
+  assert.equal(issuesRequests(text), true);
+  assert.ok(declaredNames(text).has("call"));
+  assert.ok(!declaredNames(text).has("classifyFixture"));
+  assert.deepEqual(
+    extractHttpCallSites(text).map((site) => `${site.method} ${site.path}`),
+    ["GET /fixtures/organizations"],
+  );
+});
+
+test("an array element is a data table, not a call site, even beside a real request", () => {
+  const text = `
+    async function call(method, path) { return fetch(\`\${base}\${path}\`, { method }); }
+    const cases = [["DELETE", "/fixtures/tokens"]];
+    await call("GET", "/fixtures/organizations");
+  `;
+  assert.deepEqual(
+    extractHttpCallSites(text).map((site) => `${site.method} ${site.path}`),
+    ["GET /fixtures/organizations"],
+    "the table is not counted: whether a table drives a request is beyond a text scan, and under-counting is the " +
+      "direction this register errs in",
+  );
+});
+
+test("a raw HTTP/1.1 request line is a request site, because nothing but a request is written in one", () => {
+  // `stream-lane.integration.test.ts` reaches the stream cell through an upgrade
+  // it writes onto a socket by hand. Before this form the ONLY apps/core-api
+  // residue row was a cell a real suite exercises end to end.
+  const text = `
+    function lanePath(environmentId, laneId) { return \`\${PREFIX}/fixtures/\${environmentId}/lanes/\${laneId}\`; }
+    const socket = connect(port, "127.0.0.1");
+    socket.write(\`GET \${lanePath(ENVIRONMENT, "live")} HTTP/1.1\\r\\nHost: x\\r\\n\\r\\n\`);
+  `;
+  assert.equal(issuesRequests(text), true);
+  assert.deepEqual(
+    extractHttpCallSites(text).map((site) => `${site.method} ${site.path}`),
+    ["GET /fixtures/*/lanes/*"],
+  );
 });
 
 test("a literal template segment must be matched exactly; a wildcard cannot satisfy one", () => {
@@ -175,7 +251,8 @@ const OPERATIONS = [
 const FILES = [
   file(
     "apps/core-api/src/composition/fixture.integration.test.ts",
-    'const answer = await call("GET", `${PREFIX}/fixtures/organizations`, { token });',
+    'async function call(method, path) { return fetch(`${base}${path}`, { method }); }\n' +
+      'const answer = await call("GET", `${PREFIX}/fixtures/organizations`, { token });',
   ),
   file(
     "apps/agent/src/fixture-jobs.controller.test.ts",
@@ -229,7 +306,11 @@ test("an AgentController cell is a dependency, not coverage, even when a suite e
 
 test("an ambiguous request path joins nothing rather than inflating two rows", () => {
   const ambiguous = [
-    file("apps/agent/src/skills/ambiguous.test.ts", 'await call("GET", "/agent/skills/health");'),
+    file(
+      "apps/agent/src/skills/ambiguous.test.ts",
+      'async function call(method, path) { return fetch(`${base}${path}`, { method }); }\n' +
+        'await call("GET", "/agent/skills/health");',
+    ),
   ];
   const { rows } = buildRegister({ restCells: CELLS, manifestOperations: OPERATIONS, testFiles: ambiguous });
   // `/agent/skills/health` lands on the literal cell AND on `:id`, so neither

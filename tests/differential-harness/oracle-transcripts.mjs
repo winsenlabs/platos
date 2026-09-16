@@ -22,6 +22,36 @@
 //                            still compared against it, and the artifact says in
 //                            its own fields which half of its life it is in.
 //
+// ROUND-2 CORRECTION — WHAT "THE CANDIDATE IS COMPARED AGAINST IT" COST.
+//
+// The sentence above was written before the code that makes it true. Two things
+// were wrong and both are fixed here:
+//
+//   1. THE RECORDING WAS INCOMPLETE. Only `{status, facts, auth}` was written.
+//      The `store` dimension — the half that passes through no projection at all,
+//      and the half that carries the whole meaning of a scenario like
+//      `transport-environment-variable-set`, whose facts are the single boolean
+//      `{"written": true}` — was never recorded. A transcript missing it cannot
+//      stand in for the oracle after the cutover, because the thing the oracle
+//      was most useful for is precisely what was not kept.
+//   2. NOTHING COMPARED THE CANDIDATE AGAINST IT. `compareTranscripts` compares
+//      the recording against the LIVE oracle. That is a real gate — it is the
+//      drift detector that stops a stale recording passing as fresh — but it is
+//      not a post-cutover oracle, and calling it one made the design read as
+//      finished while half of it was missing.
+//
+// So a transcript step is now a whole twin-run OBSERVATION, recorded THROUGH THE
+// NORMALISER REGISTER, and `recordedOracleSubject` hands it back to `twinRun` as
+// a subject. The candidate is compared against the frozen record by the same
+// engine, the same comparators and the same approved differences that compare it
+// against the live oracle — one comparison engine in this harness, not two.
+// Recording the NORMALISED observation rather than the raw one is what lets the
+// same engine read it twice: `normalise` is idempotent over its own output (a
+// case in `oracle-transcripts.test.mjs` asserts exactly that), and it is also
+// what keeps a session `tokenHash` out of a committed artifact, because
+// `digest-ordinal` has already turned it into `<digest:0>` before anything is
+// written.
+//
 // NOTHING IN A TRANSCRIPT MAY BE A CREDENTIAL. The facts recorded are booleans,
 // slugs, names, roles and seeded identifiers. `Set-Cookie` is used by the running
 // suite and dropped before anything is written, and `credentialShapedValues`
@@ -93,7 +123,12 @@ export function writeTranscripts(root, steps) {
     why:
       "WIN-257 T8 deletes this oracle. Recorded before the cutover so the transport differential keeps its meaning " +
       "afterwards: while the sources below exist the live oracle must still answer this, and once they are gone this " +
-      "is the frozen record the candidate is compared against.",
+      "is the frozen record the candidate is compared against by recordedOracleSubject -> twinRun.",
+    recordedThrough:
+      "the normaliser register, with the transport scenarios' declared skips applied — so a step is in the same " +
+      "shape both sides are compared in, normalise() may read it a second time without moving it, and no digest, " +
+      "instant or generated identifier is written verbatim",
+    dimensions: ["status", "facts", "auth", "store"],
     provenance: {
       commit: headCommit(root),
       capturedAt: new Date().toISOString(),
@@ -110,7 +145,118 @@ export function writeTranscripts(root, steps) {
 }
 
 /**
- * Where the live oracle stopped answering what was recorded.
+ * THE POST-CUTOVER ORACLE: one recorded step, as a twin-run observation.
+ *
+ * This is the half that makes the transcript an oracle rather than a souvenir.
+ * The step was recorded through the normaliser register, so it is already in the
+ * shape both sides are compared in, and `twinRun` may normalise it a second time
+ * without moving it.
+ *
+ * `storeIdentity` is recorded, not invented. It is the name of the database the
+ * rows were dumped from, which is what `twinRun`'s isolation refusal needs to be
+ * able to tell the two sides apart — and after the cutover it is an honest piece
+ * of provenance rather than a live handle: it says where these rows came from
+ * when the code that wrote them still existed.
+ */
+export function recordedObservation(recorded, scenarioId) {
+  const step = (recorded ?? {})[scenarioId];
+  if (step === undefined || step === null || typeof step !== "object") {
+    throw new Error(
+      `no recorded oracle answer for ${scenarioId}; the transcript cannot stand in for an oracle it never saw`,
+    );
+  }
+  if (step.store === null || typeof step.store !== "object" || Array.isArray(step.store)) {
+    throw new Error(
+      `the recorded answer for ${scenarioId} carries no store; it cannot replay the dimension that passes through ` +
+        "no projection",
+    );
+  }
+  return {
+    scenario: scenarioId,
+    side: "oracle",
+    subject: RECORDED_SUBJECT,
+    storeIdentity: step.storeIdentity ?? "differential_oracle",
+    response: { status: step.status, headers: {}, body: step.facts },
+    events: [],
+    auth: step.auth,
+    sideEffects: [],
+    usage: { inputUnits: 0, outputUnits: 0, costMicros: 0, durationMs: 0, measured: [] },
+    store: step.store,
+  };
+}
+
+export const RECORDED_SUBJECT = "webapp-prisma-oracle (recorded)";
+
+/** The recorded step as a `twinRun` subject, so the replay uses the live engine. */
+export function recordedOracleSubject(recorded, scenarioId) {
+  return { run: () => recordedObservation(recorded, scenarioId) };
+}
+
+/**
+ * The shape a step must have to be replayable, checked without a Docker daemon.
+ *
+ * Declared separately from `transcriptFailures` because this is the obligation
+ * the ROUND-2 correction added: a transcript that records a status and a boolean
+ * and calls itself an oracle is the failure this list exists to name.
+ */
+export function replayFailures(artifact, scenarioIds = []) {
+  const failures = [];
+  const steps = artifact.steps ?? {};
+  for (const id of scenarioIds) {
+    const step = steps[id];
+    if (step === undefined) {
+      failures.push(`${id} has no recorded step, so nothing can be replayed against it`);
+      continue;
+    }
+    for (const field of ["status", "facts", "auth", "store", "storeIdentity"]) {
+      if (step[field] === undefined) {
+        failures.push(`${id} records no ${field}; the candidate cannot be compared against a partial recording`);
+      }
+    }
+    if (step.store !== undefined && Object.keys(step.store ?? {}).length === 0) {
+      failures.push(
+        `${id} records an EMPTY store. Every transport scenario declares store tables, so an empty dump is a ` +
+          "recording of nothing rather than a recording of no rows",
+      );
+    }
+  }
+  return failures;
+}
+
+/**
+ * A stable serialisation whose keys are sorted AT EVERY DEPTH.
+ *
+ * THIS REPLACES A GATE THAT COMPARED ALMOST NOTHING, found by a round-2
+ * mutation of my own. `JSON.stringify(value, Object.keys(value).sort())` reads
+ * as "serialise with the keys in a stable order". It is not: the second argument
+ * of `JSON.stringify` is not a key ORDER, it is a key FILTER, and it applies at
+ * every depth. With the top-level names as the filter, `{"facts":{"written":
+ * true}}` serialises to `{"facts":{}}` — so two transcripts differing in every
+ * fact, every auth principal and every stored row compared EQUAL, and the drift
+ * detector could only ever have caught a changed `status`. The bug was invisible
+ * while the recording was `{status, facts, auth}` of mostly-constant shape; it
+ * surfaced the moment a mutation of a recorded ROW failed to move it.
+ */
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+/**
+ * Where the LIVE oracle stopped answering what was recorded.
+ *
+ * THIS IS THE DRIFT DETECTOR, NOT THE REPLAY. It compares the recording against
+ * what the webapp answers TODAY, so a recording that has gone stale fails rather
+ * than being quietly re-recorded. The replay — the candidate against the frozen
+ * record — is `recordedOracleSubject` fed to `twinRun`. Both exist; neither
+ * stands in for the other, and the first stops working the moment T8 deletes the
+ * sources while the second is what T8 leaves behind.
  *
  * A missing recording is drift too, and stated as such: a scenario the transcript
  * has never seen is a scenario whose meaning nothing preserves after the cutover.
@@ -123,8 +269,8 @@ export function compareTranscripts(recorded, live) {
       drift.push(`${id} has no recorded oracle answer; it would lose its meaning the moment the oracle is deleted`);
       continue;
     }
-    const left = JSON.stringify(before, Object.keys(before).sort());
-    const right = JSON.stringify(answer, Object.keys(answer).sort());
+    const left = canonicalJson(before);
+    const right = canonicalJson(answer);
     if (left !== right) drift.push(`${id}: recorded ${left} but the live oracle answered ${right}`);
   }
   for (const id of Object.keys(recorded)) {

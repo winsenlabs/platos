@@ -23,6 +23,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { normalise } from "./normalisers.mjs";
 import {
   ORACLE_SOURCES,
   TRANSCRIPT_PATH,
@@ -30,8 +31,12 @@ import {
   credentialShapedValues,
   oracleSourceDigests,
   readTranscripts,
+  recordedObservation,
+  recordedOracleSubject,
+  replayFailures,
   transcriptFailures,
 } from "./oracle-transcripts.mjs";
+import { twinRun } from "./twin-run.mjs";
 import {
   TRANSPORT_NORMALISATION,
   TRANSPORT_SCENARIO_REGISTRY,
@@ -160,6 +165,155 @@ test("drift in either direction is reported, including a scenario the transcript
   assert.ok(drift.some((entry) => entry.startsWith("fresh has no recorded")));
   assert.ok(drift.some((entry) => entry.startsWith("gone is recorded and was not driven")));
   assert.deepEqual(compareTranscripts(recorded, recorded), []);
+});
+
+test("MUTATION: drift in a NESTED fact is reported — the comparison is not a key filter", () => {
+  // THE DEFECT THIS CLOSES, found in round 2 by a mutation of the committed
+  // transcript's store that the drift detector did not notice. The comparison
+  // was `JSON.stringify(value, Object.keys(value).sort())`, which is a key
+  // FILTER applied at every depth, not a key order — so everything below the top
+  // level serialised to `{}` and two transcripts differing in every fact, every
+  // principal and every stored row compared equal.
+  const recorded = {
+    one: {
+      status: 200,
+      facts: { written: true },
+      auth: { principal: "<id:0>", scopes: [], decision: "allow", reason: null },
+      store: { EnvironmentVariable: [{ key: "WRITTEN_PLAIN", value: "written-value" }] },
+      storeIdentity: "differential_oracle",
+    },
+  };
+  const perturbedFact = { one: { ...recorded.one, facts: { written: false } } };
+  const perturbedRow = {
+    one: { ...recorded.one, store: { EnvironmentVariable: [{ key: "WRITTEN_PLAIN", value: "something-else" }] } },
+  };
+  const perturbedAuth = { one: { ...recorded.one, auth: { ...recorded.one.auth, decision: "deny" } } };
+  for (const [label, live] of [["fact", perturbedFact], ["row", perturbedRow], ["auth", perturbedAuth]]) {
+    assert.equal(compareTranscripts(recorded, live).length, 1, `a changed ${label} must be drift`);
+  }
+  // Key ORDER still must not be drift, which is what the sorting is for.
+  const reordered = {
+    one: {
+      storeIdentity: "differential_oracle",
+      store: { EnvironmentVariable: [{ value: "written-value", key: "WRITTEN_PLAIN" }] },
+      auth: { reason: null, decision: "allow", scopes: [], principal: "<id:0>" },
+      facts: { written: true },
+      status: 200,
+    },
+  };
+  assert.deepEqual(compareTranscripts(recorded, reordered), []);
+});
+
+// ---------------------------------------------------------------------------
+// THE REPLAY — the candidate against the frozen record, with no Docker daemon
+// ---------------------------------------------------------------------------
+
+test("every committed step is REPLAYABLE: all four dimensions, store included", () => {
+  // The round-2 defect, as a permanent case. A transcript of
+  // {status, facts, auth} cannot stand in for an oracle whose most load-bearing
+  // answer is the row it left behind — `transport-environment-variable-set`
+  // records the single fact {"written": true}, and everything else it means is
+  // in the store.
+  const artifact = readTranscripts(repositoryRoot);
+  assert.deepEqual(replayFailures(artifact, SCENARIO_IDS), []);
+  for (const id of SCENARIO_IDS) {
+    const step = artifact.steps[id];
+    assert.ok(Object.keys(step.store ?? {}).length > 0, `${id} records an empty store`);
+  }
+});
+
+test("MUTATION: a recorded step with no store is refused as an oracle", () => {
+  const artifact = readTranscripts(repositoryRoot);
+  const id = SCENARIO_IDS[0];
+  const { store, ...withoutStore } = artifact.steps[id];
+  assert.ok(store !== undefined);
+  const failures = replayFailures({ steps: { ...artifact.steps, [id]: withoutStore } }, SCENARIO_IDS);
+  assert.ok(failures.some((entry) => entry.includes("records no store")), failures.join("\n"));
+  assert.throws(
+    () => recordedObservation({ ...artifact.steps, [id]: withoutStore }, id),
+    /carries no store/u,
+  );
+});
+
+test("the RECORDED DIMENSIONS are idempotent under the normalisers, which is what lets one engine read them twice", () => {
+  // The transcript is written through the normalisers so `twinRun` may read it
+  // back as a subject and normalise it a second time. If that second pass moved
+  // a recorded dimension, every replay would be a false divergence — so it is
+  // asserted over the committed recording itself rather than assumed.
+  //
+  // `usage` is deliberately NOT asserted and deliberately not recorded: no
+  // transport scenario declares it, `recordedObservation` reconstructs it as
+  // zeroes, and `duration-elided` then erases the field on both sides. Asserting
+  // idempotency over a field nothing compares would be asserting the shape of
+  // the reconstruction rather than the meaning of the record.
+  const artifact = readTranscripts(repositoryRoot);
+  const recordedDimensions = (observation) => ({
+    status: observation.response.status,
+    facts: observation.response.body,
+    auth: observation.auth,
+    store: observation.store,
+  });
+  for (const id of SCENARIO_IDS) {
+    const scenario = TRANSPORT_SCENARIO_REGISTRY.find((entry) => entry.id === id);
+    const options = { unorderedCollections: scenario.unorderedCollections ?? [], skip: scenario.normalisation.skip };
+    const once = recordedObservation(artifact.steps, id);
+    assert.deepEqual(
+      recordedDimensions(normalise(once, options)),
+      recordedDimensions(once),
+      `${id} moved when normalised a second time`,
+    );
+  }
+});
+
+test("THE REPLAY IS NOT VACUOUS: a candidate that did not write the row diverges from the frozen record", async () => {
+  const artifact = readTranscripts(repositoryRoot);
+  const id = "transport-environment-variable-set";
+  const scenario = TRANSPORT_SCENARIO_REGISTRY.find((entry) => entry.id === id);
+  const recordedSide = recordedObservation(artifact.steps, id);
+
+  // A candidate that answers exactly what was recorded replays clean.
+  const faithful = { ...recordedSide, side: "candidate", storeIdentity: "differential_candidate" };
+  const parity = await twinRun(
+    scenario,
+    { oracle: recordedOracleSubject(artifact.steps, id), candidate: { run: () => faithful } },
+    { skipNormalisers: scenario.normalisation.skip },
+  );
+  assert.equal(parity.verdict, "parity", JSON.stringify(parity.divergences ?? parity.failures));
+
+  // The same candidate missing the row the write was supposed to leave must not.
+  // ONE ROW, NOT THE WHOLE TABLE: emptying it is refused as VACUOUS by twinRun
+  // before any comparison happens — a correct refusal, and one that would have
+  // let this control pass while proving nothing about the comparison. `facts` is
+  // untouched and still says {"written": true}, which is the whole reason the
+  // store had to be recorded.
+  const table = Object.keys(faithful.store)[0];
+  assert.ok(faithful.store[table].length >= 2, `${table} needs a row to drop and a row to keep`);
+  const drifted = await twinRun(
+    scenario,
+    {
+      oracle: recordedOracleSubject(artifact.steps, id),
+      candidate: { run: () => ({ ...faithful, store: { ...faithful.store, [table]: faithful.store[table].slice(0, -1) } }) },
+    },
+    { skipNormalisers: scenario.normalisation.skip },
+  );
+  assert.equal(drifted.verdict, "divergent", JSON.stringify(drifted));
+  assert.ok(
+    (drifted.divergences ?? []).some((entry) => entry.dimension === "store"),
+    JSON.stringify(drifted.divergences),
+  );
+});
+
+test("the replay works with every oracle source DELETED, which is the state it exists for", () => {
+  // Post-cutover: `recordedObservation` reads the committed artifact and touches
+  // no webapp source, so the replay above is exactly as runnable when
+  // `apps/webapp/app/routes` is gone as it is today.
+  const artifact = readTranscripts(repositoryRoot);
+  for (const id of SCENARIO_IDS) {
+    const observation = recordedObservation(artifact.steps, id);
+    assert.equal(observation.side, "oracle");
+    assert.equal(observation.scenario, id);
+    assert.ok(typeof observation.storeIdentity === "string" && observation.storeIdentity.length > 0);
+  }
 });
 
 // ---------------------------------------------------------------------------

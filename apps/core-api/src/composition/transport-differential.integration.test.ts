@@ -136,7 +136,16 @@ let candidateUrl = "";
 
 let harness: any;
 let scenarios: any;
-let recorded: Record<string, { status: number; facts: Record<string, unknown>; auth: OracleAnswer["auth"] }> = {};
+let recorded: Record<
+  string,
+  {
+    status: number;
+    facts: Record<string, unknown>;
+    auth: OracleAnswer["auth"];
+    store: Record<string, unknown[]>;
+    storeIdentity: string;
+  }
+> = {};
 const observations = new Map<string, { oracle: Side; candidate: Side }>();
 const seeded = new Map<string, { oracle: Side; candidate: Side; scenario: string }>();
 
@@ -310,6 +319,7 @@ beforeAll(async () => {
   harness = {
     twinRun: (await import(`${HARNESS}/twin-run.mjs`)).twinRun,
     formatResult: (await import(`${HARNESS}/twin-run.mjs`)).formatResult,
+    normalise: (await import(`${HARNESS}/normalisers.mjs`)).normalise,
   };
   scenarios = await import(`${HARNESS}/transport-scenarios.mjs`);
   const transcripts = await import(`${HARNESS}/oracle-transcripts.mjs`);
@@ -848,7 +858,25 @@ describe("the V1 REST transport against the webapp it replaces", () => {
     const transcripts = await import(`${HARNESS}/oracle-transcripts.mjs`);
     const live: Record<string, unknown> = {};
     for (const [id, pair] of observations) {
-      live[id] = { status: pair.oracle.status, facts: pair.oracle.facts, auth: pair.oracle.auth };
+      // RECORDED THROUGH THE NORMALISERS, and all four dimensions of them. The
+      // first version wrote {status, facts, auth} only, which left the `store`
+      // half — the one that passes through no projection, and the only half that
+      // says anything at all about `transport-environment-variable-set` — out of
+      // the record the cutover leaves behind. Normalising before writing is what
+      // makes the step replayable by the same engine AND what keeps a session
+      // tokenHash out of the artifact: `digest-ordinal` has already replaced it.
+      const scenario = scenarios.TRANSPORT_SCENARIO_REGISTRY.find((row: any) => row.id === id);
+      const normalised = harness.normalise(observation("oracle", id, "differential_oracle", pair.oracle), {
+        unorderedCollections: scenario?.unorderedCollections ?? [],
+        skip: scenario?.normalisation?.skip ?? [],
+      });
+      live[id] = {
+        status: normalised.response.status,
+        facts: normalised.response.body,
+        auth: normalised.auth,
+        store: normalised.store,
+        storeIdentity: normalised.storeIdentity,
+      };
     }
     if (RECORDING) {
       transcripts.writeTranscripts(REPOSITORY_ROOT, live);
@@ -861,6 +889,82 @@ describe("the V1 REST transport against the webapp it replaces", () => {
         "which case the transcript must be re-recorded with PLATOS_DIFFERENTIAL_RECORD=1 and the change reviewed — " +
         "or the differential has drifted.",
     ).toEqual([]);
+  });
+
+  // -------------------------------------------------------------------------
+  // THE REPLAY. This is the case WIN-257's write-up claimed and did not have.
+  // -------------------------------------------------------------------------
+  //
+  // The case above compares the RECORDING against the LIVE oracle: a drift
+  // detector, and one that stops working the moment T8 deletes the sources. This
+  // one compares the CANDIDATE against the FROZEN RECORD, which is what T8 leaves
+  // behind — the same `twinRun`, the same comparators, the same approved
+  // differences, with the recorded step handed back as the oracle subject.
+  //
+  // It is not redundant with `reaches parity on …` today and it is the only
+  // comparison left tomorrow. Today it is the proof that the record is
+  // SUFFICIENT: if a scenario's meaning does not survive being written down and
+  // read back, that is visible now, while the oracle still exists to re-record
+  // from, rather than on the first run after the cutover.
+  it("replays the CANDIDATE against the frozen transcript, which is the oracle the cutover leaves behind", async () => {
+    if (RECORDING) return;
+    const transcripts = await import(`${HARNESS}/oracle-transcripts.mjs`);
+    const ids = [...observations.keys()].sort();
+    expect(
+      transcripts.replayFailures({ steps: recorded }, ids),
+      "a recorded step that carries no store, or no storeIdentity, is not an oracle — it is a souvenir",
+    ).toEqual([]);
+
+    const report: string[] = [];
+    for (const id of ids) {
+      const scenario = scenarios.TRANSPORT_SCENARIO_REGISTRY.find((row: any) => row.id === id);
+      const pair = observations.get(id);
+      const result = await harness.twinRun(
+        scenario,
+        {
+          oracle: transcripts.recordedOracleSubject(recorded, id),
+          candidate: { run: () => observation("candidate", id, "differential_candidate", pair!.candidate) },
+        },
+        { skipNormalisers: scenario.normalisation?.skip ?? [] },
+      );
+      const detail = `${harness.formatResult(result)}\n${JSON.stringify(result.divergences ?? [], null, 1).slice(0, 4000)}`;
+      expect(detail, `${id} does not replay against its recorded oracle`).toContain("PARITY");
+      report.push(id);
+    }
+    expect(report.length, "every driven scenario must replay, or the record is partial").toBe(ids.length);
+  });
+
+  it("the replay is not vacuous: a candidate that drifts from the frozen record is caught", async () => {
+    if (RECORDING) return;
+    const transcripts = await import(`${HARNESS}/oracle-transcripts.mjs`);
+    // THE MUTATION IS PERMANENT AND IN-SUITE. Without it "replays" would be
+    // satisfied by a comparison that compares nothing — the exact failure the
+    // transcript exists to prevent, reintroduced one level up.
+    const id = "transport-environment-variable-set";
+    const scenario = scenarios.TRANSPORT_SCENARIO_REGISTRY.find((row: any) => row.id === id);
+    const pair = observations.get(id);
+    const live = observation("candidate", id, "differential_candidate", pair!.candidate);
+    const table = Object.keys(live.store)[0] ?? "";
+    expect(live.store[table]?.length ?? 0, "the mutation needs a row to drop and a row to keep").toBeGreaterThan(1);
+    const perturbed = {
+      ...live,
+      // Drop the row the write was supposed to leave: a candidate that answered
+      // 200 and wrote nothing. ONE ROW, NOT THE TABLE — emptying it is refused
+      // as VACUOUS by twinRun before any comparison runs, which would let this
+      // control pass while proving nothing. `facts` still says {"written": true},
+      // which is precisely why recording the store was the load-bearing half.
+      store: { ...live.store, [table]: live.store[table].slice(0, -1) },
+    };
+    const result = await harness.twinRun(
+      scenario,
+      { oracle: transcripts.recordedOracleSubject(recorded, id), candidate: { run: () => perturbed } },
+      { skipNormalisers: scenario.normalisation?.skip ?? [] },
+    );
+    const moved = new Set<string>((result.divergences ?? []).map((row: any) => row.dimension));
+    expect(
+      moved.has("store"),
+      `a candidate that wrote no row must diverge from the frozen record on store: ${harness.formatResult(result)}`,
+    ).toBe(true);
   });
 
   it("carries no credential in the transcript it commits", async () => {

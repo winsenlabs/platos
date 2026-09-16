@@ -112,6 +112,16 @@ const MASK_PATTERNS = [
   // three above do: the sort key must use only the parts neither store
   // randomises, or the same logical row gets a different ordinal on each side.
   [DIGEST_PATTERN, "<digest>"],
+  // WIN-257, round 2. The ORDINAL TOKENS this register itself mints stand for
+  // values the four patterns above masked, so they are exactly as random as what
+  // they replaced and belong in the sort key exactly as little. On a first pass
+  // no string in an observation looks like one, so this changes nothing about a
+  // live twin run; what it buys is that `normalise` is IDEMPOTENT over its own
+  // output. That is what lets `oracle-transcripts.mjs` record an observation
+  // through this register and hand it back to `twinRun` as a subject — one
+  // comparison engine for the live oracle and for the frozen record, rather
+  // than a second one written to read the transcript.
+  [/<(?:id|digest|seq|instant):\d+>/gu, "<ordinal>"],
 ];
 
 function maskNondeterminism(text) {
