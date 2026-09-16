@@ -166,10 +166,26 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // `scripts/mcp-sdk-candidate-compatibility.mjs` is NOT added to SCRIPT_PREFIXES:
 // the selection protects the EVIDENCE a gate reads, not the gate.
 //
+// MCP REGISTER LANE DELTA (M4.2/M4.3) — the anchor moves from
+// 6843a714bebfc38b3ef704271a108a43412e432bbf8c99e32b57aa0d2ea2be72 over 802 paths
+// to b8b7c70c259f7af7961fa95647097b766e354908030c8a86ae248de71ee875fe over 806.
+// FOUR additions, all under the existing `docs/**` selection and none of them a
+// widening of it:
+//   docs/audits/win-268-mcp-disposition-register.{json,md}  the MCP disposition
+//                                                           register and its report
+//   docs/audits/win-269-agent-area-cycles.{json,md}         the apps/agent layering
+//                                                           register and its report
+// Verified SET-WISE against the committed 802-path manifest at 3c9ae99c: the
+// additions are exactly those four and NOTHING WAS REMOVED. Neither
+// `scripts/arch/mcp-disposition-register.mjs` nor
+// `scripts/arch/agent-area-cycles.mjs` is added to SCRIPT_PREFIXES, for the reason
+// the SDK-candidate delta above gives: the selection protects the EVIDENCE a gate
+// reads, not the gate.
+//
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "6843a714bebfc38b3ef704271a108a43412e432bbf8c99e32b57aa0d2ea2be72";
+export const EXPECTED_PATH_SET_SHA256 = "b8b7c70c259f7af7961fa95647097b766e354908030c8a86ae248de71ee875fe";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",
