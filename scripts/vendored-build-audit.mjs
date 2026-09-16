@@ -42,6 +42,31 @@ const allowedAdditionalIntegrationDeletions = [
     path: "patches/@window-splitter__state@0.4.1.patch",
     reason: "WIN-253 removed react-window-splitter and its obsolete transitive patch.",
   },
+  // WIN-257 T8 — THE DASHBOARD'S DATABASE ACCESS, DELETED.
+  //
+  // Recorded here for the reason this table exists: a deletion outside the
+  // six-workspace cluster is a violation BY DEFAULT, so removing a file the
+  // integration base carried has to be a decision somebody wrote down. These two
+  // are the whole of the webapp's coupling to PostgreSQL — the `PrismaClient` and
+  // the project-visibility rule that existed nowhere else in this product but as
+  // a `Prisma.ProjectWhereInput` — and they are gone because the dashboard now
+  // reaches its data through core-api over HTTP and holds no database credential.
+  //
+  // THE RULE THEY CARRIED DID NOT GO WITH THEM. `operatorVisibleProjectWhere` is
+  // `packages/contexts/tenancy/domain/visibility.ts` and the read model over it;
+  // the client is `GET /api/v1/projects`. `scripts/arch/boundary-rules.mjs`
+  // (`webapp-no-prisma`, now scanning `apps/webapp`) is what stops either coming
+  // back, and `arch-boundaries.test.mjs` plants a real import to prove it fires.
+  {
+    path: "apps/webapp/app/services/database.server.ts",
+    reason:
+      "WIN-257 T8 cut apps/webapp over to core-api: the dashboard holds no PrismaClient and no DATABASE_URL.",
+  },
+  {
+    path: "apps/webapp/app/services/projectAccess.server.ts",
+    reason:
+      "WIN-257 T8: the project-visibility rule moved into the tenancy context and is served by GET /api/v1/projects.",
+  },
 ];
 const protectedRoots = [
   "packages/platools-js",

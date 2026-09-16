@@ -475,6 +475,29 @@
         ],
         "type": "object"
       },
+      "EnvironmentSummaryResource": {
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "name",
+          "slug"
+        ],
+        "type": "object"
+      },
       "EnvironmentVariableResource": {
         "properties": {
           "createdAt": {
@@ -1212,6 +1235,12 @@
           "createdAt": {
             "type": "string"
           },
+          "environments": {
+            "items": {
+              "$ref": "#/components/schemas/EnvironmentSummaryResource"
+            },
+            "type": "array"
+          },
           "id": {
             "type": "string"
           },
@@ -1231,6 +1260,7 @@
         "required": [
           "archivedAt",
           "createdAt",
+          "environments",
           "id",
           "name",
           "organizationId",
@@ -2278,6 +2308,14 @@
           {
             "in": "query",
             "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
             "required": false,
             "schema": {
               "type": "string"

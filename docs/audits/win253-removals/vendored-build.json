@@ -163,6 +163,14 @@
         {
           "path": "patches/@window-splitter__state@0.4.1.patch",
           "reason": "WIN-253 removed react-window-splitter and its obsolete transitive patch."
+        },
+        {
+          "path": "apps/webapp/app/services/database.server.ts",
+          "reason": "WIN-257 T8 cut apps/webapp over to core-api: the dashboard holds no PrismaClient and no DATABASE_URL."
+        },
+        {
+          "path": "apps/webapp/app/services/projectAccess.server.ts",
+          "reason": "WIN-257 T8: the project-visibility rule moved into the tenancy context and is served by GET /api/v1/projects."
         }
       ]
     }
@@ -206,16 +214,30 @@
   ],
   "deletion": {
     "workspaceCount": 6,
-    "actualFileCount": 124,
-    "actualBytes": 628213,
-    "manifestSha256": "070843c227818eb8c40a5846acdd69d8e79e2231248fd25dc8da3fb35198186e",
+    "actualFileCount": 126,
+    "actualBytes": 629388,
+    "manifestSha256": "28caefceaba8f623913049c995bf9d74b1ca9892d28e5b32a324a8f6349422c9",
     "composition": {
       "reviewedSourceSixRootFileCount": 120,
       "primaryBaseSixRootAdditionCount": 2,
-      "separatelyAuthorizedOutsideRootFileCount": 2,
-      "totalFileCount": 124
+      "separatelyAuthorizedOutsideRootFileCount": 4,
+      "totalFileCount": 126
     },
     "files": [
+      {
+        "path": "apps/webapp/app/services/database.server.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "b8d21be27e7c73ff91b99487a9de3f400454f9d1",
+        "integrationBaseSha256": "a5fb8c9e4bd4731a58bc3f8a1fd2fb459b9997d3841b307b2f4c666c4808c009",
+        "bytes": 388
+      },
+      {
+        "path": "apps/webapp/app/services/projectAccess.server.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "4713776f206718944e980993994f49a074d47f05",
+        "integrationBaseSha256": "8ef6a68ad9d46c28af6c033ab91a0b3f272b2ce78399dcd0ca185ecf2ce7470c",
+        "bytes": 787
+      },
       {
         "path": "internal-packages/sdk-compat-tests/package.json",
         "mode": "100644",
@@ -1104,6 +1126,8 @@
       "restore",
       "--source=34c41bc10bd23c90271e83592148fab3bf26aa38",
       "--",
+      "apps/webapp/app/services/database.server.ts",
+      "apps/webapp/app/services/projectAccess.server.ts",
       "internal-packages/sdk-compat-tests/package.json",
       "internal-packages/sdk-compat-tests/src/fixtures/bun/package.json",
       "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts",
@@ -1230,6 +1254,8 @@
       "patches/@window-splitter__state@0.4.1.patch"
     ],
     "pathspec": [
+      "apps/webapp/app/services/database.server.ts",
+      "apps/webapp/app/services/projectAccess.server.ts",
       "internal-packages/sdk-compat-tests/package.json",
       "internal-packages/sdk-compat-tests/src/fixtures/bun/package.json",
       "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts",
@@ -4903,7 +4929,7 @@
     }
   ],
   "integration": {
-    "lockfileSha256": "6dafadf93e0f5264a2ba5571dffcca335f879a565ffd5a14065c6ebb4402b34c",
+    "lockfileSha256": "e8c054e5e1cf30f9f40e8e6e6e676702620ea970d67ce1e6360eea26c9b98e52",
     "vocabularySha256": "c99b506c2381cde58387bbd532338c3f666e469c415b9dc14e214d3d05cd75b1",
     "ledgerRulesSha256": "9a68a3c5d47d6eeb7e9611ad877b0fc4c52ca516500214c170328f8776257d36",
     "reachabilitySha256": "07b3462e7a0625e614e0c55d89a7820ef7fbeecb423e6365ccf27ff9c0fcc044",

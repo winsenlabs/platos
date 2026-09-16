@@ -11,7 +11,7 @@ The assembled tree removes exactly six inherited Trigger workspaces from integra
 - `packages/rsc` (`@platos/rsc`)
 - `packages/schema-to-json` (`@platos/schema-to-json`)
 
-The six-root cluster contributes exactly 122 integration-base files: 120 reviewed-source deletions plus 2 later primary-base additions (`packages/rsc/LICENSE` and `packages/schema-to-json/LICENSE`). Separately, 2 obsolete patch files outside those six roots are authorized for deletion (`patches/@upstash__ratelimit.patch` and `patches/@window-splitter__state@0.4.1.patch`). The executable receipt therefore derives 124 total deleted files (120 + 2 + 2) and 628213 bytes from Git.
+The six-root cluster contributes exactly 122 integration-base files: 120 reviewed-source deletions plus 2 later primary-base additions (`packages/rsc/LICENSE` and `packages/schema-to-json/LICENSE`). Separately, 4 obsolete patch files outside those six roots are authorized for deletion (`patches/@upstash__ratelimit.patch` and `patches/@window-splitter__state@0.4.1.patch` and `apps/webapp/app/services/database.server.ts` and `apps/webapp/app/services/projectAccess.server.ts`). The executable receipt therefore derives 126 total deleted files (120 + 2 + 4) and 629388 bytes from Git.
 
 ## Reviewed-source provenance
 
@@ -80,4 +80,4 @@ The current lockfile, changesets, vocabulary exceptions, V1 ledger fingerprint, 
 
 ## Rollback
 
-Execute the exact `restore.argv` array from `docs/audits/win253-removals/vendored-build.json` without shell interpolation. It restores exactly the 124 Git-derived deletion paths (120 reviewed-source files, 2 later six-root additions, and 2 separately authorized outside-root patches) from `34c41bc10bd23c90271e83592148fab3bf26aa38`. The byte-for-byte rollback test deletes that full pathset before exercising the argv.
+Execute the exact `restore.argv` array from `docs/audits/win253-removals/vendored-build.json` without shell interpolation. It restores exactly the 126 Git-derived deletion paths (120 reviewed-source files, 2 later six-root additions, and 4 separately authorized outside-root patches) from `34c41bc10bd23c90271e83592148fab3bf26aa38`. The byte-for-byte rollback test deletes that full pathset before exercising the argv.

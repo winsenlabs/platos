@@ -643,6 +643,13 @@ export interface EnvironmentScopeResource {
   readonly "projectRole": string | null;
 }
 
+export interface EnvironmentSummaryResource {
+  readonly "id": string;
+  readonly "slug": string;
+  readonly "name": string;
+  readonly "createdAt": string;
+}
+
 export interface EnvironmentVariableResource {
   readonly "id": string;
   readonly "key": string;
@@ -863,6 +870,7 @@ export interface ProjectResource {
   readonly "archivedAt": string | null;
   readonly "createdAt": string;
   readonly "through": string;
+  readonly "environments": readonly EnvironmentSummaryResource[];
 }
 
 export interface ProviderKeyResource {
@@ -1344,7 +1352,7 @@ export class EnvironmentEndUsersV1Api {
   constructor(private readonly transport: V1Transport) {}
 
   /** GET /api/v1/environments/:environmentId/end-users */
-  async list(environmentId: string, query?: { readonly cursor?: string; readonly limit?: string; readonly search?: string; readonly status?: string }): Promise<CollectionEnvelope_EndUserResource> {
+  async list(environmentId: string, query?: { readonly cursor?: string; readonly limit?: string; readonly offset?: string; readonly search?: string; readonly status?: string }): Promise<CollectionEnvelope_EndUserResource> {
     return this.transport.send<CollectionEnvelope_EndUserResource>({
       operation: operation("get__api_v1_environments_by_environmentId_end_users"),
       path: fill("/api/v1/environments/:environmentId/end-users", { environmentId }),

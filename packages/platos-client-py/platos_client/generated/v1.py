@@ -641,6 +641,13 @@ class EnvironmentScopeResource(TypedDict):
     projectRole: str | None
 
 
+class EnvironmentSummaryResource(TypedDict):
+    id: str
+    slug: str
+    name: str
+    createdAt: str
+
+
 class EnvironmentVariableResource(TypedDict):
     id: str
     key: str
@@ -870,6 +877,7 @@ class ProjectResource(TypedDict):
     archivedAt: str | None
     createdAt: str
     through: str
+    environments: list["EnvironmentSummaryResource"]
 
 
 class ProviderKeyResource(TypedDict):
@@ -1338,12 +1346,13 @@ class EnvironmentEndUsersV1Api:
     def __init__(self, transport: V1Transport) -> None:
         self._transport = transport
 
-    def list(self, environment_id: str, cursor: str | None = None, limit: str | None = None, search: str | None = None, status: str | None = None) -> "CollectionEnvelope_EndUserResource":
+    def list(self, environment_id: str, cursor: str | None = None, limit: str | None = None, offset: str | None = None, search: str | None = None, status: str | None = None) -> "CollectionEnvelope_EndUserResource":
         """GET /api/v1/environments/:environmentId/end-users
 
         Query parameters:
             cursor: optional
             limit: optional
+            offset: optional
             search: optional
             status: optional
         """
@@ -1352,7 +1361,7 @@ class EnvironmentEndUsersV1Api:
                 "operation": _operation("get__api_v1_environments_by_environmentId_end_users"),
                 "path": _fill("/api/v1/environments/:environmentId/end-users", {"environmentId": environment_id}),
                 "body": None,
-                "query": {name: value for name, value in {"cursor": cursor, "limit": limit, "search": search, "status": status}.items() if value is not None},
+                "query": {name: value for name, value in {"cursor": cursor, "limit": limit, "offset": offset, "search": search, "status": status}.items() if value is not None},
             }
         )
 

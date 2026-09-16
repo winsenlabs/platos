@@ -21,6 +21,19 @@ export const ADDITIONAL_INTEGRATION_DELETIONS = Object.freeze([
     path: "patches/@window-splitter__state@0.4.1.patch",
     reason: "WIN-253 webapp dependency pruning removed the retired window-splitter patch.",
   },
+  // WIN-257 T8 — the dashboard's two database modules. Recorded here as well as
+  // in `scripts/vendored-build-audit.mjs` because both audits walk the SAME
+  // deletion set from the same integration base and neither inherits the other's
+  // authorization; a deletion outside the cluster is a violation in both until a
+  // reason is written in both. See the note in that file for what moved where.
+  {
+    path: "apps/webapp/app/services/database.server.ts",
+    reason: "WIN-257 T8 cut apps/webapp over to core-api: no PrismaClient, no DATABASE_URL.",
+  },
+  {
+    path: "apps/webapp/app/services/projectAccess.server.ts",
+    reason: "WIN-257 T8: the project-visibility rule is the tenancy context's, served by GET /api/v1/projects.",
+  },
 ]);
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");

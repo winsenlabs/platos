@@ -77,7 +77,20 @@ export interface ProjectResource {
 /** What `createProject` commits, all three rows of it. */
 export interface CreatedProjectResource {
   readonly project: ProjectResource;
-  readonly environment: EnvironmentSummaryResource;
+  /**
+   * SPELLED OUT, NOT `EnvironmentSummaryResource`, AND THE GENERATOR IS WHY.
+   * The two carry the same four fields, so naming the shared type here reads as
+   * the obvious tidy-up — and `scripts/openapi-compat.mjs` reports it
+   * `BREAKING  ref-retargeted`, because the published document changes from an
+   * inline object to a `$ref`. Nothing on the wire moves, and a gate that cannot
+   * tell the difference is a gate you do not argue with over a cosmetic.
+   */
+  readonly environment: {
+    readonly id: string;
+    readonly slug: string;
+    readonly name: string;
+    readonly createdAt: string;
+  };
   readonly membership: { readonly id: string; readonly role: string };
 }
 

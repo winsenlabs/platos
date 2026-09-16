@@ -22,7 +22,7 @@
     ]
   },
   "sourceDigests": {
-    "apps/agent/src/openapi/openapi.generated.json": "c180bc86b6577986",
+    "apps/agent/src/openapi/openapi.generated.json": "566bbfb216cfa5a5",
     "apps/agent/src/control-plane/operation-manifest.generated.json": "a21e981a5b318e87",
     "apps/core-api/src/http/idempotency-policy.ts": "fe4daadf7e1e2547",
     "apps/core-api/src/http/idempotency-errors.ts": "768dd58139007391",
@@ -52,6 +52,7 @@
     "EndUserIdentityResource",
     "EndUserResource",
     "EnvironmentScopeResource",
+    "EnvironmentSummaryResource",
     "EnvironmentVariableResource",
     "ErrorEnvelope",
     "ExchangeSessionBody",
@@ -252,12 +253,14 @@
         "query": {
           "cursor": "sample-query-cursor",
           "limit": "sample-query-limit",
+          "offset": "sample-query-offset",
           "search": "sample-query-search",
           "status": "sample-query-status"
         },
         "pythonQuery": {
           "cursor": "sample-query-cursor",
           "limit": "sample-query-limit",
+          "offset": "sample-query-offset",
           "search": "sample-query-search",
           "status": "sample-query-status"
         }
@@ -268,10 +271,11 @@
         "query": {
           "cursor": "sample-query-cursor",
           "limit": "sample-query-limit",
+          "offset": "sample-query-offset",
           "search": "sample-query-search",
           "status": "sample-query-status"
         },
-        "queryString": "?cursor=sample-query-cursor&limit=sample-query-limit&search=sample-query-search&status=sample-query-status",
+        "queryString": "?cursor=sample-query-cursor&limit=sample-query-limit&offset=sample-query-offset&search=sample-query-search&status=sample-query-status",
         "sendsIdempotencyKey": false,
         "contentType": null,
         "accept": "application/json"

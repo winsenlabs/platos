@@ -485,6 +485,29 @@
           "projectRole"
         ]
       },
+      "EnvironmentSummaryResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "name",
+          "slug"
+        ]
+      },
       "EnvironmentVariableResource": {
         "type": "object",
         "properties": {
@@ -1237,11 +1260,18 @@
           },
           "through": {
             "type": "string"
+          },
+          "environments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnvironmentSummaryResource"
+            }
           }
         },
         "required": [
           "archivedAt",
           "createdAt",
+          "environments",
           "id",
           "name",
           "organizationId",
@@ -9640,6 +9670,14 @@
             }
           },
           {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "search",
             "in": "query",
             "required": false,
@@ -13378,7 +13416,7 @@
     "undeclaredOperations": 294,
     "undeclaredReason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)",
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
-    "componentSchemas": 62,
+    "componentSchemas": 63,
     "canonicalErrorCodes": 473,
     "queryParametersNotDerived": []
   }
