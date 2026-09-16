@@ -1053,12 +1053,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "49a019ba0dc99299957f4e622f1b352af2484b2c1051bc8dceebdd058c35223b"
+      "sha256": "07b3462e7a0625e614e0c55d89a7820ef7fbeecb423e6365ccf27ff9c0fcc044"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "877bd35cf19df02327c31aaa79c16e1d01655a0bd0c178eb9ff2ca7867a3d070"
+      "sha256": "c9803aac10d4ff055cd3f346270175816a392b07e5dc1d30613992db83aa9309"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1068,7 +1068,7 @@
     {
       "path": "docs/audits/win-267-rest-cell-coverage.json",
       "mode": "100644",
-      "sha256": "7999146019ff0f55c5ee7e93c759356da87ec191cc8f622dab16d56eb410b441"
+      "sha256": "02718098276543583f4f581d41e7452530c920e5dfc12b56d145645fa8d03170"
     },
     {
       "path": "docs/audits/win-268-mcp-store-ownership.json",
@@ -1113,7 +1113,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "886dc6d600962f1eac22823e6aebdf6fae4c4b1c983ad27c751f06028c3aaf17"
+      "sha256": "30b45d3c6cb75604a09322849264275d6dda266889119d3c5c70d217eaa06992"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",

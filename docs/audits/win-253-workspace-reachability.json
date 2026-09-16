@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "ff93b8f5f66ebb43e0423e75f6144bbf09ddc69204a6ed401c9218018ec35fc5",
+  "evidenceSha256": "5b8eafaad284e302cd6802a4d3829fc6422be917bd607617e902a5ead8e8359a",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 40,
@@ -117,7 +117,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "4fc63d1fb5c2663bd32b61d584c6503055c976bd049d4ce9c2b197ccb7979e74",
+    "aggregateSha256": "f5900fe4a319cc098d3a7cb42a18de48a47c0a9e5df01d9e471d423b144c6efc",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2705,7 +2705,7 @@
       },
       {
         "path": "apps/core-api/src/composition/transport-differential.integration.test.ts",
-        "sha256": "7ae4131529dd19ead03e0f1a2b35ab70622a561c0c05b276ad682c90edf6d4c8"
+        "sha256": "2f4c75949ae25d073c1b616186daffaaaa7ede6829b92aaefb03d630284c1d62"
       },
       {
         "path": "apps/core-api/src/config/channels.ts",
@@ -4673,7 +4673,7 @@
       },
       {
         "path": "docs/audits/win-267-rest-cell-coverage.json",
-        "sha256": "7999146019ff0f55c5ee7e93c759356da87ec191cc8f622dab16d56eb410b441"
+        "sha256": "02718098276543583f4f581d41e7452530c920e5dfc12b56d145645fa8d03170"
       },
       {
         "path": "docs/audits/win-268-mcp-store-ownership.json",
@@ -21029,11 +21029,11 @@
       },
       {
         "path": "scripts/rest-cell-coverage.mjs",
-        "sha256": "7ba146f3753640f5905bf08989ce987144c76b239a0b159c2ab19c6fddb07e4b"
+        "sha256": "459345760d716604b7906e108c4cfa659ee13af99ce755978b08143321bf4d5b"
       },
       {
         "path": "scripts/rest-cell-coverage.test.mjs",
-        "sha256": "dfc4b7c37fa8c7f37f06536fe971c05484160beaf9bab614fb28c6406ca78851"
+        "sha256": "511a2758c4b7a8fe0bfe7afeef14f19f6bdf436c61fbb02836abf4d844436b69"
       },
       {
         "path": "scripts/rest-census-independent.mjs",
@@ -21293,7 +21293,7 @@
       },
       {
         "path": "tests/differential-harness/README.md",
-        "sha256": "492bb975106ad60a074f42f103d98c61f3cecb7a51b03bf68754b1ecf737b959"
+        "sha256": "519d873a86780aea5016cec3a804702445885a263326357c766d961b8e6d576b"
       },
       {
         "path": "tests/differential-harness/comparators.mjs",
@@ -21313,7 +21313,7 @@
       },
       {
         "path": "tests/differential-harness/normalisers.mjs",
-        "sha256": "dc2b67b2625bbf6008adb6d67dbad5feb4dfc810aec8ddbc0f452c30939960b0"
+        "sha256": "f90986cdbc7f20862e898283b7cc13a0a95e9702cc35765e8268326bbca52826"
       },
       {
         "path": "tests/differential-harness/normalisers.test.mjs",
@@ -21325,15 +21325,15 @@
       },
       {
         "path": "tests/differential-harness/oracle-transcripts.json",
-        "sha256": "b721ff834bcae285cd4380b913d84d448e46cf7bb2c6350add29a2ff6d39611f"
+        "sha256": "7bdbb7a2f0644746c97b427ada847c936c72f23ee89e6671d7393cab07e3d7ec"
       },
       {
         "path": "tests/differential-harness/oracle-transcripts.mjs",
-        "sha256": "542de7fbd25626d48f50054a56607d40694c1903c824569b35a397a2b8a9e9b2"
+        "sha256": "5d6fa404fca8f1b75ecb89cd96cd10cc6bd9a86237a9f3cb705b256c812de2ca"
       },
       {
         "path": "tests/differential-harness/oracle-transcripts.test.mjs",
-        "sha256": "60174da5293ce197c91327d21e12fc70f76a94c79d73de915e1b8e60d0ade97c"
+        "sha256": "89d43c124cc071b383012234696f1abcf556d8cd51461da4aa066270acb1d16c"
       },
       {
         "path": "tests/differential-harness/postgres-conservation.mjs",
@@ -25138,7 +25138,7 @@
             {
               "from": "scripts/rest-cell-coverage.test.mjs",
               "kind": "reference",
-              "line": 159
+              "line": 235
             },
             {
               "from": "scripts/rest-census-independent.test.mjs",
@@ -26786,7 +26786,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "e7bc6f5bb51d20fc534439cc50701067c2d77986825504f828fb7138dcc77361",
+      "evidenceSha256": "467937205372ecf7a2773f5cb2af67b86234e6e798e00f86e28e40abd9cf2fb0",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -28070,7 +28070,7 @@
             {
               "from": "scripts/rest-cell-coverage.test.mjs",
               "kind": "reference",
-              "line": 156
+              "line": 193
             },
             {
               "from": "scripts/rest-census-independent.test.mjs",
@@ -28095,12 +28095,12 @@
             {
               "from": "tests/differential-harness/oracle-transcripts.json",
               "kind": "reference",
-              "line": 9
+              "line": 16
             },
             {
               "from": "tests/differential-harness/oracle-transcripts.mjs",
               "kind": "reference",
-              "line": 100
+              "line": 135
             },
             {
               "from": "tests/differential-harness/README.md",
@@ -28665,7 +28665,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "f09f9694c19fc9a3524e7a572e90a5a04241805ba4fb1f21d518a9d15b40c454",
+      "evidenceSha256": "c7cbcafd6647977f77775718f864680e7ff03f4c19c178c70b75a2fdc5b5c9bd",
       "manifestSha256": "49ddc857b431a1b3f06053205fbd088cbccaa1632963a7fdd22a80c3ce8ca347",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -30998,12 +30998,12 @@
             {
               "from": "tests/differential-harness/normalisers.mjs",
               "kind": "reference",
-              "line": 210
+              "line": 220
             },
             {
               "from": "tests/differential-harness/oracle-transcripts.json",
               "kind": "reference",
-              "line": 12
+              "line": 19
             },
             {
               "from": "tests/differential-harness/oracle-transcripts.mjs",
@@ -31013,7 +31013,7 @@
             {
               "from": "tests/differential-harness/oracle-transcripts.test.mjs",
               "kind": "reference",
-              "line": 57
+              "line": 62
             },
             {
               "from": "tests/differential-harness/README.md",
@@ -31609,7 +31609,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "60ff784dda5688a83e2426090f45cedb6a9fa102ef2e553fa8b4937146830423",
+      "evidenceSha256": "f1edb8a73e35db59d15f03ad10c126a443a32154f2c7b2eb02b9bc57224462ba",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -44301,7 +44301,7 @@
             {
               "from": "apps/core-api/src/composition/transport-differential.integration.test.ts",
               "kind": "reference",
-              "line": 339
+              "line": 349
             },
             {
               "from": "apps/core-api/src/runtime/log-redaction.test.ts",
@@ -44681,12 +44681,12 @@
             {
               "from": "tests/differential-harness/oracle-transcripts.json",
               "kind": "reference",
-              "line": 67
+              "line": 74
             },
             {
               "from": "tests/differential-harness/oracle-transcripts.mjs",
               "kind": "reference",
-              "line": 61
+              "line": 91
             },
             {
               "from": "tests/differential-harness/postgres-conservation.mjs",
@@ -45536,7 +45536,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "04f09a1e6019f869771bec85b1da39880bc4958c08bb36976abc7dd57f9aeae1",
+      "evidenceSha256": "ca8ea4795d2465494154faa2308a6445091ddbaf5b4a06fd00e000cd57c23e96",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -98572,11 +98572,6 @@
               "line": 230
             },
             {
-              "from": "docs/audits/win-267-rest-cell-coverage.json",
-              "kind": "reference",
-              "line": 291
-            },
-            {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "reference",
               "line": 7480
@@ -98758,10 +98753,6 @@
               "docs/audits/sbom/closure-contract.md"
             ],
             [
-              "docs/audits/win-267-rest-cell-coverage.json",
-              "docs/audits/win-267-rest-cell-coverage.json"
-            ],
-            [
               "docs/audits/win-284-differential-coverage.json",
               "docs/audits/win-284-differential-coverage.json"
             ],
@@ -98861,7 +98852,6 @@
             "docs/audits/M0.2-capability-matrix.json",
             "docs/audits/M0.5-dependency-sbom.md",
             "docs/audits/sbom/closure-contract.md",
-            "docs/audits/win-267-rest-cell-coverage.json",
             "docs/audits/win-284-differential-coverage.json",
             "docs/launch/release-notes-v1.0.0.md",
             "docs/sdk-v1-migration.md",
@@ -99342,7 +99332,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "a702246b11cbc87a9b26ca4eaa9bb97c587f5c8d8a1d2ee6551479ed7c47d24c",
+      "evidenceSha256": "f8b6241d1c5832e96c2c4e2a2c9b422f377d9c09c6abd845b7b88963e38bfb5a",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {
