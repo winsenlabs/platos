@@ -420,6 +420,31 @@ export const ALLOWED = Object.freeze([
     reads: 1,
     why: "Real-PostgreSQL and real-Redis integration suite for the third bound one-time-secret mint. It copies and freezes the ambient environment once, at module load, and reads four values out of the copy: the external database url that lets it run without Docker, an optional real Redis, a psql binary override for the process that counts rows outside the adapter's pool, and the inherited environment it spawns the ORM's migration CLI with.",
   }),
+  // WIN-257 / WIN-284 — the transport differential. ONE read, the same shape and
+  // the same convention as the four suites above: `{ ...process.env }` copied and
+  // frozen at module load, every lookup off the copy.
+  //
+  // IT READS THE COPY THREE TIMES AND ALL THREE ARE THE SAME KIND OF THING —
+  // something the RUNNER owns rather than something the systems under test do.
+  // The inherited environment is layered under the ORM's migration CLI, which is
+  // spawned twice because this suite builds TWO databases; `PATH` is handed to
+  // the webapp's `tsx`, which executes the ORACLE in its own package; and
+  // `PLATOS_DIFFERENTIAL_RECORD` says whether this run is re-recording the oracle
+  // transcript or checking against it.
+  //
+  // THE SIXTEEN CONFIGURATION VARIABLES IT SETS ARE STILL NOT READS, for the
+  // reason its siblings give: they are properties of a plain object handed to
+  // `loadPlatformConfiguration`, so the candidate process takes nothing from the
+  // machine. The oracle's environment is a plain object too — a suite that had
+  // reached past `AMBIENT` for the webapp's `DATABASE_URL` or `ENCRYPTION_KEY`
+  // would show up here as a SECOND read, which is exactly the door this gate is
+  // counting.
+  Object.freeze({
+    path: "apps/core-api/src/composition/transport-differential.integration.test.ts",
+    role: "test-support",
+    reads: 1,
+    why: "Twin-runs the V1 REST transport against the webapp oracle over one PostgreSQL server and two databases. It copies and freezes the ambient environment once, at module load, and reads three values out of the copy: the inherited environment it spawns the ORM's migration CLI with, the PATH the webapp's tsx needs to execute the oracle in its own package, and the flag that says whether this run re-records the oracle transcript or checks against it.",
+  }),
 ]);
 
 const allowedByPath = new Map(ALLOWED.map((entry) => [entry.path, entry]));
@@ -842,8 +867,17 @@ export const VIOLATION_CODES = Object.freeze({
  * LANE REPORTS: each lane measured its own delta against 1701, and only the merge
  * can say what the four together produce. 1701 + 18 + 2 + 21 + 18 = 1760, and the
  * audit run on this merge is the authority for it.
+ *
+ * EVIDENCE REGISTERS (WIN-257/WIN-284), integrated fifth: 1760 + 1 = 1761, and ONE
+ * door, the transport differential declared above. The one file is
+ * `apps/core-api/src/composition/transport-differential.integration.test.ts`. Its
+ * sibling halves land OUTSIDE this scan on purpose and that is the point of the
+ * shape: the oracle driver lives in `apps/webapp`, which this gate does not scan
+ * because the webapp is not a V1 deployable, and the harness registry, the
+ * transcript and their controls live under `tests/`. Thirty-three declared reads
+ * become thirty-four.
  */
-export const EXPECTED_FILE_COUNT = 1760;
+export const EXPECTED_FILE_COUNT = 1761;
 
 function listSourceFiles(root) {
   const found = [];

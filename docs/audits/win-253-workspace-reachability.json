@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "b6f091b57283392c01f69523d7ca9dc9cb22a5265ca3622537db7803ff828566",
+  "evidenceSha256": "ff93b8f5f66ebb43e0423e75f6144bbf09ddc69204a6ed401c9218018ec35fc5",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 40,
@@ -117,7 +117,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "bf5e291fd0d7962c10f0495414bb372e10b584f07f1e9dc79b809f6b498e95b5",
+    "aggregateSha256": "4fc63d1fb5c2663bd32b61d584c6503055c976bd049d4ce9c2b197ccb7979e74",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -20645,7 +20645,7 @@
       },
       {
         "path": "scripts/arch/env-access.mjs",
-        "sha256": "bedb78c4d72778d88a97874c0ab14b28e3bf41ae5939593fe2d4c4d0a599df29"
+        "sha256": "f5c531c9e67301ed41dfa8b3a572498177fa33e35d937107cbb1b0cfa800ddf9"
       },
       {
         "path": "scripts/arch/env-access.test.mjs",
