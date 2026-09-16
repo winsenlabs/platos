@@ -2505,7 +2505,16 @@ export const EXPECTED = Object.freeze({
   // method, path and body of every call against a recording server, the four
   // outcome codes, and the `./` that keeps a colon-bearing token from being
   // parsed as a URL scheme).
-  "packages/adapters/channel-telegram": { files: 4, cases: 83 },
+  //
+  // MUTATION SWEEP, ROUND 2: 83 -> 86, the SAME 4 files. Three mutations against
+  // behaviour this directory's own comments describe survived the full suite, and
+  // each now has a case that kills it: telegram-transport 38 -> 41 (the code a
+  // REAL dropped socket produces, read off the wire and fed to the classifier;
+  // an edit INSIDE a topic carrying no `message_thread_id`, which the private-chat
+  // case could not see; and the vendor's 4096-character limit pinned as a
+  // transcription, because the behavioural case reads the constant a mutation
+  // widened).
+  "packages/adapters/channel-telegram": { files: 4, cases: 86 },
   // WIN-271 (M4.5), D10, the remaining two providers. 0 -> 112 over 5 NEW files.
   // `rfc4231` (29 — the seven published vectors against BOTH `createHmac` and an
   // RFC 2104 construction built from raw SHA-256, with a negative control proving
@@ -2517,7 +2526,13 @@ export const EXPECTED = Object.freeze({
   // `signed-admission` (10) and `whatsapp-transport` (35 — the three throughput
   // scopes, error code 190 arriving as a 400, and the edit refused because the
   // Cloud API has no edit route).
-  "packages/adapters/channel-whatsapp": { files: 5, cases: 112 },
+  //
+  // MUTATION SWEEP, ROUND 2: 112 -> 114, the SAME 5 files. whatsapp-transport
+  // 35 -> 37, for two of the three reasons `channel-telegram`'s row gives: the
+  // code a REAL dropped socket produces (undici's `UND_ERR_SOCKET`, never
+  // `ECONNRESET`, which is what the list inherited from `channel-slack` names),
+  // and Meta's own 4096-character limit pinned as a transcription.
+  "packages/adapters/channel-whatsapp": { files: 5, cases: 114 },
   "packages/adapters/clickhouse-observability": { files: 0, cases: 0 },
   "packages/adapters/durable-runtime": { files: 0, cases: 0 },
   "packages/adapters/model-router-providers": { files: 15, cases: 198 },
@@ -3837,12 +3852,18 @@ export const EXPECTED = Object.freeze({
 // `channels` for all three — `APP_PROVIDERS` is `["slack"]` — so the clause is
 // advanced by them and not closed by them.)
 //
+// MUTATION SWEEP, ROUND 2: +5 more, in the same two rows and the same nine files
+// — whatsapp 112 -> 114 and telegram 83 -> 86. The five new cases are the four
+// the sweep's survivors demanded plus the two transcription pins, counted once
+// each; `apps/core-api`'s own six new configuration cases move no number here,
+// because that package is outside `PACKAGE_ROOTS`.
+//
 // RE-MEASURED ON THE TREE, NOT SUMMED FROM THE COMMENTS ABOVE: the audit reports
-// 8516 -> 8711 cases across 574 -> 583 FILES in 34 -> 36 V1 packages. (The
+// 8516 -> 8716 cases across 574 -> 583 FILES in 34 -> 36 V1 packages. (The
 // running file figure the paragraphs above quote, 569, counts a narrower set than
 // the audit's own line does; 574 is what the tool printed on this lane's base
 // commit and 583 is what it prints here, and those two are the authority.)
-export const EXPECTED_RUNTIME_TOTAL = 8711;
+export const EXPECTED_RUNTIME_TOTAL = 8716;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

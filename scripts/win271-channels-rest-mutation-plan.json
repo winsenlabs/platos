@@ -1,0 +1,425 @@
+{
+  "$schema-note": "Mutation PLAN for the remaining two channel runtimes. Every row names an exact anchor in a committed file, the replacement, and the command to run. `node scripts/run-win271-mutations.mjs <this file> <results>` applies one row at a time, runs the command from the repository root, restores the file, and records the exit code the run actually returned. Nothing here is a prediction.",
+  "tranche": "M4.5 \u2014 packages/adapters/channel-whatsapp and packages/adapters/channel-telegram, the third and fourth ChannelRuntimes (founder decision D10: Discord, then WhatsApp, then Telegram; none dropped)",
+  "branch": "tejas/m2m4-lane-channels-rest",
+  "base": "a6efc03bcbe73764d35984d671a1d63cf3bb9ecd",
+  "purpose": "A green suite proves the code passes its own cases. Each row removes exactly one property these directories, their wiring or their configuration claims, and records whether a NAMED case turned red.",
+  "mutations": [
+    {
+      "name": "W01 the digest grammar accepts any length",
+      "guards": "trailing garbage after a genuine digest is refused, because Buffer.from(hex) would decode the genuine bytes",
+      "file": "packages/adapters/channel-whatsapp/src/hmac.ts",
+      "command": "whatsappSig",
+      "from": "const SHA256_HEX = /^[0-9a-fA-F]{64}$/u;",
+      "to": "const SHA256_HEX = /^[0-9a-fA-F]+/u;"
+    },
+    {
+      "name": "W02 the length guard before timingSafeEqual is removed",
+      "guards": "a truncated digest is FALSE and never a RangeError an anonymous caller can trigger",
+      "file": "packages/adapters/channel-whatsapp/src/hmac.ts",
+      "command": "whatsappSig",
+      "from": "  if (expected.length !== presented.length) return false;\n  return timingSafeEqual(expected, presented);",
+      "to": "  return timingSafeEqual(Buffer.from(expectedHex, \"utf8\"), Buffer.from(presentedHex, \"utf8\"));"
+    },
+    {
+      "name": "W03 the sha256= prefix is not required",
+      "guards": "a bare digest, and a sha1= digest from the same header family, are refused",
+      "file": "packages/adapters/channel-whatsapp/src/verify.ts",
+      "command": "whatsappSig",
+      "from": "  if (!headerValue.startsWith(WHATSAPP_SIGNATURE_PREFIX)) return null;\n  return headerValue.slice(WHATSAPP_SIGNATURE_PREFIX.length);",
+      "to": "  return headerValue.startsWith(WHATSAPP_SIGNATURE_PREFIX) ? headerValue.slice(WHATSAPP_SIGNATURE_PREFIX.length) : headerValue;"
+    },
+    {
+      "name": "W04 an empty configured app secret is accepted",
+      "guards": "an install that left the variable blank cannot be signed for by anybody",
+      "file": "packages/adapters/channel-whatsapp/src/verify.ts",
+      "command": "whatsappSig",
+      "from": "  if (appSecret === \"\") return err(signatureInvalid(WHATSAPP_PROVIDER));\n",
+      "to": ""
+    },
+    {
+      "name": "W05 the HMAC key and message are swapped",
+      "guards": "the construction is HMAC(app secret, raw body) and not its transpose",
+      "file": "packages/adapters/channel-whatsapp/src/verify.ts",
+      "command": "whatsappSig",
+      "from": "  const expected = hmacSha256Hex(Buffer.from(appSecret, \"utf8\"), Buffer.from(delivery.rawBody, \"utf8\"));",
+      "to": "  const expected = hmacSha256Hex(Buffer.from(delivery.rawBody, \"utf8\"), Buffer.from(appSecret, \"utf8\"));"
+    },
+    {
+      "name": "W06 the verify token is compared by prefix",
+      "guards": "a token that is a PREFIX of the configured one is refused",
+      "file": "packages/adapters/channel-whatsapp/src/verify.ts",
+      "command": "whatsappSig",
+      "from": "  const matches = digestsMatch(\n    hmacSha256Hex(configured, configured),\n    hmacSha256Hex(configured, offered),\n  );",
+      "to": "  const matches = secret.verifyToken.startsWith(presented) && offered.length > 0;"
+    },
+    {
+      "name": "W07 the handshake accepts any hub.mode",
+      "guards": "an unsubscribe GET is not a subscription handshake",
+      "file": "packages/adapters/channel-whatsapp/src/verify.ts",
+      "command": "whatsappSig",
+      "from": "  if (mode !== WHATSAPP_HUB_SUBSCRIBE_MODE || challenge === null",
+      "to": "  if (mode === null || challenge === null"
+    },
+    {
+      "name": "W08 a batched delivery admits its FIRST message",
+      "guards": "a delivery carrying more than one message is refused rather than half-admitted",
+      "file": "packages/adapters/channel-whatsapp/src/normalize.ts",
+      "command": "whatsappNorm",
+      "from": "  if (messages.length > 1) {\n    return err(eventPayloadInvalid(\"verified WhatsApp delivery batches more than one message\"));\n  }",
+      "to": ""
+    },
+    {
+      "name": "W09 the thread key puts the CUSTOMER second",
+      "guards": "extractPlatformChannelId returns the business line, so a channel rule names a line and not a person",
+      "file": "packages/adapters/channel-whatsapp/src/provider.ts",
+      "command": "whatsappNorm",
+      "from": "  return `${WHATSAPP_PROVIDER}:${address.phoneNumberId}:${address.waId}`;",
+      "to": "  return `${WHATSAPP_PROVIDER}:${address.waId}:${address.phoneNumberId}`;"
+    },
+    {
+      "name": "W10 the business's own line is not ignored",
+      "guards": "a delivery claiming to come FROM the business line is dropped, not turned into a turn",
+      "file": "packages/adapters/channel-whatsapp/src/normalize.ts",
+      "command": "whatsappNorm",
+      "from": "  if (from !== \"\" && from === digitsOf(metadata?.[\"display_phone_number\"])) {\n    return ok(ignorable(verifiedBody));\n  }",
+      "to": ""
+    },
+    {
+      "name": "W11 a phone number id that is not a Meta id is keyed on",
+      "guards": "a hostile id never becomes a conversation address",
+      "file": "packages/adapters/channel-whatsapp/src/provider.ts",
+      "command": "whatsappNorm",
+      "from": "const META_ID = /^\\d{1,20}$/u;",
+      "to": "const META_ID = /.+/u;"
+    },
+    {
+      "name": "W12 error code 190 is classified by its HTTP status",
+      "guards": "a dead token arriving as an HTTP 400 is UNAUTHORIZED, so the refresh fence fires",
+      "file": "packages/adapters/channel-whatsapp/src/failure.ts",
+      "command": "whatsappTx",
+      "from": "  if (metaCode === WHATSAPP_ERROR_CODE.accessToken) {\n    return adapterUnauthorized(WHATSAPP_PROVIDER, reason);\n  }",
+      "to": ""
+    },
+    {
+      "name": "W13 a 5xx on a WRITE becomes UNAVAILABLE",
+      "guards": "a write that may have landed is RECONCILE and never RETRY",
+      "file": "packages/adapters/channel-whatsapp/src/failure.ts",
+      "command": "whatsappTx",
+      "from": "  if (status >= 500) {\n    return operation === \"write\"\n      ? deliveryIndeterminate(WHATSAPP_PROVIDER, reason)\n      : adapterUnavailable(WHATSAPP_PROVIDER, reason);\n  }",
+      "to": "  if (status >= 500) return adapterUnavailable(WHATSAPP_PROVIDER, reason);"
+    },
+    {
+      "name": "W14 the code a dropped socket really produces counts as never connected",
+      "guards": "a connection dropped AFTER the far side read the request is INDETERMINATE, judged against the code the wire produces",
+      "file": "packages/adapters/channel-whatsapp/src/failure.ts",
+      "command": "whatsappTx",
+      "from": "  \"ECONNREFUSED\",\n  \"ENOTFOUND\",",
+      "to": "  \"UND_ERR_SOCKET\",\n  \"ECONNREFUSED\",\n  \"ENOTFOUND\","
+    },
+    {
+      "name": "W15 a pair-scoped refusal holds the whole line",
+      "guards": "one throttled recipient does not silence every other conversation on the line",
+      "file": "packages/adapters/channel-whatsapp/src/send.ts",
+      "command": "whatsappTx",
+      "from": "  if (metaCode === WHATSAPP_ERROR_CODE.pairRateLimit) return \"pair\";",
+      "to": "  if (metaCode === WHATSAPP_ERROR_CODE.pairRateLimit) return \"line\";"
+    },
+    {
+      "name": "W16 a refusal does not hold its scope at all",
+      "guards": "the next call inside a live window is refused HERE, with no socket opened",
+      "file": "packages/adapters/channel-whatsapp/src/send.ts",
+      "command": "whatsappTx",
+      "from": "      if (scope !== null) transport.limits.hold(call.route, scope, wait);\n      return err(classifyWhatsAppStatus(response.status, metaCode, call.operation, wait));",
+      "to": "      return err(classifyWhatsAppStatus(response.status, metaCode, call.operation, wait));"
+    },
+    {
+      "name": "W17 a later smaller refusal shortens a live wait",
+      "guards": "a wait the far side already imposed is never shortened",
+      "file": "packages/adapters/channel-whatsapp/src/rate-limit.ts",
+      "command": "whatsappTx",
+      "from": "    this.heldUntil.set(key, Math.max(this.heldUntil.get(key) ?? 0, until));",
+      "to": "    this.heldUntil.set(key, until);"
+    },
+    {
+      "name": "W18 an edit is honoured by posting a new message",
+      "guards": "the Cloud API has no edit route, so an edit is REFUSED rather than turned into a second message",
+      "file": "packages/adapters/channel-whatsapp/src/adapter.ts",
+      "command": "whatsappTx",
+      "from": "    if (message.replacesProviderMessageId !== null) {\n      // See 1 in the header. The refusal is the point: there is no edit route.\n      return err(adapterRejected(WHATSAPP_PROVIDER, \"WhatsApp Cloud API cannot edit a sent message\"));\n    }",
+      "to": ""
+    },
+    {
+      "name": "W19 a Graph error under HTTP 200 is read as a success",
+      "guards": "a 200 carrying error.code is the refusal it is, never a delivered message",
+      "file": "packages/adapters/channel-whatsapp/src/send.ts",
+      "command": "whatsappTx",
+      "from": "    const code = errorCode(answer);\n    if (code !== null) {",
+      "to": "    const code = null;\n    if (code !== null) {"
+    },
+    {
+      "name": "W20 link previews are turned on",
+      "guards": "a URL the model echoed back is not FETCHED and rendered on the business's authority",
+      "file": "packages/adapters/channel-whatsapp/src/vendor.ts",
+      "command": "whatsappTx",
+      "from": "export const WHATSAPP_PREVIEW_URL = false;",
+      "to": "export const WHATSAPP_PREVIEW_URL = true;"
+    },
+    {
+      "name": "W21 describePrincipal opens a socket",
+      "guards": "Meta publishes no route that reads a customer profile, so the honest answer needs no request",
+      "file": "packages/adapters/channel-whatsapp/src/adapter.ts",
+      "command": "whatsappTx",
+      "from": "  async describePrincipal(\n    _credential: ChannelCredential,\n    providerUserId: string,\n  ): Promise<Result<ChannelPrincipal>> {",
+      "to": "  async describePrincipal(\n    credential: ChannelCredential,\n    providerUserId: string,\n  ): Promise<Result<ChannelPrincipal>> {\n    await whatsappCall(this.transport, { method: \"GET\", path: providerUserId, token: credential.token, body: null, operation: \"read\", route: { identity: credentialIdentity(credential.token), phoneNumberId: \"me\", recipient: null } });"
+    },
+    {
+      "name": "W22 the text length limit is not enforced",
+      "guards": "a turn whose answer is long is refused HERE rather than lost to a vendor 400",
+      "file": "packages/adapters/channel-whatsapp/src/adapter.ts",
+      "command": "whatsappTx",
+      "from": "    if (message.text.length > WHATSAPP_MAX_TEXT_LENGTH) {",
+      "to": "    if (message.text.length > WHATSAPP_MAX_TEXT_LENGTH * 4) {"
+    },
+    {
+      "name": "W23 the verify token is optional beside the app secret",
+      "guards": "an install that set the app secret and no verify token cannot boot green",
+      "file": "apps/core-api/src/config/channels.ts",
+      "command": "coreApiConfig",
+      "from": "      requiredWithAnchor: Object.freeze([whatsappVerifyToken]),",
+      "to": "      requiredWithAnchor: Object.freeze([]),"
+    },
+    {
+      "name": "W24 the whatsapp adapter is never constructed",
+      "guards": "a declared channels.whatsapp group produces the directory ADR M0.3 section 4 assigns it",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "command": "coreApiInstall",
+      "from": "    adapters[\"channel-whatsapp\"] = createChannelWhatsAppAdapter();",
+      "to": "    void createChannelWhatsAppAdapter;"
+    },
+    {
+      "name": "T01 the comparison runs over raw tokens with no length guard",
+      "guards": "a length mismatch is FALSE and never a RangeError an anonymous caller can trigger",
+      "file": "packages/adapters/channel-telegram/src/secret-token.ts",
+      "command": "telegramSecret",
+      "from": "  const expected = digest(configured);\n  const offered = digest(presented);\n  // Both are 32 bytes by construction; the guard is kept because it is the\n  // precondition `timingSafeEqual` throws on, and a future change to `digest`\n  // must not turn that into a 500 an anonymous caller can trigger.\n  if (expected.length !== offered.length) return false;\n  return timingSafeEqual(expected, offered);",
+      "to": "  return timingSafeEqual(Buffer.from(configured, \"utf8\"), Buffer.from(presented, \"utf8\"));"
+    },
+    {
+      "name": "T02 an empty configured secret token is accepted",
+      "guards": "an install with no token configured authenticates nobody",
+      "file": "packages/adapters/channel-telegram/src/secret-token.ts",
+      "command": "telegramSecret",
+      "from": "  if (configured === \"\") return false;\n",
+      "to": ""
+    },
+    {
+      "name": "T03 the presented header is trimmed",
+      "guards": "a token with a trailing space is a DIFFERENT token",
+      "file": "packages/adapters/channel-telegram/src/verify.ts",
+      "command": "telegramSecret",
+      "from": "  return secretsMatch(secretToken, presented) ? ok(undefined) : err(signatureInvalid(TELEGRAM_PROVIDER));",
+      "to": "  return secretsMatch(secretToken, presented.trim()) ? ok(undefined) : err(signatureInvalid(TELEGRAM_PROVIDER));"
+    },
+    {
+      "name": "T04 the configured token is not held to setWebhook's alphabet",
+      "guards": "a token setWebhook would have refused is a misconfiguration this code names",
+      "file": "packages/adapters/channel-telegram/src/verify.ts",
+      "command": "telegramSecret",
+      "from": "  if (!TELEGRAM_SECRET_TOKEN_PATTERN.test(secretToken)) return err(signatureInvalid(TELEGRAM_PROVIDER));\n",
+      "to": ""
+    },
+    {
+      "name": "T05 a blank header is INVALID rather than ABSENT",
+      "guards": "nothing presented a credential at all, which is a different operator action",
+      "file": "packages/adapters/channel-telegram/src/verify.ts",
+      "command": "telegramSecret",
+      "from": "  const value = delivery.headers[name];\n  return typeof value === \"string\" && value.trim() !== \"\" ? value : null;",
+      "to": "  const value = delivery.headers[name];\n  return typeof value === \"string\" ? value : null;"
+    },
+    {
+      "name": "T06 message_thread_id alone makes a topic",
+      "guards": "a reply chain in a group with topics off stays the main conversation",
+      "file": "packages/adapters/channel-telegram/src/normalize.ts",
+      "command": "telegramNorm",
+      "from": "  if (message[\"is_topic_message\"] === true && threadId !== null && isThreadId(threadId)) {",
+      "to": "  if (threadId !== null && isThreadId(threadId)) {"
+    },
+    {
+      "name": "T07 a topic is keyed on ITSELF, not under its chat",
+      "guards": "a channel rule naming the supergroup still matches inside every topic",
+      "file": "packages/adapters/channel-telegram/src/provider.ts",
+      "command": "telegramNorm",
+      "from": "    : `${TELEGRAM_PROVIDER}:${address.chatId}:${address.threadId}`;",
+      "to": "    : `${TELEGRAM_PROVIDER}:${address.threadId}`;"
+    },
+    {
+      "name": "T08 the MESSAGE id becomes the admission key",
+      "guards": "Telegram repeats an update_id until the endpoint answers 2xx, so that is what a redelivery collapses on",
+      "file": "packages/adapters/channel-telegram/src/normalize.ts",
+      "command": "telegramNorm",
+      "from": "      providerEventId: updateId as ProviderEventId,",
+      "to": "      providerEventId: String(message[\"message_id\"]) as ProviderEventId,"
+    },
+    {
+      "name": "T09 a message from another bot is admitted",
+      "guards": "two bots in one group are an unbounded loop at a model call per turn",
+      "file": "packages/adapters/channel-telegram/src/normalize.ts",
+      "command": "telegramNorm",
+      "from": "  if (record(message[\"from\"])?.[\"is_bot\"] === true) return ok(ignorable(verifiedBody));\n",
+      "to": ""
+    },
+    {
+      "name": "T10 a chat id past the safe integer range is rounded",
+      "guards": "a rounded id keys the conversation on a chat that is not the one that wrote",
+      "file": "packages/adapters/channel-telegram/src/normalize.ts",
+      "command": "telegramNorm",
+      "from": "  return typeof value === \"number\" && Number.isSafeInteger(value) ? String(value) : null;",
+      "to": "  return typeof value === \"number\" ? String(value) : null;"
+    },
+    {
+      "name": "T11 a chat id may not be negative",
+      "guards": "every group and supergroup Telegram has is a negative id",
+      "file": "packages/adapters/channel-telegram/src/provider.ts",
+      "command": "telegramNorm",
+      "from": "const CHAT_ID = /^-?\\d{1,19}$/u;",
+      "to": "const CHAT_ID = /^\\d{1,19}$/u;"
+    },
+    {
+      "name": "T12 the route drops its ./ prefix",
+      "guards": "bot<id>:<secret> puts a COLON in the first path segment, which new URL parses as a scheme",
+      "file": "packages/adapters/channel-telegram/src/send.ts",
+      "command": "telegramTx",
+      "from": "  return new URL(`./${TELEGRAM_BOT_PATH_PREFIX}${token}/${method}`, apiUrl);",
+      "to": "  return new URL(`${TELEGRAM_BOT_PATH_PREFIX}${token}/${method}`, apiUrl);"
+    },
+    {
+      "name": "T13 the bot token's shape is not checked",
+      "guards": "the token becomes a URL path segment, so a / in it addresses somewhere else",
+      "file": "packages/adapters/channel-telegram/src/send.ts",
+      "command": "telegramTx",
+      "from": "  if (!isBotToken(call.token)) {\n    return err(adapterRejected(TELEGRAM_PROVIDER, \"credential is not a Telegram bot token\"));\n  }\n",
+      "to": ""
+    },
+    {
+      "name": "T14 the wait is read from Retry-After only",
+      "guards": "Telegram puts retry_after in the BODY, and a client reading a header finds nothing",
+      "file": "packages/adapters/channel-telegram/src/send.ts",
+      "command": "telegramTx",
+      "from": "  const fromBody = integerOf(parameters?.[TELEGRAM_RETRY_AFTER_FIELD]);\n  if (fromBody !== null) return Math.max(1, fromBody);\n",
+      "to": ""
+    },
+    {
+      "name": "T15 the HTTP status outranks the envelope",
+      "guards": "when a proxy has rewritten one of the two, the body is the one Telegram wrote",
+      "file": "packages/adapters/channel-telegram/src/failure.ts",
+      "command": "telegramTx",
+      "from": "  const verdict = errorCode ?? status;",
+      "to": "  const verdict = status;"
+    },
+    {
+      "name": "T16 a 429 does not hold its route",
+      "guards": "the next call inside a live window is refused HERE, with no socket opened",
+      "file": "packages/adapters/channel-telegram/src/send.ts",
+      "command": "telegramTx",
+      "from": "      if ((errorCode ?? response.status) === 429) transport.limits.hold(call.route, wait);\n",
+      "to": ""
+    },
+    {
+      "name": "T17 a 403 is a dead credential",
+      "guards": "one person blocking the bot must not send the refresh fence to re-authorize it",
+      "file": "packages/adapters/channel-telegram/src/failure.ts",
+      "command": "telegramTx",
+      "from": "  if (verdict === 401) return adapterUnauthorized(TELEGRAM_PROVIDER, reason);",
+      "to": "  if (verdict === 401 || verdict === 403) return adapterUnauthorized(TELEGRAM_PROVIDER, reason);"
+    },
+    {
+      "name": "T18 a 5xx on a WRITE becomes UNAVAILABLE",
+      "guards": "a write that may have landed is RECONCILE and never RETRY",
+      "file": "packages/adapters/channel-telegram/src/failure.ts",
+      "command": "telegramTx",
+      "from": "  if (verdict >= 500) {\n    return operation === \"write\"\n      ? deliveryIndeterminate(TELEGRAM_PROVIDER, reason)\n      : adapterUnavailable(TELEGRAM_PROVIDER, reason);\n  }",
+      "to": "  if (verdict >= 500) return adapterUnavailable(TELEGRAM_PROVIDER, reason);"
+    },
+    {
+      "name": "T19 the reason carries Telegram's description",
+      "guards": "the description echoes request content back and is never put in something that is logged",
+      "file": "packages/adapters/channel-telegram/src/send.ts",
+      "command": "telegramTx",
+      "from": "      return err(classifyTelegramStatus(response.status, errorCode, call.operation, wait));",
+      "to": "      return err(adapterRejected(TELEGRAM_PROVIDER, String(envelope[\"description\"] ?? \"\")));"
+    },
+    {
+      "name": "T20 an edit carries message_thread_id",
+      "guards": "editMessageText has no such parameter; the message already knows where it is",
+      "file": "packages/adapters/channel-telegram/src/adapter.ts",
+      "command": "telegramTx",
+      "from": "        : { chat_id: chatId, message_id: Number(edit), text: message.text };",
+      "to": "        : { chat_id: chatId, message_id: Number(edit), text: message.text, ...(address.threadId === null ? {} : { message_thread_id: Number(address.threadId) }) };"
+    },
+    {
+      "name": "T21 a topic reply is sent to the TOPIC id",
+      "guards": "a Telegram topic is not a chat, so sending to it addresses a chat that does not exist",
+      "file": "packages/adapters/channel-telegram/src/provider.ts",
+      "command": "telegramTx",
+      "from": "  return address.chatId;\n}",
+      "to": "  return address.threadId ?? address.chatId;\n}"
+    },
+    {
+      "name": "T22 the text length limit is not enforced",
+      "guards": "a turn whose answer is long is refused HERE rather than lost to a vendor 400",
+      "file": "packages/adapters/channel-telegram/src/vendor.ts",
+      "command": "telegramTx",
+      "from": "export const TELEGRAM_MAX_TEXT_LENGTH = 4096;",
+      "to": "export const TELEGRAM_MAX_TEXT_LENGTH = 40960;"
+    },
+    {
+      "name": "T23 a later smaller refusal shortens a live wait",
+      "guards": "a wait the far side already imposed is never shortened",
+      "file": "packages/adapters/channel-telegram/src/rate-limit.ts",
+      "command": "telegramTx",
+      "from": "    this.heldUntil.set(key, Math.max(this.heldUntil.get(key) ?? 0, until));",
+      "to": "    this.heldUntil.set(key, until);"
+    },
+    {
+      "name": "T24 the telegram adapter is never constructed",
+      "guards": "a declared channels.telegram group produces the directory ADR M0.3 section 4 assigns it",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "command": "coreApiInstall",
+      "from": "    adapters[\"channel-telegram\"] = createChannelTelegramAdapter();",
+      "to": "    void createChannelTelegramAdapter;"
+    },
+    {
+      "name": "T25 the secret token's alphabet is not configured",
+      "guards": "an install cannot set a token setWebhook would refuse, or one short enough to guess online",
+      "file": "apps/core-api/src/config/channels.ts",
+      "command": "coreApiConfig",
+      "from": "  pattern: \"[A-Za-z0-9_-]{32,256}\",\n  patternDescribe: \"32 to 256 characters from setWebhook's own alphabet (A-Z a-z 0-9 _ -)\",\n  minimumLength: 32,\n});",
+      "to": "  minimumLength: 1,\n});"
+    },
+    {
+      "name": "W14b ECONNRESET joins the never-connected set",
+      "guards": "nothing \u2014 RECORDED AS AN EQUIVALENT MUTANT. `fetch` on this runtime reports UND_ERR_SOCKET for a socket dropped after the request was read, never ECONNRESET, so no case in this suite can observe ECONNRESET's membership. W14 is the row that guards the code which actually arrives.",
+      "file": "packages/adapters/channel-whatsapp/src/failure.ts",
+      "command": "whatsappTx",
+      "from": "  \"ECONNREFUSED\",\n  \"ENOTFOUND\",",
+      "to": "  \"ECONNRESET\",\n  \"ECONNREFUSED\",\n  \"ENOTFOUND\","
+    },
+    {
+      "name": "W25 the documented text limit is widened",
+      "guards": "the 4096-character limit is META'S figure and not this repository's, so a behavioural case that reads the constant cannot be widened with it",
+      "file": "packages/adapters/channel-whatsapp/src/vendor.ts",
+      "command": "whatsappTx",
+      "from": "export const WHATSAPP_MAX_TEXT_LENGTH = 4096;",
+      "to": "export const WHATSAPP_MAX_TEXT_LENGTH = 40960;"
+    },
+    {
+      "name": "T01b the digest is removed but the length guard stays",
+      "guards": "nothing a functional case can observe \u2014 RECORDED AS AN EQUIVALENT MUTANT. With the guard in place a length mismatch is still FALSE and still not a throw. What the digest buys is that the comparison is constant-time in the token's LENGTH as well as its bytes: without it the guard returns early for a wrong-length token and an attacker learns the length by timing. No behavioural case can see that, and the digest is kept rather than deleted because the property is real.",
+      "file": "packages/adapters/channel-telegram/src/secret-token.ts",
+      "command": "telegramSecret",
+      "from": "  const expected = digest(configured);\n  const offered = digest(presented);",
+      "to": "  const expected = Buffer.from(configured, \"utf8\");\n  const offered = Buffer.from(presented, \"utf8\");"
+    }
+  ]
+}

@@ -46,6 +46,7 @@ import {
   USER_ID,
 } from "./fixtures.js";
 import { MAX_REMEMBERED_WINDOWS, TelegramRateLimits } from "./rate-limit.js";
+import { classifyTelegramThrow } from "./failure.js";
 import { callUrl, deliveredFrom, isBotToken } from "./send.js";
 import { TELEGRAM_API_URL, TELEGRAM_MAX_TEXT_LENGTH } from "./vendor.js";
 
@@ -193,6 +194,32 @@ describe("streaming a turn back is an EDIT, not a flood", () => {
     expect(farSide.sent).toHaveLength(1);
   });
 
+  it("edits a message INSIDE A TOPIC without naming the topic, because editMessageText has no such field", async () => {
+    // `sendMessage` takes `message_thread_id` and `editMessageText` does NOT — the
+    // message already knows where it is. A send-shaped edit body would be a field
+    // the Bot API does not define on that method, and the private-chat case above
+    // cannot see it because a private chat has no topic at all.
+    const first = await adapter.send(CREDENTIAL, inTopic());
+    const id = first.ok ? first.value.providerMessageId : "";
+    await adapter.send(CREDENTIAL, inTopic({ text: "longer", replacesProviderMessageId: id }));
+    expect(farSide.received[0]?.json).toHaveProperty("message_thread_id", TOPIC_THREAD_ID);
+    expect(farSide.received[1]?.apiMethod).toBe("editMessageText");
+    expect(farSide.received[1]?.json).toEqual({
+      chat_id: String(SUPERGROUP_CHAT_ID),
+      message_id: Number(id),
+      text: "longer",
+    });
+  });
+
+  it("holds the vendor's own documented text limit, so the case below is not scaled by the code", () => {
+    // TRANSCRIBED FROM THE BOT API's `sendMessage` REFERENCE: "Text of the message
+    // to be sent, 1-4096 characters after entities parsing". The behavioural case
+    // below reads the CONSTANT, so without this line a mutation that widened the
+    // constant would widen the case with it and survive — which is exactly what a
+    // sweep found.
+    expect(TELEGRAM_MAX_TEXT_LENGTH).toBe(4096);
+  });
+
   it("refuses text past the vendor's own length limit before opening a socket", async () => {
     expect(failure(await adapter.send(CREDENTIAL, message({ text: "x".repeat(TELEGRAM_MAX_TEXT_LENGTH + 1) }))).code).toBe(
       "CHANNELS_ADAPTER_REJECTED",
@@ -254,6 +281,38 @@ describe("a lost connection is classified by WHERE it was lost", () => {
     expect(second.ok).toBe(true);
     expect(farSide.received).toHaveLength(1);
     expect(farSide.sent).toHaveLength(1);
+  });
+
+  it("names the code a REAL dropped socket produces, and does not treat it as never-connected", async () => {
+    // THE JOIN THAT MAKES THE NEVER-CONNECTED LIST FALSIFIABLE, and it exists
+    // because a mutation sweep found the claim unprovable without it. The list is
+    // carried from `channel-slack`, whose own comment names `ECONNRESET` — and on
+    // this runtime `fetch` NEVER reports that for a socket dropped after the
+    // request was read. It reports undici's `UND_ERR_SOCKET` ("other side
+    // closed"), so a list judged against `ECONNRESET` is judged against a code
+    // that cannot arrive. The code is read OFF THE WIRE here and then fed to the
+    // classifier, so the two halves are joined rather than asserted separately.
+    farSide.next({ kind: "dropAfterRead" });
+    let observed: string | null = null;
+    try {
+      await fetch(callUrl(farSide.apiUrl, FIXTURE_BOT_TOKEN, "sendMessage"), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: PRIVATE_CHAT_ID, text: "x" }),
+      });
+    } catch (error) {
+      observed = ((error as { cause?: { code?: string } }).cause?.code) ?? null;
+    }
+    expect(observed).toBe("UND_ERR_SOCKET");
+    // A write that met THAT code may have landed, so it is RECONCILE...
+    expect(classifyTelegramThrow({ cause: { code: observed } }, false, "write").code).toBe(
+      "CHANNELS_DELIVERY_INDETERMINATE",
+    );
+    // ...while a connection that was never established is RETRY, which is the
+    // distinction the list exists to draw and the reason this case is not vacuous.
+    expect(classifyTelegramThrow({ cause: { code: "ECONNREFUSED" } }, false, "write").code).toBe(
+      "CHANNELS_ADAPTER_UNAVAILABLE",
+    );
   });
 
   it("AFTER the far side read the request: dropped, INDETERMINATE, and the chat holds it", async () => {

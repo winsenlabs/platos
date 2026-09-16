@@ -35,6 +35,18 @@ const COMMANDS = {
   genSkeleton: "node --test scripts/arch/gen-v1-skeleton.test.mjs",
   coreApiConfig: "pnpm --filter @platos/core-api exec vitest run src/config/sections.test.ts src/config/platform.test.ts",
   coreApiInstall: "pnpm --filter @platos/core-api exec vitest run src/composition/installation.test.ts",
+  // WIN-271 (M4.5), D10 — the THIRD and FOURTH runtimes' sweeps. Same driver,
+  // their own plans and their own results files, named on the command line.
+  whatsapp: "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run",
+  whatsappSig: "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-signature.test.ts src/rfc4231.test.ts",
+  whatsappNorm: "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/normalize.test.ts",
+  whatsappTx: "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-transport.test.ts",
+  whatsappAdmit: "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/signed-admission.test.ts",
+  telegram: "pnpm --filter @platos/adapter-channel-telegram exec vitest run",
+  telegramSecret: "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/secret-token.test.ts",
+  telegramNorm: "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/normalize.test.ts",
+  telegramTx: "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/telegram-transport.test.ts",
+  telegramAdmit: "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/signed-admission.test.ts",
 };
 
 // `node scripts/run-win271-mutations.mjs [plan] [results]`. With no arguments it

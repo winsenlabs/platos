@@ -33,7 +33,7 @@ import { createChannelWhatsAppAdapter, type ChannelWhatsAppAdapter } from "./ada
 import { FAR_SIDE_INSTANT, FarSide } from "./far-side.js";
 import { CUSTOMER_WA_ID, OTHER_CUSTOMER_WA_ID, OTHER_PHONE_NUMBER_ID, PHONE_NUMBER_ID } from "./fixtures.js";
 import { MAX_REMEMBERED_WINDOWS, WhatsAppRateLimits } from "./rate-limit.js";
-import { DEFAULT_RATE_LIMIT_WAIT_SECONDS } from "./failure.js";
+import { classifyWhatsAppThrow, DEFAULT_RATE_LIMIT_WAIT_SECONDS } from "./failure.js";
 import { deliveredFrom } from "./send.js";
 import { WHATSAPP_ERROR_CODE, WHATSAPP_GRAPH_URL, WHATSAPP_MAX_TEXT_LENGTH } from "./vendor.js";
 
@@ -152,6 +152,14 @@ describe("what the Cloud API cannot do, refused rather than approximated", () =>
     expect(farSide.sent).toHaveLength(0);
   });
 
+  it("holds the vendor's own documented text limit, so the case below is not scaled by the code", () => {
+    // TRANSCRIBED FROM META'S `sendMessage` REFERENCE: a text body is at most 4096
+    // characters. The behavioural case below reads the CONSTANT, so without this
+    // line a mutation that widened the constant would widen the case with it and
+    // survive — which is exactly what a sweep found.
+    expect(WHATSAPP_MAX_TEXT_LENGTH).toBe(4096);
+  });
+
   it("refuses text past the vendor's own length limit before opening a socket", async () => {
     const error = failure(
       await adapter.send(CREDENTIAL, message({ text: "x".repeat(WHATSAPP_MAX_TEXT_LENGTH + 1) })),
@@ -228,6 +236,38 @@ describe("a lost connection is classified by WHERE it was lost", () => {
     expect(second.ok).toBe(true);
     expect(farSide.received).toHaveLength(1);
     expect(farSide.sent).toHaveLength(1);
+  });
+
+  it("names the code a REAL dropped socket produces, and does not treat it as never-connected", async () => {
+    // THE JOIN THAT MAKES THE NEVER-CONNECTED LIST FALSIFIABLE, and it exists
+    // because a mutation sweep found the claim unprovable without it. The list is
+    // carried from `channel-slack`, whose own comment names `ECONNRESET` — and on
+    // this runtime `fetch` NEVER reports that for a socket dropped after the
+    // request was read. It reports undici's `UND_ERR_SOCKET` ("other side
+    // closed"), so a list judged against `ECONNRESET` is judged against a code
+    // that cannot arrive. The code is read OFF THE WIRE here and then fed to the
+    // classifier, so the two halves are joined rather than asserted separately.
+    farSide.next({ kind: "dropAfterRead" });
+    let observed: string | null = null;
+    try {
+      await fetch(new URL(`${PHONE_NUMBER_ID}/messages`, farSide.graphUrl), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messaging_product: "whatsapp" }),
+      });
+    } catch (error) {
+      observed = ((error as { cause?: { code?: string } }).cause?.code) ?? null;
+    }
+    expect(observed).toBe("UND_ERR_SOCKET");
+    // A write that met THAT code may have landed, so it is RECONCILE...
+    expect(classifyWhatsAppThrow({ cause: { code: observed } }, false, "write").code).toBe(
+      "CHANNELS_DELIVERY_INDETERMINATE",
+    );
+    // ...while a connection that was never established is RETRY, which is the
+    // distinction the list exists to draw and the reason this case is not vacuous.
+    expect(classifyWhatsAppThrow({ cause: { code: "ECONNREFUSED" } }, false, "write").code).toBe(
+      "CHANNELS_ADAPTER_UNAVAILABLE",
+    );
   });
 
   it("AFTER the far side read the request: dropped, INDETERMINATE, and the message is sent", async () => {

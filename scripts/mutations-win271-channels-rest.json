@@ -1,0 +1,632 @@
+{
+  "$schema-note": "Mutation LEDGER for the remaining two channel runtimes. Every row was APPLIED to the named file in the working tree, the named command was run from the repository root, the file was restored, and the recorded exit code is what that run returned. `killedCases` are read back out of the command's own output. Nothing here is a prediction.",
+  "tranche": "M4.5 \u2014 packages/adapters/channel-whatsapp and packages/adapters/channel-telegram (founder decision D10)",
+  "branch": "tejas/m2m4-lane-channels-rest",
+  "base": "a6efc03bcbe73764d35984d671a1d63cf3bb9ecd",
+  "procedure": "node scripts/run-win271-mutations.mjs scripts/win271-channels-rest-mutation-plan.json scripts/mutations-win271-channels-rest.json \u2014 the same committed driver as the Slack and Discord sweeps, with two new command groups. Adapter rows run the adapters' vitest suites; wiring rows run core-api's config or installation suites.",
+  "baseline": {
+    "packages/adapters/channel-whatsapp": "114/114 across 5 files",
+    "packages/adapters/channel-telegram": "86/86 across 4 files",
+    "apps/core-api": "695/695 unit (vitest, integration excluded)",
+    "scripts/arch/composition-root.mjs": "ok: 67 bindings"
+  },
+  "history": [
+    "THE FIRST RUN OF THIS SWEEP WAS VACUOUS AND IS RECORDED RATHER THAN DISCARDED. It reported 49/49 killed, and every adapter row was a FALSE KILL: `scripts/arch/clean-v1.test.mjs` runs `pnpm build:v1` and then `pnpm clean:v1` against the REAL repository root, so it had deleted `packages/contexts/channels/dist` earlier in the session. Every adapter vitest run then failed to resolve `@platos/context-channels/application/ports/index.js` and exited 1 whatever the mutation was. It was caught because a hand re-run of one row printed a module-resolution error instead of a failing case name, and because the driver's `killedCases` were EMPTY for rows that should have named one. The sweep was re-run after `pnpm build:v1`; every figure below is from that run. A warm tree lies in both directions.",
+    "THE SECOND RUN (49 rows) killed 43 and left SIX survivors, each of which found a real gap rather than a defect in the code: W14 judged the never-connected list against `ECONNRESET`, a code `fetch` never produces here; W23's rule (the WhatsApp verify token is required with the app secret) was guarded by no case at all; T01 left the length guard in place so removing the digest changed nothing; T19 added an argument TypeScript ignores at run time; T20's edit case used a PRIVATE chat, which has no topic to leak; and T22's length case read the same constant the mutation widened. FOUR CASES WERE WRITTEN AND TWO ROWS RE-AIMED in response: the code a real dropped socket produces is now read off the wire and fed to the classifier (both adapters), the WhatsApp group's required pair and the Telegram token's alphabet and floor are proven in `apps/core-api/src/config/platform.test.ts`, an edit INSIDE a topic is proven to carry no `message_thread_id`, and both vendors' documented 4096-character limits are pinned as transcriptions so a behavioural case cannot be widened with the constant it reads.",
+    "THE THIRD RUN (52 rows) killed 50. The two survivors are DELIBERATE and are kept as recorded equivalent mutants, each with its reason in the row's `guards`: W14b (ECONNRESET's membership is unobservable on this runtime) and T01b (with the length guard in place the digest is functionally invisible; what it buys is a comparison that is constant-time in the token's LENGTH, which no behavioural case can see, and it is kept rather than deleted because that property is real)."
+  ],
+  "summary": "50/52 killed; 2 recorded equivalent mutants",
+  "mutations": [
+    {
+      "name": "W01 the digest grammar accepts any length",
+      "guards": "trailing garbage after a genuine digest is refused, because Buffer.from(hex) would decode the genuine bytes",
+      "file": "packages/adapters/channel-whatsapp/src/hmac.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-signature.test.ts src/rfc4231.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "hex is parsed as a grammar, and the comparison never throws > refuses a digest that is not exactly 64 hex digits",
+        "a delivery that does not verify is refused, with a code that says why > refuses INVALID for one flipped hex digit, a truncation, and trailing garbage"
+      ]
+    },
+    {
+      "name": "W02 the length guard before timingSafeEqual is removed",
+      "guards": "a truncated digest is FALSE and never a RangeError an anonymous caller can trigger",
+      "file": "packages/adapters/channel-whatsapp/src/hmac.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-signature.test.ts src/rfc4231.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "hex is parsed as a grammar, and the comparison never throws > accepts upper-case hex, because the grammar is hex and not lower-case hex"
+      ]
+    },
+    {
+      "name": "W03 the sha256= prefix is not required",
+      "guards": "a bare digest, and a sha1= digest from the same header family, are refused",
+      "file": "packages/adapters/channel-whatsapp/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-signature.test.ts src/rfc4231.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a delivery that does not verify is refused, with a code that says why > refuses INVALID for a header with the wrong prefix, or none"
+      ]
+    },
+    {
+      "name": "W04 an empty configured app secret is accepted",
+      "guards": "an install that left the variable blank cannot be signed for by anybody",
+      "file": "packages/adapters/channel-whatsapp/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-signature.test.ts src/rfc4231.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a delivery that does not verify is refused, with a code that says why > refuses INVALID when the configured secret is EMPTY"
+      ]
+    },
+    {
+      "name": "W05 the HMAC key and message are swapped",
+      "guards": "the construction is HMAC(app secret, raw body) and not its transpose",
+      "file": "packages/adapters/channel-whatsapp/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-signature.test.ts src/rfc4231.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Meta's construction, as an independent HMAC produces it > accepts every fixture signed by the RFC 2104 oracle",
+        "a delivery that does not verify is refused, with a code that says why > refuses INVALID under a real app secret that did not sign it",
+        "this adapter never mints CHANNELS_SIGNATURE_STALE, and that is a decision > accepts a genuine delivery received a week after the customer sent it"
+      ]
+    },
+    {
+      "name": "W06 the verify token is compared by prefix",
+      "guards": "a token that is a PREFIX of the configured one is refused",
+      "file": "packages/adapters/channel-whatsapp/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-signature.test.ts src/rfc4231.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the subscription handshake, which is a GET with no body and no signature > refuses INVALID for a wrong token, a prefix of the token, and a longer one"
+      ]
+    },
+    {
+      "name": "W07 the handshake accepts any hub.mode",
+      "guards": "an unsubscribe GET is not a subscription handshake",
+      "file": "packages/adapters/channel-whatsapp/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-signature.test.ts src/rfc4231.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the subscription handshake, which is a GET with no body and no signature > refuses ABSENT when the request is not a subscription handshake at all"
+      ]
+    },
+    {
+      "name": "W08 a batched delivery admits its FIRST message",
+      "guards": "a delivery carrying more than one message is refused rather than half-admitted",
+      "file": "packages/adapters/channel-whatsapp/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a batched delivery is REFUSED, because VerifiedDelivery holds one message > two messages under one change is CHANNELS_EVENT_PAYLOAD_INVALID and names the batch"
+      ]
+    },
+    {
+      "name": "W09 the thread key puts the CUSTOMER second",
+      "guards": "extractPlatformChannelId returns the business line, so a channel rule names a line and not a person",
+      "file": "packages/adapters/channel-whatsapp/src/provider.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a customer's text becomes an InboundMessage > keys the conversation on the LINE and the customer, and the domain reads the LINE back",
+        "a customer's text becomes an InboundMessage > keeps two customers on ONE line as two conversations in one channel",
+        "a customer's text becomes an InboundMessage > keeps one customer on TWO lines as two conversations in two channels"
+      ]
+    },
+    {
+      "name": "W10 the business's own line is not ignored",
+      "guards": "a delivery claiming to come FROM the business line is dropped, not turned into a turn",
+      "file": "packages/adapters/channel-whatsapp/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "verified deliveries with no behaviour are acknowledged, not admitted > a message claiming to come from the business's own line is IGNORABLE with no event id"
+      ]
+    },
+    {
+      "name": "W11 a phone number id that is not a Meta id is keyed on",
+      "guards": "a hostile id never becomes a conversation address",
+      "file": "packages/adapters/channel-whatsapp/src/provider.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a verified message that cannot be admitted is REFUSED as an input defect > a phone number id that is not a Meta id is CHANNELS_EVENT_PAYLOAD_INVALID, never a signature code"
+      ]
+    },
+    {
+      "name": "W12 error code 190 is classified by its HTTP status",
+      "guards": "a dead token arriving as an HTTP 400 is UNAUTHORIZED, so the refresh fence fires",
+      "file": "packages/adapters/channel-whatsapp/src/failure.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Graph's own refusals, in this context's vocabulary > maps error code 190 on an HTTP 400 to UNAUTHORIZED, which a status alone gets wrong"
+      ]
+    },
+    {
+      "name": "W13 a 5xx on a WRITE becomes UNAVAILABLE",
+      "guards": "a write that may have landed is RECONCILE and never RETRY",
+      "file": "packages/adapters/channel-whatsapp/src/failure.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Graph's own refusals, in this context's vocabulary > maps a 500 on a WRITE to INDETERMINATE, because the far side may have sent it",
+        "Graph's own refusals, in this context's vocabulary > maps a 500 on a READ to UNAVAILABLE, and a gateway page on a WRITE to INDETERMINATE"
+      ]
+    },
+    {
+      "name": "W14 the code a dropped socket really produces counts as never connected",
+      "guards": "a connection dropped AFTER the far side read the request is INDETERMINATE, judged against the code the wire produces",
+      "file": "packages/adapters/channel-whatsapp/src/failure.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a lost connection is classified by WHERE it was lost > names the code a REAL dropped socket produces, and does not treat it as never-connected",
+        "a lost connection is classified by WHERE it was lost > AFTER the far side read the request: dropped, INDETERMINATE, and the message is sent"
+      ]
+    },
+    {
+      "name": "W15 a pair-scoped refusal holds the whole line",
+      "guards": "one throttled recipient does not silence every other conversation on the line",
+      "file": "packages/adapters/channel-whatsapp/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Meta's throughput refusals, held at the scope Meta named > holds ONE RECIPIENT on a pair limit and leaves the rest of the line free",
+        "Graph's own refusals, in this context's vocabulary > gives four DISTINGUISHABLE codes for the four outcomes"
+      ]
+    },
+    {
+      "name": "W16 a refusal does not hold its scope at all",
+      "guards": "the next call inside a live window is refused HERE, with no socket opened",
+      "file": "packages/adapters/channel-whatsapp/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Meta's throughput refusals, held at the scope Meta named > holds ONE RECIPIENT on a pair limit and leaves the rest of the line free",
+        "Meta's throughput refusals, held at the scope Meta named > holds the WHOLE LINE on a Cloud API throughput limit and leaves another line free",
+        "Meta's throughput refusals, held at the scope Meta named > holds EVERY line for one token on an account limit, and only for that token",
+        "Meta's throughput refusals, held at the scope Meta named > falls to the WIDEST scope for a bare 429 that named no code"
+      ]
+    },
+    {
+      "name": "W17 a later smaller refusal shortens a live wait",
+      "guards": "a wait the far side already imposed is never shortened",
+      "file": "packages/adapters/channel-whatsapp/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Meta's throughput refusals, held at the scope Meta named > never shortens a wait a later, smaller refusal asks for"
+      ]
+    },
+    {
+      "name": "W18 an edit is honoured by posting a new message",
+      "guards": "the Cloud API has no edit route, so an edit is REFUSED rather than turned into a second message",
+      "file": "packages/adapters/channel-whatsapp/src/adapter.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "what the Cloud API cannot do, refused rather than approximated > REFUSES an edit instead of posting a second message"
+      ]
+    },
+    {
+      "name": "W19 a Graph error under HTTP 200 is read as a success",
+      "guards": "a 200 carrying error.code is the refusal it is, never a delivered message",
+      "file": "packages/adapters/channel-whatsapp/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Graph's own refusals, in this context's vocabulary > treats a Graph error carried under HTTP 200 as the refusal it is"
+      ]
+    },
+    {
+      "name": "W20 link previews are turned on",
+      "guards": "a URL the model echoed back is not FETCHED and rendered on the business's authority",
+      "file": "packages/adapters/channel-whatsapp/src/vendor.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the ordinary path, so the failures below are not vacuous > sends the text on the LINE to the CUSTOMER, bearer-authorized, with link previews off"
+      ]
+    },
+    {
+      "name": "W21 describePrincipal opens a socket",
+      "guards": "Meta publishes no route that reads a customer profile, so the honest answer needs no request",
+      "file": "packages/adapters/channel-whatsapp/src/adapter.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "what the Cloud API cannot do, refused rather than approximated > describes a principal with the number and two nulls, and OPENS NO SOCKET",
+        "anything that would become a path is refused before a socket opens > refuses a providerUserId that is not a WhatsApp id"
+      ]
+    },
+    {
+      "name": "W22 the text length limit is not enforced",
+      "guards": "a turn whose answer is long is refused HERE rather than lost to a vendor 400",
+      "file": "packages/adapters/channel-whatsapp/src/adapter.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "what the Cloud API cannot do, refused rather than approximated > refuses text past the vendor's own length limit before opening a socket"
+      ]
+    },
+    {
+      "name": "W23 the verify token is optional beside the app secret",
+      "guards": "an install that set the app secret and no verify token cannot boot green",
+      "file": "apps/core-api/src/config/channels.ts",
+      "command": "pnpm --filter @platos/core-api exec vitest run src/config/sections.test.ts src/config/platform.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the operator documentation and the field tables agree > documents nothing the six sections do not declare",
+        "INCOMPLETE \u2014 WIN-271 (M4.5), D10's WhatsApp app with no verify token > refuses an app secret with no verify token, naming the verify token",
+        "INCOMPLETE \u2014 WIN-271 (M4.5), D10's WhatsApp app with no verify token > accepts the two together and hands both to the channel's configuration"
+      ]
+    },
+    {
+      "name": "W24 the whatsapp adapter is never constructed",
+      "guards": "a declared channels.whatsapp group produces the directory ADR M0.3 section 4 assigns it",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "command": "pnpm --filter @platos/core-api exec vitest run src/composition/installation.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "constructing the adapters an install declared > builds the directory every declared configuration group configures",
+        "readiness over what was actually constructed > reports 63 of 67, and the 4 that remain are exactly the bindings with no implementation"
+      ]
+    },
+    {
+      "name": "T01 the comparison runs over raw tokens with no length guard",
+      "guards": "a length mismatch is FALSE and never a RangeError an anonymous caller can trigger",
+      "file": "packages/adapters/channel-telegram/src/secret-token.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/secret-token.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the comparison answers to node:crypto's own semantics > answers FALSE \u2014 never a throw \u2014 exactly where timingSafeEqual raises",
+        "the comparison answers to node:crypto's own semantics > is not a prefix test, which is the defect `startsWith` would leave",
+        "verifyInbound refuses, with a code that says why > refuses INVALID for a wrong token, a prefix, a longer one, and one with whitespace"
+      ]
+    },
+    {
+      "name": "T02 an empty configured secret token is accepted",
+      "guards": "an install with no token configured authenticates nobody",
+      "file": "packages/adapters/channel-telegram/src/secret-token.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/secret-token.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the comparison answers to node:crypto's own semantics > refuses an EMPTY configured token, so an install with none authenticates nobody"
+      ]
+    },
+    {
+      "name": "T03 the presented header is trimmed",
+      "guards": "a token with a trailing space is a DIFFERENT token",
+      "file": "packages/adapters/channel-telegram/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/secret-token.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "verifyInbound refuses, with a code that says why > refuses INVALID for a wrong token, a prefix, a longer one, and one with whitespace"
+      ]
+    },
+    {
+      "name": "T04 the configured token is not held to setWebhook's alphabet",
+      "guards": "a token setWebhook would have refused is a misconfiguration this code names",
+      "file": "packages/adapters/channel-telegram/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/secret-token.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "verifyInbound refuses, with a code that says why > refuses INVALID when the INSTALL's token is one setWebhook would not accept"
+      ]
+    },
+    {
+      "name": "T05 a blank header is INVALID rather than ABSENT",
+      "guards": "nothing presented a credential at all, which is a different operator action",
+      "file": "packages/adapters/channel-telegram/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/secret-token.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "verifyInbound refuses, with a code that says why > refuses ABSENT with no header, a blank header, and the wrong case"
+      ]
+    },
+    {
+      "name": "T06 message_thread_id alone makes a topic",
+      "guards": "a reply chain in a group with topics off stays the main conversation",
+      "file": "packages/adapters/channel-telegram/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a text message becomes an InboundMessage > does NOT treat a reply's message_thread_id as a topic"
+      ]
+    },
+    {
+      "name": "T07 a topic is keyed on ITSELF, not under its chat",
+      "guards": "a channel rule naming the supergroup still matches inside every topic",
+      "file": "packages/adapters/channel-telegram/src/provider.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a text message becomes an InboundMessage > keys a forum TOPIC under its supergroup, so a channel rule for the group still matches",
+        "a text message becomes an InboundMessage > keeps two topics, and the group itself, as THREE conversations"
+      ]
+    },
+    {
+      "name": "T08 the MESSAGE id becomes the admission key",
+      "guards": "Telegram repeats an update_id until the endpoint answers 2xx, so that is what a redelivery collapses on",
+      "file": "packages/adapters/channel-telegram/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a text message becomes an InboundMessage > carries the UPDATE id as the admission key and the text as the text",
+        "a text message becomes an InboundMessage > gives two messages in one private chat the same key and consecutive update ids"
+      ]
+    },
+    {
+      "name": "T09 a message from another bot is admitted",
+      "guards": "two bots in one group are an unbounded loop at a model call per turn",
+      "file": "packages/adapters/channel-telegram/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "verified updates with no behaviour are acknowledged, not admitted > a message from another bot is IGNORABLE with no event id"
+      ]
+    },
+    {
+      "name": "T10 a chat id past the safe integer range is rounded",
+      "guards": "a rounded id keys the conversation on a chat that is not the one that wrote",
+      "file": "packages/adapters/channel-telegram/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a verified update that cannot be admitted is REFUSED as an input defect > a chat id past the safe integer range is CHANNELS_EVENT_PAYLOAD_INVALID, never a signature code"
+      ]
+    },
+    {
+      "name": "T11 a chat id may not be negative",
+      "guards": "every group and supergroup Telegram has is a negative id",
+      "file": "packages/adapters/channel-telegram/src/provider.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a text message becomes an InboundMessage > keys a supergroup on its NEGATIVE id without losing the sign",
+        "a text message becomes an InboundMessage > keys a forum TOPIC under its supergroup, so a channel rule for the group still matches",
+        "a text message becomes an InboundMessage > gives two messages in one topic the SAME key and different event ids",
+        "a text message becomes an InboundMessage > keeps two topics, and the group itself, as THREE conversations",
+        "a text message becomes an InboundMessage > does NOT treat a reply's message_thread_id as a topic",
+        "a text message becomes an InboundMessage > gives two messages in one private chat the same key and consecutive update ids"
+      ]
+    },
+    {
+      "name": "T12 the route drops its ./ prefix",
+      "guards": "bot<id>:<secret> puts a COLON in the first path segment, which new URL parses as a scheme",
+      "file": "packages/adapters/channel-telegram/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/telegram-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the ordinary path, so the failures below are not vacuous > calls sendMessage under bot<token>, with the chat id and NO parse mode",
+        "the ordinary path, so the failures below are not vacuous > reports the far side's own message id and the instant TELEGRAM stamped",
+        "the ordinary path, so the failures below are not vacuous > sends a TOPIC reply to the SUPERGROUP with message_thread_id beside it",
+        "the ordinary path, so the failures below are not vacuous > resolves every route under the API base, with the colon in the token surviving",
+        "the ordinary path, so the failures below are not vacuous > describes a user by the name they set, and never claims an email Telegram has none of",
+        "the ordinary path, so the failures below are not vacuous > refuses a token probe whose account is not a bot"
+      ]
+    },
+    {
+      "name": "T13 the bot token's shape is not checked",
+      "guards": "the token becomes a URL path segment, so a / in it addresses somewhere else",
+      "file": "packages/adapters/channel-telegram/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/telegram-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "anything that would become a path is refused before a socket opens > refuses a bot token whose shape could address another method"
+      ]
+    },
+    {
+      "name": "T14 the wait is read from Retry-After only",
+      "guards": "Telegram puts retry_after in the BODY, and a client reading a header finds nothing",
+      "file": "packages/adapters/channel-telegram/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/telegram-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Telegram's 429, whose wait is in the BODY and not in a header > reads parameters.retry_after and refuses the next call on that chat before a socket opens",
+        "Telegram's 429, whose wait is in the BODY and not in a header > trusts the ENVELOPE over the status when a proxy has rewritten one of them"
+      ]
+    },
+    {
+      "name": "T15 the HTTP status outranks the envelope",
+      "guards": "when a proxy has rewritten one of the two, the body is the one Telegram wrote",
+      "file": "packages/adapters/channel-telegram/src/failure.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/telegram-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Telegram's 429, whose wait is in the BODY and not in a header > trusts the ENVELOPE over the status when a proxy has rewritten one of them"
+      ]
+    },
+    {
+      "name": "T16 a 429 does not hold its route",
+      "guards": "the next call inside a live window is refused HERE, with no socket opened",
+      "file": "packages/adapters/channel-telegram/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/telegram-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Telegram's 429, whose wait is in the BODY and not in a header > reads parameters.retry_after and refuses the next call on that chat before a socket opens",
+        "Telegram's 429, whose wait is in the BODY and not in a header > holds the CHAT and leaves other chats free"
+      ]
+    },
+    {
+      "name": "T17 a 403 is a dead credential",
+      "guards": "one person blocking the bot must not send the refresh fence to re-authorize it",
+      "file": "packages/adapters/channel-telegram/src/failure.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/telegram-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Telegram's own refusals, in this context's vocabulary > maps 403 blocked-by-user to REJECTED and NOT to a dead credential",
+        "Telegram's own refusals, in this context's vocabulary > names the error_code when it disagrees with the status, and never the description"
+      ]
+    },
+    {
+      "name": "T18 a 5xx on a WRITE becomes UNAVAILABLE",
+      "guards": "a write that may have landed is RECONCILE and never RETRY",
+      "file": "packages/adapters/channel-telegram/src/failure.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/telegram-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Telegram's own refusals, in this context's vocabulary > maps a 500 on a WRITE to INDETERMINATE, because the far side may have sent it"
+      ]
+    },
+    {
+      "name": "T19 the reason carries Telegram's description",
+      "guards": "the description echoes request content back and is never put in something that is logged",
+      "file": "packages/adapters/channel-telegram/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/telegram-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Telegram's 429, whose wait is in the BODY and not in a header > reads parameters.retry_after and refuses the next call on that chat before a socket opens",
+        "Telegram's 429, whose wait is in the BODY and not in a header > falls back to Retry-After, then to one second, when the body names no wait",
+        "Telegram's 429, whose wait is in the BODY and not in a header > trusts the ENVELOPE over the status when a proxy has rewritten one of them",
+        "Telegram's 429, whose wait is in the BODY and not in a header > delivers exactly once for a caller that obeys the port's retry rule and retryAfterSeconds",
+        "Telegram's own refusals, in this context's vocabulary > maps 401 Unauthorized to UNAUTHORIZED, which is never retried",
+        "Telegram's own refusals, in this context's vocabulary > maps 403 blocked-by-user to REJECTED and NOT to a dead credential"
+      ]
+    },
+    {
+      "name": "T20 an edit carries message_thread_id",
+      "guards": "editMessageText has no such parameter; the message already knows where it is",
+      "file": "packages/adapters/channel-telegram/src/adapter.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/telegram-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "streaming a turn back is an EDIT, not a flood > edits a message INSIDE A TOPIC without naming the topic, because editMessageText has no such field"
+      ]
+    },
+    {
+      "name": "T21 a topic reply is sent to the TOPIC id",
+      "guards": "a Telegram topic is not a chat, so sending to it addresses a chat that does not exist",
+      "file": "packages/adapters/channel-telegram/src/provider.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/telegram-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the ordinary path, so the failures below are not vacuous > sends a TOPIC reply to the SUPERGROUP with message_thread_id beside it",
+        "streaming a turn back is an EDIT, not a flood > edits a message INSIDE A TOPIC without naming the topic, because editMessageText has no such field",
+        "Telegram's 429, whose wait is in the BODY and not in a header > holds the CHAT and leaves other chats free"
+      ]
+    },
+    {
+      "name": "T22 the text length limit is not enforced",
+      "guards": "a turn whose answer is long is refused HERE rather than lost to a vendor 400",
+      "file": "packages/adapters/channel-telegram/src/vendor.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/telegram-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "streaming a turn back is an EDIT, not a flood > holds the vendor's own documented text limit, so the case below is not scaled by the code"
+      ]
+    },
+    {
+      "name": "T23 a later smaller refusal shortens a live wait",
+      "guards": "a wait the far side already imposed is never shortened",
+      "file": "packages/adapters/channel-telegram/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/telegram-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Telegram's 429, whose wait is in the BODY and not in a header > never shortens a wait a later, smaller refusal asks for, and sweeps what has passed"
+      ]
+    },
+    {
+      "name": "T24 the telegram adapter is never constructed",
+      "guards": "a declared channels.telegram group produces the directory ADR M0.3 section 4 assigns it",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "command": "pnpm --filter @platos/core-api exec vitest run src/composition/installation.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "constructing the adapters an install declared > builds the directory every declared configuration group configures",
+        "readiness over what was actually constructed > reports 63 of 67, and the 4 that remain are exactly the bindings with no implementation"
+      ]
+    },
+    {
+      "name": "T25 the secret token's alphabet is not configured",
+      "guards": "an install cannot set a token setWebhook would refuse, or one short enough to guess online",
+      "file": "apps/core-api/src/config/channels.ts",
+      "command": "pnpm --filter @platos/core-api exec vitest run src/config/sections.test.ts src/config/platform.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "WIN-271 (M4.5), D10's Telegram secret token, held to setWebhook's own alphabet > refuses a token setWebhook itself would refuse, naming the variable and never its value",
+        "WIN-271 (M4.5), D10's Telegram secret token, held to setWebhook's own alphabet > refuses a token with a character outside the alphabet, naming the variable and never its value",
+        "WIN-271 (M4.5), D10's Telegram secret token, held to setWebhook's own alphabet > refuses a token short enough to guess online, naming the variable and never its value",
+        "the redaction classification, joined to what the loader actually prints > proves the mark is load-bearing: a secret's rejected value never reaches the diagnostic"
+      ]
+    },
+    {
+      "name": "W14b ECONNRESET joins the never-connected set",
+      "guards": "nothing \u2014 RECORDED AS AN EQUIVALENT MUTANT. `fetch` on this runtime reports UND_ERR_SOCKET for a socket dropped after the request was read, never ECONNRESET, so no case in this suite can observe ECONNRESET's membership. W14 is the row that guards the code which actually arrives.",
+      "file": "packages/adapters/channel-whatsapp/src/failure.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-transport.test.ts",
+      "exit": 0,
+      "outcome": "SURVIVED",
+      "killedCases": []
+    },
+    {
+      "name": "W25 the documented text limit is widened",
+      "guards": "the 4096-character limit is META'S figure and not this repository's, so a behavioural case that reads the constant cannot be widened with it",
+      "file": "packages/adapters/channel-whatsapp/src/vendor.ts",
+      "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "what the Cloud API cannot do, refused rather than approximated > holds the vendor's own documented text limit, so the case below is not scaled by the code"
+      ]
+    },
+    {
+      "name": "T01b the digest is removed but the length guard stays",
+      "guards": "nothing a functional case can observe \u2014 RECORDED AS AN EQUIVALENT MUTANT. With the guard in place a length mismatch is still FALSE and still not a throw. What the digest buys is that the comparison is constant-time in the token's LENGTH as well as its bytes: without it the guard returns early for a wrong-length token and an attacker learns the length by timing. No behavioural case can see that, and the digest is kept rather than deleted because the property is real.",
+      "file": "packages/adapters/channel-telegram/src/secret-token.ts",
+      "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/secret-token.test.ts",
+      "exit": 0,
+      "outcome": "SURVIVED",
+      "killedCases": []
+    }
+  ]
+}

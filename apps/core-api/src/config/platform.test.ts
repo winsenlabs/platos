@@ -169,6 +169,79 @@ describe("INCOMPLETE — an anchor with a required member missing", () => {
   });
 });
 
+describe("INCOMPLETE — WIN-271 (M4.5), D10's WhatsApp app with no verify token", () => {
+  // Meta delivers NO webhook until the subscription handshake succeeds, and the
+  // handshake is answered against the verify token alone. So an install that set
+  // the app secret and left the token blank would boot, serve, verify nothing and
+  // receive nothing — and the failure would surface as SILENCE rather than as an
+  // error. Refused at boot, naming the missing field rather than the secret.
+  it("refuses an app secret with no verify token, naming the verify token", () => {
+    const outcome = loadPlatformConfiguration({
+      ...MINIMAL,
+      PLATOS_CHANNELS_WHATSAPP_APP_SECRET: "e".repeat(32),
+    });
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.diagnostics.map((entry) => entry.field)).toEqual(["PLATOS_CHANNELS_WHATSAPP_VERIFY_TOKEN"]);
+  });
+
+  it("accepts the two together and hands both to the channel's configuration", () => {
+    const outcome = loadPlatformConfiguration({
+      ...MINIMAL,
+      PLATOS_CHANNELS_WHATSAPP_APP_SECRET: "e".repeat(32),
+      PLATOS_CHANNELS_WHATSAPP_VERIFY_TOKEN: "f".repeat(32),
+    });
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    // TWO DIFFERENT SECRETS, carried separately: `verify.ts` gives each its own
+    // type so an endpoint cannot HMAC a body with the verify token, or compare the
+    // app secret against a query parameter an anonymous caller chose.
+    expect(outcome.value.channels.whatsapp?.appSecret).toBe("e".repeat(32));
+    expect(outcome.value.channels.whatsapp?.verifyToken).toBe("f".repeat(32));
+    expect(outcome.value.declaredGroups).toContain("channels.whatsapp");
+  });
+
+  it("refuses an app secret short enough to grind offline, naming it", () => {
+    const outcome = loadPlatformConfiguration({
+      ...MINIMAL,
+      PLATOS_CHANNELS_WHATSAPP_APP_SECRET: "e".repeat(31),
+      PLATOS_CHANNELS_WHATSAPP_VERIFY_TOKEN: "f".repeat(32),
+    });
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.diagnostics.map((entry) => entry.field)).toEqual(["PLATOS_CHANNELS_WHATSAPP_APP_SECRET"]);
+  });
+});
+
+describe("WIN-271 (M4.5), D10's Telegram secret token, held to setWebhook's own alphabet", () => {
+  // Telegram signs NOTHING, so this string is a bare bearer credential on a public
+  // endpoint: a caller who learns it can post any body it likes. Its GRAMMAR is
+  // the vendor's ("1-256 characters. Only A-Z, a-z, 0-9, _ and - are allowed") and
+  // its FLOOR is this install's, because the vendor permits a single character.
+  it("accepts a token in the documented alphabet and declares the group", () => {
+    const outcome = loadPlatformConfiguration({
+      ...MINIMAL,
+      PLATOS_CHANNELS_TELEGRAM_SECRET_TOKEN: "platos-test-secret-token-0123456789",
+    });
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.value.channels.telegram?.secretToken).toBe("platos-test-secret-token-0123456789");
+    expect(outcome.value.declaredGroups).toContain("channels.telegram");
+  });
+
+  it.each([
+    ["a token setWebhook itself would refuse", "platos test secret token 01234567"],
+    ["a token with a character outside the alphabet", "platos-test-secret-token-01234567/"],
+    ["a token short enough to guess online", "platos-short"],
+  ])("refuses %s, naming the variable and never its value", (_name, token) => {
+    const outcome = loadPlatformConfiguration({ ...MINIMAL, PLATOS_CHANNELS_TELEGRAM_SECRET_TOKEN: token });
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.diagnostics.map((entry) => entry.field)).toEqual(["PLATOS_CHANNELS_TELEGRAM_SECRET_TOKEN"]);
+    expect(JSON.stringify(outcome.diagnostics)).not.toContain(token);
+  });
+});
+
 describe("INCOMPLETE — D20's email relay with no sign-in page", () => {
   // D20 (2026-09-15) made the relay the way an operator signs in, so a relay with
   // no page for the link to open is an install that mails dead links. Refused at
@@ -422,6 +495,9 @@ describe("a fully wired install", () => {
     PLATOS_CHANNELS_EMAIL_SMTP_URL: "smtps://relay.internal:465",
     PLATOS_CHANNELS_EMAIL_FROM: "alerts@platos.example",
     PLATOS_CHANNELS_EMAIL_LOGIN_URL: "https://app.platos.example/magic",
+    PLATOS_CHANNELS_WHATSAPP_APP_SECRET: "e".repeat(32),
+    PLATOS_CHANNELS_WHATSAPP_VERIFY_TOKEN: "f".repeat(32),
+    PLATOS_CHANNELS_TELEGRAM_SECRET_TOKEN: "platos-test-secret-token-0123456789",
     PLATOS_CHANNELS_WEBHOOK_SIGNING_KEY: "w".repeat(32),
     PLATOS_DURABLE_RUNTIME_API_URL: "https://durable.internal",
     PLATOS_DURABLE_RUNTIME_SECRET_KEY: "d".repeat(24),
@@ -442,6 +518,8 @@ describe("a fully wired install", () => {
       "providers.modelRouter",
       "channels.slack",
       "channels.discord",
+      "channels.whatsapp",
+      "channels.telegram",
       "channels.emailNotifier",
       "channels.webhookNotifier",
       "durableRuntime.durableRuntime",
