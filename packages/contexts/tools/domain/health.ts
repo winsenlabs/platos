@@ -75,12 +75,14 @@ export type HealthOutcome = (typeof HEALTH_OUTCOMES)[number];
  * UNREADABLE BY THE V1 STORES. `findHealth` on such a row throws rather than
  * answering, which is the failure a reconnecting entity would have met first —
  * before any refusal about its configuration. That is measured in
- * `packages/adapters/postgres-tenancy/src/tools-sync-writers.integration.test.ts`
- * against a row seeded by the legacy binary's own client.
+ * `apps/core-api/src/composition/tool-sync-reconnect.integration.test.ts`
+ * against a row seeded by the legacy binary's own client, and reverting the
+ * widening in `tools-rows.ts` turns five of its cases red with
+ * `TOOLS_REPOSITORY_UNAVAILABLE { reason: "findHealth:tools.row.unknown_union_member" }`.
  *
  * THE TWO ARE KEPT APART RATHER THAN MERGED INTO ONE SIX-VALUED ENUM. They
  * answer different questions and they are written by different frames, so a
- * reader that saw `down` would be wrong to conclude a call had been attempted,
+ * reader that saw `down` would be wrong to conclude a call had been DISPATCHED,
  * and a reader that saw `timeout` would be wrong to conclude the entity had said
  * anything. `lastCalledAt` is the field that tells them apart on a row, and it
  * stays null for a report for exactly that reason.

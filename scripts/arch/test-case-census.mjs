@@ -2791,7 +2791,28 @@ export const EXPECTED = Object.freeze({
   //   transport this deployable has no client for and refuses under its own code.
   //
   // 366 + 8 + 26 = 400; 19 + 2 = 21.
-  "packages/contexts/tools": { files: 21, cases: 400 },
+  //
+  // WIN-269 (M4.3): 400 -> 402, NO NEW FILE. Both cases land in suites that
+  // already existed, and both are gates rather than behaviour:
+  //
+  //   `contracts/operator-gate.test.ts` (+2, 29 -> 31): `recordToolHealth`
+  //   refused a grant tenancy did not mint, and admitted one it did. Written out
+  //   one by one like its twenty-eight siblings there, because that file's own
+  //   note explains a loop would declare the same assertions in four lines and
+  //   this census could not count them.
+  //
+  //   `domain/errors.test.ts` (+0): `healthReportInvalid` joins the `MINTED`
+  //   table, which is data rather than a case — the two existing cases over it
+  //   are what caught the omission.
+  //
+  // `application/record-tool-health.ts` therefore adds a FILE to the package and
+  // no case to this census, which is correct: its behaviour is proved against a
+  // REAL PostgreSQL in `apps/core-api/src/composition/tool-sync-writers.integration.test.ts`,
+  // and `apps/core-api` is outside `PACKAGE_ROOTS`. A reader taking this number
+  // as the measure of what the lane proved would be reading a small part of it.
+  //
+  // 366 + 8 + 26 + 2 = 402; the file count is unmoved at 21.
+  "packages/contexts/tools": { files: 21, cases: 402 },
   // M2 INTEGRATION: kernel 3 + 1 + 2 = 6 files, 44 + 16 (the redactor's
   // two-sided suite) + 69 (retry and the transaction-outcome behaviour) = 129.
   //
@@ -3723,7 +3744,19 @@ export const EXPECTED = Object.freeze({
 // `fields[]` path points — and `apps/core-api` is outside `PACKAGE_ROOTS`, so this
 // census moves not one number for them. A reader taking this file as the measure of
 // what stage 3 proved would be reading two thirds of it.
-export const EXPECTED_RUNTIME_TOTAL = 8359;
+//
+// WIN-269 (M4.3): 8359 + 2 = 8361 over 564 files, UNMOVED. Both cases are the
+// operator-gate pair for `ToolsContract.recordToolHealth`, in a file that already
+// existed; the row above itemises them. `packages/contexts/tenancy` does not move
+// either — `recordEntityConnection` is a NEW FILE with no unit case, because every
+// property it has that is worth asserting (the connect pair, the disconnect that
+// does not advance the date, the forged grant, the genuine grant for another
+// project, the weaker access level) is asserted against a REAL PostgreSQL in
+// `apps/core-api/src/composition/tool-sync-writers.integration.test.ts`. That
+// deployable is outside `PACKAGE_ROOTS`, so the lane's fourteen real-database cases
+// and its thirteen reconnect cases move NOT ONE NUMBER here. The asymmetry the
+// three paragraphs above record applies a fourth time.
+export const EXPECTED_RUNTIME_TOTAL = 8361;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
