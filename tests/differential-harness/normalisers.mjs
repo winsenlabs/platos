@@ -32,6 +32,11 @@ const UUID_PATTERN =
 const ULID_PATTERN = /\b[0-7][0-9ABCDEFGHJKMNPQRSTVWXYZ]{25}\b/gu;
 const INSTANT_PATTERN =
   /\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:?\d{2})?\b/gu;
+// A SHA-256 hex digest. Narrow on purpose: exactly 64 lowercase hex characters,
+// which is what `hashSecret` and `node-crypto-digest` both emit and what every
+// `tokenHash` column in the tenancy schema holds. It cannot match a UUID (those
+// carry dashes) and it cannot match a short identifier.
+const DIGEST_PATTERN = /\b[0-9a-f]{64}\b/gu;
 const ENDPOINT_PATTERN =
   /\b((?:postgres(?:ql)?|redis|https?|clickhouse|amqp):\/\/)(?:[^@/\s]*@)?([^/\s?#]+)/giu;
 
@@ -102,6 +107,11 @@ const MASK_PATTERNS = [
   [UUID_PATTERN, "<uuid>"],
   [ULID_PATTERN, "<ulid>"],
   [INSTANT_PATTERN, "<instant>"],
+  // WIN-257. A digest is minted from a random token, so two independent systems
+  // never agree on one and it belongs in the mask for exactly the reason the
+  // three above do: the sort key must use only the parts neither store
+  // randomises, or the same logical row gets a different ordinal on each side.
+  [DIGEST_PATTERN, "<digest>"],
 ];
 
 function maskNondeterminism(text) {
@@ -183,6 +193,71 @@ function applyIdentifierOrdinal(observation) {
       .replace(UUID_PATTERN, (match) => assign(match.toLowerCase()))
       .replace(ULID_PATTERN, (match) => assign(match)),
   );
+}
+
+// ---------------------------------------------------------------------------
+// instant-presence
+// ---------------------------------------------------------------------------
+
+// WIN-257 — THE ONE NORMALISER A TRANSPORT DIFFERENTIAL NEEDS AND A STORE
+// CONSERVATION RUN MUST NOT USE.
+//
+// `instant-rank` erases the VALUE of an instant and keeps its RANK, so a
+// reordering still diverges. That is exactly right when both sides run identical
+// SQL against two databases: the same operations in the same order produce the
+// same NUMBER of distinct instants, and a difference in the count is real drift.
+//
+// It is wrong across two IMPLEMENTATIONS. The webapp writes a project and its
+// membership inside one Prisma transaction whose `now()` is evaluated once;
+// core-api writes the same rows through its own unit of work and may stamp two
+// instants a millisecond apart. Neither is a defect, and neither side's count is
+// the "right" one — so the ranks shift, every later instant in the observation
+// renumbers, and rows that agree in every meaningful column are reported missing
+// and extra. Independent verification of that behaviour is what put this
+// normaliser here rather than an approval over the whole row.
+//
+// WHAT IT KEEPS: whether a timestamp column was written AT ALL. `null` stays
+// `null` and an instant becomes `<instant>`, so a side that leaves `revokedAt`
+// unset while the other revokes, or leaves `lastSeenAt` unstamped while the
+// other stamps it, still diverges — which is the class of difference a transport
+// differential is actually for.
+//
+// WHAT IT LOSES, STATED: order and count. A scenario that uses it CANNOT catch a
+// reordering of two timestamps, and `transport-scenarios.mjs` has to say in prose
+// why it is willing to give that up.
+function applyInstantPresence(observation) {
+  return mapStrings(observation, (text) => text.replace(INSTANT_PATTERN, "<instant>"));
+}
+
+// ---------------------------------------------------------------------------
+// digest-ordinal
+// ---------------------------------------------------------------------------
+
+// WIN-257 — THE SAME CLASS OF NONDETERMINISM AS A UUID, AND FOUND THE SAME WAY.
+//
+// The transport differential twin-runs a real sign-in against two systems. Each
+// mints its own session token and its own magic-link token, and the schema
+// stores the SHA-256 of each. Those digests differ by construction, exactly as
+// two independently minted UUIDs do, and the twin-store run reported
+// store-row-missing plus store-row-extra for `OperatorSession` and
+// `MagicLinkToken` rows that agreed in every column that carries meaning.
+//
+// So digests are numbered rather than compared, and the SAME rule as
+// `identifier-ordinal` applies: the VALUE goes, the STRUCTURE stays. One digest
+// used in two places is a different fact from two distinct digests, and a side
+// emitting a different NUMBER of digests still diverges — which is what catches
+// a session that was minted twice, or a token whose hash was written into the
+// wrong row.
+function applyDigestOrdinal(observation) {
+  const ordinals = new Map();
+  const assign = (value) => {
+    if (!ordinals.has(value)) ordinals.set(value, ordinals.size);
+    return `<digest:${ordinals.get(value)}>`;
+  };
+  collectStrings(observation, (text) => {
+    for (const match of text.matchAll(DIGEST_PATTERN)) assign(match[0]);
+  });
+  return mapStrings(observation, (text) => text.replace(DIGEST_PATTERN, (match) => assign(match)));
 }
 
 // ---------------------------------------------------------------------------
@@ -367,6 +442,42 @@ export const NORMALISERS = Object.freeze([
             thread: [{ ref: "0b8f2a4c-1d3e-4f5a-8b9c-0d1e2f3a4b5c", owner: "7c9e1b2d-3f4a-4b6c-9d8e-1a2b3c4d5e6f" }],
           },
         },
+      ]),
+    }),
+  }),
+  Object.freeze({
+    id: "instant-presence",
+    dimensions: Object.freeze(["schema", "events", "sideEffects", "store"]),
+    erases: "The value, the order and the count of ISO-8601 instants, leaving only whether a timestamp was written at all.",
+    preserves:
+      "Presence. A column that one side wrote and the other left null still diverges, which is the difference a transport differential exists to find. STATED LOSS: order and count both go, so a scenario that uses this cannot catch a reordering of two timestamps and must say in prose why it is willing to give that up. It runs AFTER instant-rank and therefore matches nothing unless a scenario has skipped that one.",
+    apply: applyInstantPresence,
+    sensitivity: Object.freeze({
+      equivalent: Object.freeze([
+        { store: { session: [{ createdAt: "2026-09-16T00:00:00.000Z", lastSeenAt: "2026-09-16T00:00:01.000Z" }] } },
+        { store: { session: [{ createdAt: "2026-09-16T00:00:02.000Z", lastSeenAt: "2026-09-16T00:00:02.000Z" }] } },
+      ]),
+      divergent: Object.freeze([
+        { store: { session: [{ createdAt: "2026-09-16T00:00:00.000Z", lastSeenAt: "2026-09-16T00:00:01.000Z" }] } },
+        { store: { session: [{ createdAt: "2026-09-16T00:00:00.000Z", lastSeenAt: null }] } },
+      ]),
+    }),
+  }),
+  Object.freeze({
+    id: "digest-ordinal",
+    dimensions: Object.freeze(["schema", "events", "sideEffects", "store"]),
+    erases: "The value of every SHA-256 hex digest, which two systems that each minted their own token can never agree on.",
+    preserves:
+      "Referential structure and count, exactly as identifier-ordinal does for UUIDs. One digest appearing in two rows stays one digest; two distinct digests stay two; a side that writes a different NUMBER of digests still diverges. STATED LIMIT: which digest a system happened to mint for which row is precisely the nondeterminism being erased, so a permutation of digests that each appear once and never co-occur is not observable.",
+    apply: applyDigestOrdinal,
+    sensitivity: Object.freeze({
+      equivalent: Object.freeze([
+        { store: { session: [{ tokenHash: "a".repeat(64), previousHash: "a".repeat(64) }] } },
+        { store: { session: [{ tokenHash: "b".repeat(64), previousHash: "b".repeat(64) }] } },
+      ]),
+      divergent: Object.freeze([
+        { store: { session: [{ tokenHash: "a".repeat(64), previousHash: "a".repeat(64) }] } },
+        { store: { session: [{ tokenHash: "a".repeat(64), previousHash: "c".repeat(64) }] } },
       ]),
     }),
   }),

@@ -29,14 +29,17 @@ import {
   summarise,
 } from "./differential-coverage.mjs";
 import {
+  COVERAGE_REGISTRY,
   SCENARIO_REGISTRY,
+  TRANSPORT_SCENARIO_REGISTRY,
   assertRegistryIsWellFormed,
+  assertTransportRegistryIsWellFormed,
   claimedCapabilities,
 } from "../tests/differential-harness/scenarios.mjs";
 
 test("the denominator matches the M0 censuses exactly", () => {
   const summary = summarise(
-    buildMatrix(enumerateCells(), SCENARIO_REGISTRY, claimedCapabilities()).rows,
+    buildMatrix(enumerateCells(), COVERAGE_REGISTRY, claimedCapabilities()).rows,
   );
   // Each number is the census's own published total, not a number this test
   // invented. If a census moves, this fails and someone has to look.
@@ -112,18 +115,18 @@ test("MUTATION: a claim naming a capability no census contains is a hard error",
 
 test("MUTATION: dropping a cell moves the digest, so the denominator cannot shrink quietly", () => {
   const cells = enumerateCells();
-  const full = matrixDigest(buildMatrix(cells, SCENARIO_REGISTRY, claimedCapabilities()).rows);
+  const full = matrixDigest(buildMatrix(cells, COVERAGE_REGISTRY, claimedCapabilities()).rows);
   const shrunk = matrixDigest(
-    buildMatrix(cells.slice(1), SCENARIO_REGISTRY, claimedCapabilities()).rows,
+    buildMatrix(cells.slice(1), COVERAGE_REGISTRY, claimedCapabilities()).rows,
   );
   assert.notEqual(full, shrunk);
 });
 
 test("MUTATION: flipping a cell to covered moves the digest", () => {
   const cells = enumerateCells();
-  const before = matrixDigest(buildMatrix(cells, SCENARIO_REGISTRY, claimedCapabilities()).rows);
+  const before = matrixDigest(buildMatrix(cells, COVERAGE_REGISTRY, claimedCapabilities()).rows);
   const after = matrixDigest(
-    buildMatrix(cells, [...SCENARIO_REGISTRY, {
+    buildMatrix(cells, [...COVERAGE_REGISTRY, {
       id: "extra",
       subject: "postgres-twin",
       dimensions: ["store"],
@@ -494,4 +497,33 @@ test("BASELINE: the committed matrix agrees root by root, and BOTH roots now car
   // entered the surface -- the unique denominator does not move. An equality with a
   // published term reports that; a tolerance would have absorbed it.
   assert.equal(document.reconciledAgainst.independentCrossRootBindings, 7);
+});
+
+// ---------------------------------------------------------------------------
+// WIN-257 — the transport scenarios, and what makes their coverage real
+// ---------------------------------------------------------------------------
+
+test("the transport scenarios are registered, well-formed, and claim only cells a census contains", () => {
+  assert.ok(TRANSPORT_SCENARIO_REGISTRY.length > 0, "the transport registry is empty");
+  assert.deepEqual(assertTransportRegistryIsWellFormed(), []);
+  const known = new Set(enumerateCells().map((cell) => cell.id));
+  for (const scenario of TRANSPORT_SCENARIO_REGISTRY) {
+    for (const capability of scenario.capabilities) {
+      assert.ok(known.has(capability), `${scenario.id} claims ${capability}, which no census contains`);
+    }
+  }
+});
+
+test("the coverage registry is the union, and dropping the transport half moves the numerator", () => {
+  assert.equal(COVERAGE_REGISTRY.length, SCENARIO_REGISTRY.length + TRANSPORT_SCENARIO_REGISTRY.length);
+  const cells = enumerateCells();
+  const withTransport = summarise(buildMatrix(cells, COVERAGE_REGISTRY, claimedCapabilities(COVERAGE_REGISTRY)).rows);
+  const storeOnly = summarise(buildMatrix(cells, SCENARIO_REGISTRY, claimedCapabilities(SCENARIO_REGISTRY)).rows);
+  // THE CONTROL THAT MATTERS. If the transport scenarios contributed nothing,
+  // both numbers would be equal and the registry would be decoration.
+  assert.ok(
+    withTransport.bySurface.rest.covered > storeOnly.bySurface.rest.covered,
+    "the transport scenarios contribute no REST coverage; the registry would be decoration",
+  );
+  assert.equal(storeOnly.bySurface.rest.covered, 0, "the store scenarios claim no REST cell, and must not");
 });

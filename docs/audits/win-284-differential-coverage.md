@@ -37,8 +37,8 @@ missing is the second system, not the instrument.
 ## Totals
 
 - capability cells enumerated: **796**
-- covered by a twin-run scenario: **2**
-- uncovered, each attributed to an owning issue: **794**
+- covered by a twin-run scenario: **15**
+- uncovered, each attributed to an owning issue: **781**
 
 ## By surface
 
@@ -46,7 +46,7 @@ missing is the second system, not the instrument.
 | --- | ---: | ---: | ---: | --- |
 | bff | 117 | 0 | 117 | WIN-272 (M4) |
 | mcp | 202 | 0 | 202 | WIN-268 (M4) |
-| rest | 322 | 0 | 322 | WIN-267 (M4) |
+| rest | 322 | 13 | 309 | WIN-267 (M4) |
 | screen | 47 | 0 | 47 | WIN-272 (M4) |
 | sdk | 5 | 0 | 5 | WIN-269 (M4) |
 | store | 94 | 2 | 92 | WIN-285 (M7) |
@@ -58,12 +58,25 @@ Each row names the scenario that twin-runs it against two isolated equivalent st
 
 | capability | scenario |
 | --- | --- |
+| `DELETE /api/v1/bff/session` | transport-sign-out |
+| `GET /api/v1/environments/:environmentId/end-users` | transport-end-user-page |
+| `GET /api/v1/environments/:environmentId/variables` | transport-environment-variable-list |
+| `GET /api/v1/environments/by-slugs` | transport-environment-by-slugs |
+| `GET /api/v1/identity/session` | transport-identity-session |
+| `GET /api/v1/organizations` | transport-organization-list |
+| `GET /api/v1/projects` | transport-project-list |
+| `POST /api/v1/bff/magic-link` | transport-magic-link-login |
+| `POST /api/v1/bff/magic-link/complete` | transport-magic-link-login |
+| `POST /api/v1/bff/session` | transport-session-exchange |
+| `POST /api/v1/organizations` | transport-organization-create |
+| `POST /api/v1/projects` | transport-project-create |
+| `PUT /api/v1/environments/:environmentId/variables/:key` | transport-environment-variable-set |
 | `store:Organization` | tenancy-end-user-tier-boundary, tenancy-organization-project-conservation |
 | `store:Project` | tenancy-organization-project-conservation |
 
 ## What each uncovered surface is waiting for
 
-- **rest** — WIN-267 (M4): no V1 REST transport exists at this baseline
+- **rest** — WIN-267 (M4): the V1 REST transport serves part of this surface and the transport differential twin-runs those cells against the webapp oracle; the remainder is still served only by apps/agent, which no oracle-vs-candidate pair exists for until it moves
 - **mcp** — WIN-268 (M4): no V1 MCP surface exists at this baseline
 - **sdk** — WIN-269 (M4): no V1 SDK surface exists at this baseline
 - **channel** — WIN-270 (M4): no V1 channel surface exists at this baseline
@@ -72,4 +85,4 @@ Each row names the scenario that twin-runs it against two isolated equivalent st
 - **screen** — WIN-272 (M4): screen contracts land with the transports that serve them
 - **store** — WIN-285 (M7): the store is twin-runnable today; enumerating every model is coverage execution, which M7.2 owns
 
-Matrix digest: `6fd84c3be9e1b735bee6fffec397ac99c97da82d7e0d3c1bf0470db05fb3c949`
+Matrix digest: `9eec516bcb0064583213cf28b207be10c6ae51d242dce1d2cf2ef7c75b0e0a31`

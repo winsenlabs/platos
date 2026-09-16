@@ -287,6 +287,19 @@ jobs:
         # turn and requires the remainder to fail, so removing any single seed
         # turns this step red.
         #
+        # WIN-257 ADDS A THIRD COMMAND, AND IT NEEDS NO DOCKER. The transport
+        # differential itself runs in `test:core-api:integration` because it
+        # starts a composed process against three containers. The PROMISES its
+        # recorded oracle makes do not need any of that, and they are the
+        # promises that decide whether the differential still means anything
+        # after WIN-257 T8 deletes `PlatosAuthService`: that the transcript names
+        # its commit, that it pins a digest for every source the oracle driver
+        # executes, that a CHANGED source fails until it is re-recorded, that a
+        # DELETED one does not (that is the state it was recorded for), that
+        # every registered scenario has an answer, and that nothing in it is
+        # credential-shaped. Running them here means they are checked on every
+        # CI run rather than only on a machine with a daemon.
+        #
         # CORRECTION, 2026-09-02. This comment previously said the size was not
         # pinned because "assertSeedCoverage is what enforces completeness".
         # That was false as written: the check enforced CODE coverage, so four
@@ -298,6 +311,7 @@ jobs:
         run: |
           pnpm test:differential-harness
           pnpm test:differential-harness:controls
+          node --test tests/differential-harness/oracle-transcripts.test.mjs
 
       - name: External Trigger configuration and direct-dispatch tests
         run: pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts

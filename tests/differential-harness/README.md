@@ -93,6 +93,8 @@ and keep the suite green.
 | `duration-elided` | the magnitude of measured durations, entirely | presence and type only; scope is an exact field allowlist, never a `*Ms` suffix rule, so a configured `retentionMs` is untouched |
 | `ephemeral-endpoint` | the host and port authority of a connection string | scheme, path, database name, query string |
 | `store-sequence-ordinal` | the absolute value of integer surrogate keys | row count, row order, and every join |
+| `digest-ordinal` | the value of every SHA-256 hex digest — two systems that each minted their own token never agree on one | referential structure and count, exactly as `identifier-ordinal` does for UUIDs |
+| `instant-presence` | the value, **order and count** of instants | presence only. It runs after `instant-rank` and matches nothing unless a scenario has skipped that one — see "Two registries, and one declared weakening" |
 
 `duration-elided` is the only fully lossy normaliser, and deliberately so: timing
 is a performance property and performance parity is WIN-285's gate battery.
@@ -250,6 +252,66 @@ deleted with every gate staying green.
 The store runner **fails when Docker is absent rather than skipping**. A suite
 that silently skips is indistinguishable in a summary from one that passes, and
 that is the exact failure this issue exists to prevent.
+
+## The shipped transports, and the oracle that is about to be deleted
+
+The paragraph above — "at this baseline there is **no V1 candidate implementation**
+of REST" — was true when it was written and is no longer. `apps/core-api`
+serves nineteen routes, and thirteen of those cells are twin-run against the
+thing they replace by
+`apps/core-api/src/composition/transport-differential.integration.test.ts`.
+
+**The oracle is the webapp, executed.** `apps/webapp/test/differential-oracle.mts`
+imports real Remix `loader`s and `action`s out of `apps/webapp/app/routes`, and
+real exports of `apps/webapp/app/services/auth.server`, and runs them against a
+real PostgreSQL in the webapp's own package. Nothing in it re-implements a Prisma
+query, a membership rule or a cookie format: a differential against a
+re-implementation compares two things one author wrote.
+
+**One server, two databases.** WIN-257 asks for the comparison to run "on the
+same live PostgreSQL"; `twinRun` refuses two sides reporting the same store
+identity. One container with `differential_oracle` and `differential_candidate`
+satisfies both, seeded by identical SQL so the two sides start from the same rows
+with the same identifiers.
+
+**The oracle is recorded as it runs.** WIN-257 T8 deletes `database.server.ts`
+and the `PlatosAuthService` calls beside it. A differential whose oracle has been
+deleted does not go red, it goes QUIET, which is the worst failure this class of
+harness has. So every live oracle answer is written to `oracle-transcripts.json`
+with the digest of each source that produced it. While those sources exist a
+changed digest fails until the transcript is re-recorded; once they are gone the
+transcript is the frozen record the candidate keeps being compared against, and
+`oracle-transcripts.test.mjs` proves both halves of that life without a Docker
+daemon. No token is ever transcribed.
+
+### Two registries, and one declared weakening
+
+`SCENARIO_REGISTRY` is what `postgres-conservation.mjs` RUNS; `COVERAGE_REGISTRY`
+is what `scripts/differential-coverage.mjs` COUNTS, and it is the union with the
+transport scenarios. Both are executed by a job in `ci.yml` — the store runner in
+`differential-state-conservation`, the transport suite in
+`postgres-tenancy-repository` — because a registry nothing runs is a hand-written
+coverage claim with extra steps.
+
+Two things the transport half gives up, both declared rather than discovered:
+
+- **`instant-rank` is switched off**, for the reason `TRANSPORT_NORMALISATION.why`
+  states: two independent implementations do not agree on how many distinct
+  wall-clock instants one operation takes, so ranks renumber and rows that agree
+  in every meaningful column read as missing and extra. `instant-presence` keeps
+  the only timestamp fact left worth comparing — whether the column was written —
+  and the loss is that a reordering of two timestamps goes uncaught.
+- **The sensitivity obligation is per REGISTRY, not per scenario.** The store
+  runner requires every dimension to have a designated seed that moved it ON THAT
+  scenario; here one seed per dimension is designated across the whole registry.
+  Forty-eight seeds would be a phase nobody runs, and a weaker rule that executes
+  beats a stronger one that is skipped.
+
+The `schema` dimension compares a declared PROJECTION, because a Remix loader
+returns rows shaped for a screen and a V1 route returns an M0.4 envelope, and
+comparing them field for field would be one approval per field. Two things stand
+under the projection: `store` compares raw rows through no projection at all, and
+the seeded phase requires each declared dimension to be seen to diverge.
 
 ## Coverage
 

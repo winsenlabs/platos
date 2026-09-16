@@ -17,6 +17,8 @@
 // eventually fill is enumerated as `uncovered` with its blocking milestone, so
 // the denominator cannot shrink and the gap stays visible.
 
+import { TRANSPORT_SCENARIO_REGISTRY as TRANSPORT_SCENARIOS } from "./transport-scenarios.mjs";
+
 const ORGANIZATION_SLUG = "win284-conservation";
 
 // Real tenancy tables, a real foreign key and a real cascade, so "state
@@ -109,15 +111,39 @@ export const TIER_BOUNDARY_SCENARIO = Object.freeze({
 
 export const SCENARIO_REGISTRY = Object.freeze([CONSERVATION_SCENARIO, TIER_BOUNDARY_SCENARIO]);
 
+// THE STORE REGISTRY AND THE COVERAGE REGISTRY ARE TWO DIFFERENT LISTS, and the
+// difference is load-bearing.
+//
+// `SCENARIO_REGISTRY` above is what `postgres-conservation.mjs` RUNS: every entry
+// must be executable by the twin-PostgreSQL subject, and every dimension it
+// declares must have a designated seed on that runner. Adding a REST scenario to
+// it would hand the store runner a scenario with no SQL to run.
+//
+// `COVERAGE_REGISTRY` is what `scripts/differential-coverage.mjs` COUNTS: every
+// scenario any subject twin-runs, whatever runs it. The transport scenarios are
+// executed by `apps/core-api/src/composition/transport-differential.integration.test.ts`
+// against the webapp oracle and the composed process; they belong in the
+// numerator and not in the store runner's loop.
+//
+// The header above this file says coverage "is derived from what the harness
+// actually runs, never written by hand into the matrix". That stays true with
+// two registries only because BOTH are executed by a job in `ci.yml` — the store
+// runner in `differential-state-conservation`, the transport suite in
+// `postgres-tenancy-repository`'s `test:core-api:integration` step. A registry
+// nothing runs would be a hand-written coverage claim with extra steps.
+export { TRANSPORT_SCENARIO_REGISTRY, TRANSPORT_SEEDS, assertTransportRegistryIsWellFormed } from "./transport-scenarios.mjs";
+
+export const COVERAGE_REGISTRY = Object.freeze([...SCENARIO_REGISTRY, ...TRANSPORT_SCENARIOS]);
+
 // The union of every capability any registered scenario twin-runs. This is the
 // numerator of the coverage matrix and it is computed, never declared.
-export function claimedCapabilities(registry = SCENARIO_REGISTRY) {
+export function claimedCapabilities(registry = COVERAGE_REGISTRY) {
   const claims = new Set();
   for (const scenario of registry) for (const capability of scenario.capabilities ?? []) claims.add(capability);
   return [...claims].sort();
 }
 
-export function assertRegistryIsWellFormed(registry = SCENARIO_REGISTRY) {
+export function assertRegistryIsWellFormed(registry = COVERAGE_REGISTRY) {
   const failures = [];
   const seen = new Set();
   for (const scenario of registry) {

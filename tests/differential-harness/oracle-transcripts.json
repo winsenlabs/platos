@@ -1,0 +1,270 @@
+{
+  "version": 1,
+  "issue": "WIN-257",
+  "title": "Recorded answers of the webapp Prisma/PlatosAuthService oracle",
+  "why": "WIN-257 T8 deletes this oracle. Recorded before the cutover so the transport differential keeps its meaning afterwards: while the sources below exist the live oracle must still answer this, and once they are gone this is the frozen record the candidate is compared against.",
+  "provenance": {
+    "commit": "a5868739f742ff2c62fcd7976f24a1705f8a7b39",
+    "capturedAt": "2026-09-16T04:42:02.027Z",
+    "capturedBy": "apps/core-api/src/composition/transport-differential.integration.test.ts",
+    "oracleSources": [
+      {
+        "path": "apps/webapp/app/services/auth.server.ts",
+        "present": true,
+        "sha256": "33bd7b2c81b0f4c07436f4a2d3e93f91"
+      },
+      {
+        "path": "apps/webapp/app/services/database.server.ts",
+        "present": true,
+        "sha256": "a5fb8c9e4bd4731a58bc3f8a1fd2fb45"
+      },
+      {
+        "path": "apps/webapp/app/services/projectAccess.server.ts",
+        "present": true,
+        "sha256": "8ef6a68ad9d46c28af6c033ab91a0b3f"
+      },
+      {
+        "path": "apps/webapp/app/routes/login._index/route.tsx",
+        "present": true,
+        "sha256": "b08c4ec04f1b3a7c6ec474925cbd500f"
+      },
+      {
+        "path": "apps/webapp/app/routes/logout.tsx",
+        "present": true,
+        "sha256": "5a266dacb2ff763fcb0711478caba7d9"
+      },
+      {
+        "path": "apps/webapp/app/routes/_app.orgs.new/route.tsx",
+        "present": true,
+        "sha256": "4106d4881c929a65ff564c29f7bd2291"
+      },
+      {
+        "path": "apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx",
+        "present": true,
+        "sha256": "b87a1cd58777d2d3cd611a8f9b7abe71"
+      },
+      {
+        "path": "apps/webapp/app/routes/_app.orgs.$organizationSlug_.projects.new/route.tsx",
+        "present": true,
+        "sha256": "eea3395e11d1771814696e56ab80dbeb"
+      },
+      {
+        "path": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-accounts._index/route.tsx",
+        "present": true,
+        "sha256": "0ef34caa30094c8f486ab5fbb6d61b60"
+      },
+      {
+        "path": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables/route.tsx",
+        "present": true,
+        "sha256": "b61fd061822d530da15de59b064d6639"
+      },
+      {
+        "path": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables.new/route.tsx",
+        "present": true,
+        "sha256": "0dfa32fab9b9771544b0302ed5f5fbbc"
+      },
+      {
+        "path": "internal-packages/tenancy-database/src/auth.ts",
+        "present": true,
+        "sha256": "4fc8fb13b3e599ad567d037ba3c808f0"
+      }
+    ]
+  },
+  "contains": "booleans, slugs, names, roles and seeded identifiers only; Set-Cookie is used by the running suite and dropped before anything is written here",
+  "steps": {
+    "transport-end-user-page": {
+      "status": 200,
+      "facts": {
+        "endUsers": [
+          {
+            "displayName": "Grace"
+          },
+          {
+            "displayName": "Ada"
+          }
+        ],
+        "total": 2
+      },
+      "auth": {
+        "principal": "eeeeeeee-0001-4000-8000-000000000001",
+        "scopes": [],
+        "decision": "allow",
+        "reason": null
+      }
+    },
+    "transport-environment-by-slugs": {
+      "status": 200,
+      "facts": {
+        "resolved": true,
+        "organizationRole": "OWNER",
+        "projectRole": null
+      },
+      "auth": {
+        "principal": "eeeeeeee-0001-4000-8000-000000000001",
+        "scopes": [
+          "OWNER"
+        ],
+        "decision": "allow",
+        "reason": null
+      }
+    },
+    "transport-environment-variable-list": {
+      "status": 200,
+      "facts": {
+        "variables": [
+          {
+            "key": "SEEDED_PLAIN",
+            "kind": "PLAIN",
+            "plaintextVisible": true,
+            "present": true
+          },
+          {
+            "key": "WRITTEN_PLAIN",
+            "kind": "PLAIN",
+            "plaintextVisible": true,
+            "present": true
+          }
+        ]
+      },
+      "auth": {
+        "principal": "eeeeeeee-0001-4000-8000-000000000001",
+        "scopes": [],
+        "decision": "allow",
+        "reason": null
+      }
+    },
+    "transport-environment-variable-set": {
+      "status": 200,
+      "facts": {
+        "written": true
+      },
+      "auth": {
+        "principal": "eeeeeeee-0001-4000-8000-000000000001",
+        "scopes": [],
+        "decision": "allow",
+        "reason": null
+      }
+    },
+    "transport-identity-session": {
+      "status": 200,
+      "facts": {
+        "authenticated": true,
+        "email": "differential-operator@platos.win284.test"
+      },
+      "auth": {
+        "principal": "eeeeeeee-0001-4000-8000-000000000001",
+        "scopes": [],
+        "decision": "allow",
+        "reason": null
+      }
+    },
+    "transport-magic-link-login": {
+      "status": 302,
+      "facts": {
+        "signedIn": true,
+        "cookieName": "platos_operator_session",
+        "redirectTo": "/"
+      },
+      "auth": {
+        "principal": "eeeeeeee-0001-4000-8000-000000000001",
+        "scopes": [],
+        "decision": "allow",
+        "reason": null
+      }
+    },
+    "transport-organization-create": {
+      "status": 302,
+      "facts": {
+        "created": true,
+        "redirectTo": "/orgs/delta/projects/new"
+      },
+      "auth": {
+        "principal": "eeeeeeee-0001-4000-8000-000000000001",
+        "scopes": [],
+        "decision": "allow",
+        "reason": null
+      }
+    },
+    "transport-organization-list": {
+      "status": 200,
+      "facts": {
+        "organizations": [
+          {
+            "slug": "alpha",
+            "name": "Alpha"
+          },
+          {
+            "slug": "beta",
+            "name": "Beta"
+          }
+        ]
+      },
+      "auth": {
+        "principal": "eeeeeeee-0001-4000-8000-000000000001",
+        "scopes": [],
+        "decision": "allow",
+        "reason": null
+      }
+    },
+    "transport-project-create": {
+      "status": 302,
+      "facts": {
+        "created": true,
+        "redirectTo": "/orgs/alpha/projects/second/env/production/agents"
+      },
+      "auth": {
+        "principal": "eeeeeeee-0001-4000-8000-000000000001",
+        "scopes": [],
+        "decision": "allow",
+        "reason": null
+      }
+    },
+    "transport-project-list": {
+      "status": 200,
+      "facts": {
+        "projects": [
+          {
+            "slug": "app",
+            "name": "App"
+          },
+          {
+            "slug": "site",
+            "name": "Site"
+          }
+        ]
+      },
+      "auth": {
+        "principal": "eeeeeeee-0001-4000-8000-000000000001",
+        "scopes": [],
+        "decision": "allow",
+        "reason": null
+      }
+    },
+    "transport-session-exchange": {
+      "status": 200,
+      "facts": {
+        "exchanged": true,
+        "cookieName": "platos_operator_session"
+      },
+      "auth": {
+        "principal": "eeeeeeee-0001-4000-8000-000000000001",
+        "scopes": [],
+        "decision": "allow",
+        "reason": null
+      }
+    },
+    "transport-sign-out": {
+      "status": 302,
+      "facts": {
+        "endedSession": true,
+        "cookieCleared": true
+      },
+      "auth": {
+        "principal": "eeeeeeee-0001-4000-8000-000000000001",
+        "scopes": [],
+        "decision": "allow",
+        "reason": null
+      }
+    }
+  }
+}

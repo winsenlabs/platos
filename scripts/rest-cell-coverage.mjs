@@ -108,7 +108,9 @@ export const EVIDENCE_KINDS = Object.freeze([
       "template segments must match exactly and a path matching more than one cell joins none",
     limit:
       "a URL composed at run time from values this parser cannot see is invisible, so a tested cell can read as " +
-      "residue; that is the safe direction",
+      "residue; that is the safe direction. The other direction is real too and is narrower: this is a text scan, " +
+      "so a route written in a COMMENT counts exactly as one written in code, and a file whose subject is this " +
+      "parser has to keep its fixtures fictional",
   }),
 ]);
 

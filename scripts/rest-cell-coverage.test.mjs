@@ -53,21 +53,31 @@ function file(path, text) {
 // ---------------------------------------------------------------------------
 
 test("controller bindings are the ones a suite instantiates or resolves, not every capitalised word", () => {
+  // THE NAMES ARE FICTIONAL, AND THAT IS NOT COSMETIC. This file is READ by the
+  // register it tests — `enumerateTestFiles` walks the whole index — so a fixture
+  // naming a real controller and a real handler would join a real cell and this
+  // suite would inflate the coverage it exists to measure. A case below asserts
+  // the committed register cites nothing from this file.
   const bound = extractControllerBindings(`
-    import { JobsController } from "./jobs.controller";
-    const controller = new JobsController(prisma, auth);
-    const other = module.get(SkillsController);
-    const third = app.resolve(FilesController);
-    let typed: MemoryController;
-    const notAController = new JobsService(prisma);
+    import { FixtureJobsController } from "./fixture-jobs.controller";
+    const controller = new FixtureJobsController(prisma, auth);
+    const other = module.get(FixtureSkillsController);
+    const third = app.resolve(FixtureFilesController);
+    let typed: FixtureMemoryController;
+    const notAController = new FixtureJobsService(prisma);
   `);
-  assert.deepEqual([...bound].sort(), ["FilesController", "JobsController", "MemoryController", "SkillsController"]);
+  assert.deepEqual([...bound].sort(), [
+    "FixtureFilesController",
+    "FixtureJobsController",
+    "FixtureMemoryController",
+    "FixtureSkillsController",
+  ]);
 });
 
 test("a handler join needs the call, not merely the import", () => {
-  assert.equal(callsHandler("controller.list(request)", "list"), true);
-  assert.equal(callsHandler("controller.listForAgent(request)", "list"), false);
-  assert.equal(callsHandler("// list is not called here", "list"), false);
+  assert.equal(callsHandler("controller.fixtureList(request)", "fixtureList"), true);
+  assert.equal(callsHandler("controller.fixtureListForAgent(request)", "fixtureList"), false);
+  assert.equal(callsHandler("// fixtureList is not called here", "fixtureList"), false);
 });
 
 // ---------------------------------------------------------------------------
@@ -98,21 +108,23 @@ test("a leading interpolation is a base URL and is dropped; an inner one is exac
 });
 
 test("request sites are read from all five call forms", () => {
+  // Fictional paths, for the reason above: a real one here would be read as a
+  // real request site by the register that reads this file.
   const sites = extractHttpCallSites(`
-    const variables = (environment) => \`/environments/\${environment}/variables\`;
-    await call("POST", "/bff/session", { body });
+    const variables = (environment) => \`/fixtures/\${environment}/variables\`;
+    await call("POST", "/fixtures/session", { body });
     await call("GET", variables(id));
-    await request(app).delete("/mcp/platform/tokens");
-    await server.inject({ method: "PATCH", url: "/organizations/x/members/y" });
-    await fetch(\`\${base}/livez\`);
+    await request(app).delete("/fixtures/tokens");
+    await server.inject({ method: "PATCH", url: "/fixtures/x/members/y" });
+    await fetch(\`\${base}/fixtures/livez\`);
   `);
   const seen = sites.map((site) => `${site.method} ${site.path}`).sort();
   assert.deepEqual(seen, [
-    "DELETE /mcp/platform/tokens",
-    "GET /environments/*/variables",
-    "GET /livez",
-    "PATCH /organizations/x/members/y",
-    "POST /bff/session",
+    "DELETE /fixtures/tokens",
+    "GET /fixtures/*/variables",
+    "GET /fixtures/livez",
+    "PATCH /fixtures/x/members/y",
+    "POST /fixtures/session",
   ]);
 });
 
@@ -132,43 +144,46 @@ test("a literal template segment must be matched exactly; a wildcard cannot sati
 // ---------------------------------------------------------------------------
 
 const CELLS = [
-  cell("GET /api/v1/organizations", "GET", "/api/v1/organizations"),
-  cell("GET /api/v1/agent/jobs", "GET", "/api/v1/agent/jobs", "jobs"),
-  cell("POST /api/v1/agent/turns", "POST", "/api/v1/agent/turns", "agents"),
-  cell("GET /api/v1/agent/skills/health", "GET", "/api/v1/agent/skills/health", "skills"),
-  cell("GET /api/v1/agent/skills/:id", "GET", "/api/v1/agent/skills/:id", "skills"),
+  cell("GET /fixtures/organizations", "GET", "/fixtures/organizations"),
+  cell("GET /fixtures/jobs", "GET", "/fixtures/jobs", "jobs"),
+  cell("POST /fixtures/turns", "POST", "/fixtures/turns", "agents"),
+  cell("GET /fixtures/skills/health", "GET", "/fixtures/skills/health", "skills"),
+  cell("GET /fixtures/skills/:id", "GET", "/fixtures/skills/:id", "skills"),
 ];
 
 const OPERATIONS = [
-  operation("GET /api/v1/organizations", "GET", "/api/v1/organizations", [
-    { controller: "OrganizationsController", handler: "list", source: "apps/core-api/src/transports/rest/organizations.controller.ts" },
+  operation("GET /fixtures/organizations", "GET", "/fixtures/organizations", [
+    { controller: "FixtureOrganizationsController", handler: "fixtureList", source: "apps/core-api/src/transports/rest/fixture.controller.ts" },
   ]),
-  operation("GET /api/v1/agent/jobs", "GET", "/api/v1/agent/jobs", [
-    { controller: "JobsController", handler: "list", source: "apps/agent/src/agent-runtime/jobs.controller.ts" },
+  operation("GET /fixtures/jobs", "GET", "/fixtures/jobs", [
+    { controller: "FixtureJobsController", handler: "fixtureList", source: "apps/agent/src/fixture-jobs.controller.ts" },
   ]),
-  operation("POST /api/v1/agent/turns", "POST", "/api/v1/agent/turns", [
-    { controller: M31_CONTROLLER, handler: "createTurn", source: "apps/agent/src/agent-runtime/agent.controller.ts" },
+  // The carve-out case names the REAL controller constant, because that is what
+  // decides the status, and a handler that exists nowhere, because the file
+  // below binds the real name and a real handler would join a real cell.
+  operation("POST /fixtures/turns", "POST", "/fixtures/turns", [
+    { controller: M31_CONTROLLER, handler: "fixtureCreateTurn", source: "apps/agent/src/agent-runtime/agent.controller.ts" },
   ]),
-  operation("GET /api/v1/agent/skills/health", "GET", "/api/v1/agent/skills/health", [
-    { controller: "SkillsController", handler: "health", source: "apps/agent/src/skills/skills.controller.ts" },
+  operation("GET /fixtures/skills/health", "GET", "/fixtures/skills/health", [
+    { controller: "FixtureSkillsController", handler: "fixtureHealth", source: "apps/agent/src/fixture-skills.controller.ts" },
   ]),
-  operation("GET /api/v1/agent/skills/:id", "GET", "/api/v1/agent/skills/:id", [
-    { controller: "SkillsController", handler: "getOne", source: "apps/agent/src/skills/skills.controller.ts" },
+  operation("GET /fixtures/skills/:id", "GET", "/fixtures/skills/:id", [
+    { controller: "FixtureSkillsController", handler: "fixtureGetOne", source: "apps/agent/src/fixture-skills.controller.ts" },
   ]),
 ];
 
 const FILES = [
   file(
-    "apps/core-api/src/composition/identity.integration.test.ts",
-    'const answer = await call("GET", `${API_VERSION_PREFIX}/organizations`, { token });',
+    "apps/core-api/src/composition/fixture.integration.test.ts",
+    'const answer = await call("GET", `${PREFIX}/fixtures/organizations`, { token });',
   ),
   file(
-    "apps/agent/src/agent-runtime/jobs.controller.test.ts",
-    'const controller = new JobsController(prisma, auth);\nawait controller.list(request);',
+    "apps/agent/src/fixture-jobs.controller.test.ts",
+    'const controller = new FixtureJobsController(prisma, auth);\nawait controller.fixtureList(request);',
   ),
   file(
-    "apps/agent/src/agent-runtime/agent.controller.test.ts",
-    'const controller = new AgentController(deps);\nawait controller.createTurn(request, body);',
+    "apps/agent/src/agent-runtime/fixture-agent.controller.test.ts",
+    `const controller = new ${M31_CONTROLLER}(deps);\nawait controller.fixtureCreateTurn(request, body);`,
   ),
 ];
 
@@ -179,10 +194,10 @@ function statusOf(rows, id) {
 test("each evidence kind joins its own cell, and the two are reported separately", () => {
   const { rows, failures } = buildRegister({ restCells: CELLS, manifestOperations: OPERATIONS, testFiles: FILES });
   assert.deepEqual(failures, []);
-  assert.equal(statusOf(rows, "GET /api/v1/organizations"), "covered");
-  assert.equal(statusOf(rows, "GET /api/v1/agent/jobs"), "covered");
-  const organizations = rows.find((row) => row.id === "GET /api/v1/organizations");
-  const jobs = rows.find((row) => row.id === "GET /api/v1/agent/jobs");
+  assert.equal(statusOf(rows, "GET /fixtures/organizations"), "covered");
+  assert.equal(statusOf(rows, "GET /fixtures/jobs"), "covered");
+  const organizations = rows.find((row) => row.id === "GET /fixtures/organizations");
+  const jobs = rows.find((row) => row.id === "GET /fixtures/jobs");
   assert.deepEqual(organizations?.evidence.map((entry) => entry.kind), ["http"]);
   assert.deepEqual(jobs?.evidence.map((entry) => entry.kind), ["handler"]);
   assert.ok(STATUSES.includes(organizations?.status ?? ""));
@@ -190,19 +205,19 @@ test("each evidence kind joins its own cell, and the two are reported separately
 
 test("THE MUTATION: deleting the only case for a cell turns it into residue and moves the digest", () => {
   const before = buildRegister({ restCells: CELLS, manifestOperations: OPERATIONS, testFiles: FILES });
-  const without = FILES.filter((entry) => !entry.path.endsWith("jobs.controller.test.ts"));
+  const without = FILES.filter((entry) => !entry.path.endsWith("fixture-jobs.controller.test.ts"));
   const after = buildRegister({ restCells: CELLS, manifestOperations: OPERATIONS, testFiles: without });
-  assert.equal(statusOf(before.rows, "GET /api/v1/agent/jobs"), "covered");
-  assert.equal(statusOf(after.rows, "GET /api/v1/agent/jobs"), "uncovered");
+  assert.equal(statusOf(before.rows, "GET /fixtures/jobs"), "covered");
+  assert.equal(statusOf(after.rows, "GET /fixtures/jobs"), "uncovered");
   assert.notEqual(registerDigest(before.rows), registerDigest(after.rows));
-  const residue = after.rows.find((row) => row.id === "GET /api/v1/agent/jobs");
+  const residue = after.rows.find((row) => row.id === "GET /fixtures/jobs");
   assert.equal(residue?.blockedBy, "WIN-267");
   assert.match(residue?.reason ?? "", /no tracked test file yields either join/u);
 });
 
 test("an AgentController cell is a dependency, not coverage, even when a suite exercises it", () => {
   const { rows } = buildRegister({ restCells: CELLS, manifestOperations: OPERATIONS, testFiles: FILES });
-  const carved = rows.find((row) => row.id === "POST /api/v1/agent/turns");
+  const carved = rows.find((row) => row.id === "POST /fixtures/turns");
   assert.equal(carved?.status, "m3.1-dependency");
   assert.equal(carved?.blockedBy, M31_OWNER);
   assert.ok((carved?.evidence.length ?? 0) > 0, "its evidence is still reported, so the carve-out hides no work");
@@ -220,13 +235,13 @@ test("an ambiguous request path joins nothing rather than inflating two rows", (
   // `/agent/skills/health` lands on the literal cell AND on `:id`, so neither
   // is claimed. Two rows going green off one vague URL is the failure this
   // refusal exists to stop.
-  assert.equal(statusOf(rows, "GET /api/v1/agent/skills/health"), "uncovered");
-  assert.equal(statusOf(rows, "GET /api/v1/agent/skills/:id"), "uncovered");
+  assert.equal(statusOf(rows, "GET /fixtures/skills/health"), "uncovered");
+  assert.equal(statusOf(rows, "GET /fixtures/skills/:id"), "uncovered");
 });
 
 test("the denominator is refused when the two enumerations disagree", () => {
   const extraCell = buildRegister({
-    restCells: [...CELLS, cell("GET /api/v1/invented", "GET", "/api/v1/invented")],
+    restCells: [...CELLS, cell("GET /fixtures/invented", "GET", "/fixtures/invented")],
     manifestOperations: OPERATIONS,
     testFiles: FILES,
   });
@@ -234,8 +249,8 @@ test("the denominator is refused when the two enumerations disagree", () => {
 
   const extraOperation = buildRegister({
     restCells: CELLS,
-    manifestOperations: [...OPERATIONS, operation("GET /api/v1/ghost", "GET", "/api/v1/ghost", [
-      { controller: "GhostController", handler: "list", source: "apps/agent/src/ghost.controller.ts" },
+    manifestOperations: [...OPERATIONS, operation("GET /fixtures/ghost", "GET", "/fixtures/ghost", [
+      { controller: "FixtureGhostController", handler: "fixtureList", source: "apps/agent/src/fixture-ghost.controller.ts" },
     ])],
     testFiles: FILES,
   });
@@ -244,7 +259,7 @@ test("the denominator is refused when the two enumerations disagree", () => {
   const unimplemented = buildRegister({
     restCells: CELLS,
     manifestOperations: OPERATIONS.map((entry) =>
-      entry.id === "GET /api/v1/agent/jobs" ? { ...entry, implementations: [] } : entry,
+      entry.id === "GET /fixtures/jobs" ? { ...entry, implementations: [] } : entry,
     ),
     testFiles: FILES,
   });
@@ -283,4 +298,18 @@ test("every residue row in the committed register names an owner and a reason", 
   for (const kind of artifact.evidenceKinds) {
     assert.ok(typeof kind.limit === "string" && kind.limit.length > 20, `${kind.id} publishes no stated limit`);
   }
+});
+
+test("the register cites nothing from the files that test it, so it cannot inflate itself", () => {
+  const artifact = JSON.parse(readFileSync(join(repositoryRoot, JSON_PATH), "utf8"));
+  // MEASURED, NOT ANTICIPATED. The first generated register cited this file for
+  // eight cells: the controller names and request paths written here as fixtures
+  // for the parser were read by the parser as evidence. Every fixture in this
+  // file is fictional now, and this case is what keeps it that way — including
+  // in PROSE, because the extractor reads a comment exactly as it reads code and
+  // the first draft of this very comment quoted a real route and re-broke it.
+  const selfCitations = artifact.rows.flatMap((row) =>
+    row.evidence.filter((entry) => entry.file.endsWith("scripts/rest-cell-coverage.test.mjs")).map((entry) => `${row.id} <- ${entry.kind}`),
+  );
+  assert.deepEqual(selfCitations, []);
 });

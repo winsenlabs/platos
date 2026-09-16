@@ -19,7 +19,7 @@
     {
       "id": "http",
       "derivation": "the test file issues a request whose method and normalised path land on the cell's route template; literal template segments must match exactly and a path matching more than one cell joins none",
-      "limit": "a URL composed at run time from values this parser cannot see is invisible, so a tested cell can read as residue; that is the safe direction"
+      "limit": "a URL composed at run time from values this parser cannot see is invisible, so a tested cell can read as residue; that is the safe direction. The other direction is real too and is narrower: this is a text scan, so a route written in a COMMENT counts exactly as one written in code, and a file whose subject is this parser has to keep its fixtures fictional"
     }
   ],
   "statedLimit": "an evidence row proves a test file EXECUTES the cell, not that it asserts anything about it; the register is a lower bound on execution and therefore an upper bound on nothing — residue is the set of cells no tracked test file touches at all",
@@ -30,9 +30,9 @@
     "countedAs": "neither covered nor residue; the third number is published so the carve-out cannot read as progress"
   },
   "telemetry": {
-    "httpSites": 240,
-    "ambiguousSites": 6,
-    "testFiles": 1055
+    "httpSites": 278,
+    "ambiguousSites": 7,
+    "testFiles": 1059
   },
   "summary": {
     "cells": 322,
@@ -59,7 +59,7 @@
       }
     }
   },
-  "digest": "b640b37c20e3d390",
+  "digest": "632c3122a10006b6",
   "rows": [
     {
       "id": "DELETE /api/v1/agent/access-key",
@@ -432,6 +432,10 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/identity-rest.integration.test.ts"
+        },
+        {
+          "kind": "http",
+          "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
         }
       ]
     },
@@ -2395,6 +2399,10 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/identity-rest.integration.test.ts"
+        },
+        {
+          "kind": "http",
+          "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
         }
       ]
     },
@@ -2432,6 +2440,10 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts"
+        },
+        {
+          "kind": "http",
+          "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
         }
       ]
     },
@@ -2452,6 +2464,10 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts"
+        },
+        {
+          "kind": "http",
+          "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
         }
       ]
     },
@@ -2476,6 +2492,10 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts"
+        },
+        {
+          "kind": "http",
+          "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
         }
       ]
     },
@@ -2620,6 +2640,10 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/identity-rest.integration.test.ts"
+        },
+        {
+          "kind": "http",
+          "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
         }
       ]
     },
@@ -2784,6 +2808,10 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/identity-rest.integration.test.ts"
+        },
+        {
+          "kind": "http",
+          "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
         }
       ]
     },
@@ -5040,6 +5068,10 @@
         },
         {
           "kind": "http",
+          "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
+        },
+        {
+          "kind": "http",
           "file": "apps/core-api/src/http/idempotency-policy.test.ts"
         }
       ]
@@ -5061,6 +5093,10 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts"
+        },
+        {
+          "kind": "http",
+          "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
         },
         {
           "kind": "http",
@@ -5089,6 +5125,10 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts"
+        },
+        {
+          "kind": "http",
+          "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
         }
       ]
     },
@@ -5366,6 +5406,10 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/identity-rest.integration.test.ts"
+        },
+        {
+          "kind": "http",
+          "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
         }
       ]
     },
@@ -5563,6 +5607,10 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/identity-rest.integration.test.ts"
+        },
+        {
+          "kind": "http",
+          "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
         }
       ]
     },
@@ -6107,6 +6155,10 @@
         {
           "kind": "http",
           "file": "apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts"
+        },
+        {
+          "kind": "http",
+          "file": "apps/core-api/src/composition/transport-differential.integration.test.ts"
         }
       ]
     },

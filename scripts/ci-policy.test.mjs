@@ -732,6 +732,12 @@ const expectedDifferentialHarnessStepName = "WIN-284 differential harness and it
 const expectedDifferentialHarnessCommands = [
   "pnpm test:differential-harness",
   "pnpm test:differential-harness:controls",
+  // WIN-257. The recorded oracle's own controls. They belong in this step rather
+  // than in the V1 evidence list because they are about the harness, and they
+  // belong in CI at all because the differential they defend runs in a job with
+  // Docker while these need none — so without this line the transcript's
+  // provenance would be checked only where a daemon happens to exist.
+  "node --test tests/differential-harness/oracle-transcripts.test.mjs",
 ];
 const expectedDifferentialConservationJob = "differential-state-conservation";
 const expectedDifferentialConservationCommand = "pnpm test:differential-harness:store";
@@ -3659,6 +3665,17 @@ test("CI policy controls fail under generated semantic source mutations", async 
         ),
     },
     {
+      name: "WIN-257 recorded-oracle controls cannot be dropped from the harness step",
+      expected: "WIN-284 harness script must contain only the exact reviewed command sequence",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          "          node --test tests/differential-harness/oracle-transcripts.test.mjs",
+          "          echo skipped # node --test tests/differential-harness/oracle-transcripts.test.mjs"
+        ),
+    },
+    {
       name: "WIN-284 seeded-divergence catalogue cannot be dropped from its step",
       expected: "WIN-284 harness script must contain only the exact reviewed command sequence",
       mutate: (input) =>
@@ -5246,12 +5263,16 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   conditional, and the refusal controls dropped while the run stays. The third
   //   is the one worth having: a scan whose refusals have gone reports green over an
   //   empty corpus, and an empty corpus is exactly what a broken capture produces.
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 2 + 4 + 3 = 403. The
+  //   RECORDED ORACLE (WIN-257), +1. The transcript's own controls join the WIN-284
+  //   harness step, and dropping them is the mutation: a differential whose oracle
+  //   has been deleted goes QUIET rather than red, and these are what make that
+  //   loud. One control, because the command is one line in an already-pinned step.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 2 + 4 + 3 + 1 = 404. The
   // count is pinned rather than derived so that a control silently disappearing is a
   // failure rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    403,
+    404,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

@@ -65,7 +65,20 @@ export const CENSUS_SOURCES = Object.freeze([
 // if it names who closes it; an uncovered cell with no owner is a silence with
 // extra steps.
 export const SURFACE_OWNERS = Object.freeze({
-  rest: { issue: "WIN-267", milestone: "M4", reason: "no V1 REST transport exists at this baseline" },
+  // WIN-257 — THE REASON THAT WAS TRUE AND STOPPED BEING TRUE. It read "no V1
+  // REST transport exists at this baseline" while nineteen routes were served
+  // from `apps/core-api/src/transports`, thirteen of them twin-run against the
+  // webapp oracle by a suite in CI. A blocking reason nobody re-reads is how a
+  // denominator goes stale, so it now says what is actually uncovered: the rest
+  // of the surface, most of it in `apps/agent`.
+  rest: {
+    issue: "WIN-267",
+    milestone: "M4",
+    reason:
+      "the V1 REST transport serves part of this surface and the transport differential twin-runs those cells " +
+      "against the webapp oracle; the remainder is still served only by apps/agent, which no oracle-vs-candidate " +
+      "pair exists for until it moves",
+  },
   mcp: { issue: "WIN-268", milestone: "M4", reason: "no V1 MCP surface exists at this baseline" },
   sdk: { issue: "WIN-269", milestone: "M4", reason: "no V1 SDK surface exists at this baseline" },
   channel: { issue: "WIN-270", milestone: "M4", reason: "no V1 channel surface exists at this baseline" },
@@ -554,12 +567,18 @@ export function renderMarkdown(document) {
 // ---------------------------------------------------------------------------
 
 export async function buildDocument(root = repositoryRoot) {
-  const { SCENARIO_REGISTRY, assertRegistryIsWellFormed, claimedCapabilities } = await import(
-    join(root, "tests/differential-harness/scenarios.mjs")
-  );
-  const registryFailures = assertRegistryIsWellFormed(SCENARIO_REGISTRY);
+  // COVERAGE_REGISTRY, not SCENARIO_REGISTRY. The store scenarios are what
+  // `postgres-conservation.mjs` RUNS; the coverage registry is every scenario any
+  // subject twin-runs, which since WIN-257 also includes the transport scenarios
+  // `apps/core-api/src/composition/transport-differential.integration.test.ts`
+  // executes against the webapp oracle. Counting only the store half would have
+  // kept reporting `rest 0/322` while a suite in CI twin-ran thirteen of those
+  // cells on every run.
+  const { COVERAGE_REGISTRY, assertRegistryIsWellFormed, claimedCapabilities, assertTransportRegistryIsWellFormed } =
+    await import(join(root, "tests/differential-harness/scenarios.mjs"));
+  const registryFailures = [...assertRegistryIsWellFormed(COVERAGE_REGISTRY), ...assertTransportRegistryIsWellFormed()];
   const cells = enumerateCells(root);
-  const { rows, errors } = buildMatrix(cells, SCENARIO_REGISTRY, claimedCapabilities(SCENARIO_REGISTRY));
+  const { rows, errors } = buildMatrix(cells, COVERAGE_REGISTRY, claimedCapabilities(COVERAGE_REGISTRY));
   const census = readRestCensus(root);
   const { failures: censusFailures, reconciliation } = reconcileRestCensus(cells, census);
   const capability = readCensus(root, "docs/audits/M0.2-capability-matrix.json");
@@ -587,7 +606,7 @@ export async function buildDocument(root = repositoryRoot) {
       // agreed by both mechanisms root by root.
       restScanRoots: scanRoots,
       generatedBy: "scripts/differential-coverage.mjs",
-      coverageComputedFrom: "tests/differential-harness/scenarios.mjs",
+      coverageComputedFrom: "tests/differential-harness/scenarios.mjs COVERAGE_REGISTRY (store scenarios + transport scenarios)",
       summary,
       digest,
       rows,
