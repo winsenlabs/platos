@@ -45,6 +45,11 @@ export function createToolsRuntime(): ToolsContract {
   return {
     name: "tools",
     registerTools: refuse,
+    // WIN-269 (M4.3). It refuses like every sibling here, and the compiler is
+    // why this line exists at all: `ToolsContract` gained a method and this
+    // double stopped satisfying it. That is the property this file is for — a
+    // double typed as the contract cannot silently fall behind it.
+    recordToolHealth: refuse,
     listTools: refuse,
     pageTools: refuse,
     setToolEnabled: refuse,
