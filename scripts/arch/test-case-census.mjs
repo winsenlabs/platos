@@ -2468,6 +2468,30 @@ export const EXPECTED = Object.freeze({
   // job is to be correct when the far side misbehaves, so an emptied body would
   // drop a refusal that a real socket or a published digest produced, not a
   // repetition of a happy path.
+  // WIN-271 (M4.5), D10. 0 -> 5 files, 0 -> 106 cases: the SECOND channel runtime,
+  // a new directory. discord-transport 33 (a real `node:http` far side keeping
+  // `received` and `created` apart: silent, slow, refused, reset AFTER the read,
+  // 429 with both wait headers, a bucket exhausted before a socket opens, the
+  // global limit and the routes it does not bind), rfc8032 26 (all five RFC 8032
+  // section 7.1 vectors, each re-derived from its secret key), normalize 20,
+  // discord-signature 16 (the construction joined to Discord's own helper library,
+  // then one thing changed per refusal), signed-admission 11 (the context's own use
+  // case with this runtime behind the port, and one case pinning the Core gap that
+  // keeps it from production). Counted statically: the vector and fixture tables
+  // are spelled as literals or walked inside one case, because a generated table
+  // has no row count this census can see. (The per-file figures first written here
+  // were 35/24/21/16/10 — the right total over the wrong split; re-counted with
+  // `countFile` at the round-2 fix.)
+  // WIN-271 (M4.5), D10, verifier round 2: 106 -> 110, the SAME 5 files. Three
+  // mutations against behaviour this directory's own comments describe survived
+  // the full suite, and each now has a case that kills it: discord-transport
+  // 33 -> 36 (a 429 naming NO bucket still holds its route on that channel; the
+  // rate-limit sweep keeps a live window and a live global block while dropping
+  // reset ones; and it drops a followup route nothing live stands behind, which
+  // before the fix grew by one entry per interaction token and was never swept),
+  // normalize 20 -> 21 (a thread-typed channel with no `parent_id` is keyed on
+  // itself).
+  "packages/adapters/channel-discord": { files: 5, cases: 110 },
   "packages/adapters/channel-slack": { files: 5, cases: 61 },
   "packages/adapters/clickhouse-observability": { files: 0, cases: 0 },
   "packages/adapters/durable-runtime": { files: 0, cases: 0 },
@@ -3768,7 +3792,18 @@ export const EXPECTED = Object.freeze({
 // 8401 -> 8406 (2026-09-16, the verifier's round on the same remainder): +4
 // notifier-email, +1 postgres-tenancy, each on its row. The two new
 // `apps/core-api` unit cases and the two new integration cases move nothing.
-export const EXPECTED_RUNTIME_TOTAL = 8406;
+//
+// WIN-271 (M4.5), D10: +110 over 5 NEW files. ONE row moves,
+// `packages/adapters/channel-discord` 0 -> 110 (106 in the lane's own round,
+// 4 more in its verifier round), itemised on its own row above.
+// `packages/contexts/channels` is UNMOVED at 274 — the clause the directory
+// evidences AT THE PORT is that the context needed no change, and a case added
+// there would have been one. (Production inbound for Discord still needs a
+// decision inside `channels` — `APP_PROVIDERS` is `["slack"]` — so the clause is
+// advanced by this directory, not closed.)
+//
+// INTEGRATED AND RE-MEASURED: 8359 + 47 + 110 = 8516 over 564 + 5 = 569 files.
+export const EXPECTED_RUNTIME_TOTAL = 8516;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

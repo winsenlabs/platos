@@ -21,7 +21,9 @@ const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 // for the reason above, and it is not a formality: the two models disagreed on
 // the EDGE count on the first run of this tranche, which is exactly what
 // maintaining them separately is for.
-export const EXPECTED_PROJECT_COUNT = 35;
+// WIN-271 (M4.5), D10: 35 -> 36. `packages/adapters/channel-discord`, the
+// sixteenth adapter directory, derived here independently of the generator.
+export const EXPECTED_PROJECT_COUNT = 36;
 // 94 -> 95 (WIN-297). `apps/core-api` gained one workspace edge, to
 // `packages/kernel`.
 //
@@ -250,7 +252,13 @@ export const EXPECTED_PROJECT_COUNT = 35;
 // 121 + 1 = 122, the merged figure, which no single branch stated: A1+A2 pinned
 // 121 for themselves and A3 pinned 117 for itself, both over the same 116 base.
 // D20 (2026-09-15): 122 + 1 = 123 -- `notifier-email` -> `identity-access`.
-export const EXPECTED_EDGE_COUNT = 123;
+// WIN-271 (M4.5), D10: 123 + 2 = 125 on the integrated tree (124 on its own lane,
+// which had no D20 edge) -- `packages/adapters/channel-discord` ->
+// `packages/contexts/channels` (one owner, TWO ports, ONE reference) and
+// `apps/core-api` -> `packages/adapters/channel-discord`. The source model makes
+// the second one real: it counts only because `adapter-bindings.ts` imports the
+// constructor.
+export const EXPECTED_EDGE_COUNT = 125;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -543,6 +551,10 @@ export const EXPECTED_ADAPTER_OWNERS = {
   // claim: `postgres-tenancy` at seventeen and `redis-cache` at three remain the
   // only directories entitled to more than one owner.
   "tokenmint-totp": ["identity-access"],
+  // WIN-271 (M4.5), D10. One owner and two bindings, `channel-slack`'s shape,
+  // appended LAST because root references follow the generator's `ADAPTERS`
+  // order and the sixteenth directory was appended there.
+  "channel-discord": ["channels"],
 };
 
 /**

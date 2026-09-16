@@ -1643,13 +1643,19 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // THE SDK LANE, ROUND 2 — 1577 -> 1578. ONE file:
     // `packages/platos-client/vitest.config.ts`, on the existing
-    // `packages.config.build` rule beside the other packages' vitest configs. It
-    // aliases the kernel to its source so the stream suite loads on a cold checkout.
+    // `packages.config.build` rule beside the other packages' vitest configs.
     //
-    // 1578 IS RE-MEASURED ON THE MERGED TREE. The sdk lane pinned 1565 because it
-    // added its nine to 1556, a head without the identity/tenancy remainder's
-    // thirteen: 1556 + 13 + 9 = 1578.
-    packages: 1578,
+    // WIN-271 (M4.5), D10 — 1578 -> 1599 integrated. TWENTY-ONE files, all under
+    // `packages/adapters/channel-discord/`: the three generator-owned scaffolding
+    // files (`package.json`, `tsconfig.json`, `README.md`) and eighteen under
+    // `src/` — thirteen modules and five suites. A NEW directory, so no generated
+    // placeholder is netted against them. NOT ONE under `packages/contexts/`, which
+    // is the clause the directory evidences. They land on the existing
+    // `packages.adapters.*` rules; NO LEDGER RULE CHANGED.
+    //
+    // 1599 IS RE-MEASURED ON THE MERGED TREE: each lane added its own delta to
+    // 1556, and 1556 + 13 + 9 + 21 = 1599 is what the four together produce.
+    packages: 1599,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2196,7 +2202,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // (`.changeset/platools-sdk-tenancy-id-docs.md`,
     // `platos-client-post-retry-guard.md`, `platos-client-v1-event-streams.md`).
     // All on existing root-infra rules. 95 + 7 = 102.
-    "root-infra": 102,
+    //
+    // WIN-271 (M4.5), D10 — 102 -> 104. TWO files on `root-infra.tooling.scripts`:
+    // `scripts/win271-discord-mutation-plan.json`, the rows the existing driver
+    // applies (the driver itself is edited in place to take a plan path), and
+    // `scripts/mutations-win271-discord.json`, the ledger that sweep wrote.
+    // NO LEDGER RULE CHANGED. 95 + 7 + 2 = 104 on the merged tree.
+    "root-infra": 104,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2516,7 +2528,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // 2) and seven in `root-infra`. Re-measured on the integrated tree, not summed
   // from the lane report (which read 1819 against a tree with none of the three
   // earlier lanes in it): 18 + 1 + 126 + 4 + 10 + 1578 + 26 + 102 = 1865.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1865);
+  //
+  // AND THE SECOND CHANNEL RUNTIME (WIN-271 (M4.5), D10) — 1865 -> 1888.
+  // TWENTY-THREE files in two areas, each itemised on its delta above: `packages`
+  // +21 and `root-infra` +2. Re-measured on the integrated tree, not summed from
+  // the lane report (which read 1827 against a tree with none of the four earlier
+  // lanes in it): 18 + 1 + 126 + 4 + 10 + 1599 + 26 + 104 = 1888.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1888);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2835,7 +2853,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // as the total and both area deltas: eight apps-core-api files, thirteen packages.
     // AND THE SDK LANE — 1849 -> 1865, moved in the same edit as the total and both
     // area deltas: nine packages files and seven root-infra files.
-    rulesDocument.baseline.totalFiles + 1865
+    // AND THE SECOND CHANNEL RUNTIME — 1865 -> 1888, moved in the same edit as the
+    // total and both area deltas: twenty-one packages files and two root-infra files.
+    rulesDocument.baseline.totalFiles + 1888
   );
 });
 

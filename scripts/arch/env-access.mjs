@@ -826,12 +826,24 @@ export const VIOLATION_CODES = Object.freeze({
  * core-api (five controllers, the cookie codec, a unit suite and the integration
  * suite). Thirty-two declared reads become thirty-three.
  *
+ * WIN-271 (M4.5), D10, integrated fourth: 1742 + 18 = 1760, and NO DOOR OPENED.
+ * Eighteen files under `packages/adapters/channel-discord/src` — thirteen modules
+ * and five suites — and not one reads the environment. The public key arrives per
+ * delivery on the command and the bot token per send, exactly as `channel-slack`'s
+ * secret and token do; the REST base, the deadline and the `fetch` are construction
+ * options whose doc comments say why they must NOT be operator-settable (an
+ * outbound host from the environment is an exfiltration primitive); and the far
+ * side binds an ephemeral loopback port rather than reading one. Its two
+ * configuration variables are declared in `apps/core-api/src/config/channels.ts`,
+ * the one place this deployable is entitled to read a variable, and read through
+ * its loader.
+ *
  * THE NUMBER BELOW IS RE-MEASURED ON THE INTEGRATED TREE, NOT SUMMED FROM THE
- * LANES: the lane branch read 1722 because it was measured against 1701 without
- * the factory entries or the M4 gates in the tree. 1701 + 18 + 2 + 21 = 1742 is
- * the arithmetic, and the audit run on this merge is the authority for it.
+ * LANE REPORTS: each lane measured its own delta against 1701, and only the merge
+ * can say what the four together produce. 1701 + 18 + 2 + 21 + 18 = 1760, and the
+ * audit run on this merge is the authority for it.
  */
-export const EXPECTED_FILE_COUNT = 1742;
+export const EXPECTED_FILE_COUNT = 1760;
 
 function listSourceFiles(root) {
   const found = [];

@@ -646,6 +646,7 @@ export const GOVERNANCE_UNCOMPOSABLE =
  * WHY `channels` IS NOT COMPOSED, EVEN THOUGH ITS ADAPTER NOW EXISTS.
  *
  * WIN-271 (M4.5) built `channel-slack` and took it off `UNIMPLEMENTED_ADAPTERS`,
+ * and D10 added `channel-discord` as a second provider behind the same ports —
  * so the context's provider-facing half is real: an install that sets
  * `PLATOS_CHANNELS_SLACK_SIGNING_SECRET` gets an object that verifies Slack
  * signatures and posts messages. THAT IS NOT ENOUGH TO COMPOSE THE CONTEXT, and
@@ -675,7 +676,8 @@ export const GOVERNANCE_UNCOMPOSABLE =
  */
 export const CHANNELS_UNCOMPOSABLE =
   "its ChannelRuntime and ChannelAdapter are satisfied by channel-slack from" +
-  " WIN-271, its ChannelsRepository by postgres-tenancy, and -- since WIN-272 --" +
+  " WIN-271 and by channel-discord as the second provider (WIN-271, D10)," +
+  " its ChannelsRepository by postgres-tenancy, and -- since WIN-272 --" +
   " its EventBus by redis-streams, which now holds a real implementation and has" +
   " left UNIMPLEMENTED_ADAPTERS. What it still cannot get is the other half of the" +
   " pair ADR M0.3 section 3 makes load-bearing: DurableRuntime, which inbound" +

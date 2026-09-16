@@ -959,10 +959,16 @@ test("the live selectors scan an exact nonzero source census", () => {
   // the cookie codec and its unit suite). The integration suite lives in
   // `composition/`, which no selector names, so twenty files and not twenty-one.
   //
-  // INTEGRATED, RE-MEASURED ON THE MERGED TREE: 1653 + 2 + 20 = 1675. Neither lane
-  // could see the other, so neither number below 1675 is wrong at its own head and
-  // neither is right here.
-  assert.equal(result.fileCount, 1675);
+  // WIN-271 (M4.5), D10 — 1653 -> 1671 alone. EIGHTEEN, all under
+  // `packages/adapters/channel-discord/src` (thirteen modules, five suites), which
+  // the `packages/adapters/**` selector counts in full. None is in the warning
+  // band: the largest, `discord-transport.test.ts`, is under 400 effective lines,
+  // so the pinned warning list below does not move.
+  //
+  // INTEGRATED, RE-MEASURED ON THE MERGED TREE: 1653 + 2 + 20 + 18 = 1693. No lane
+  // could see the others, so no number below 1693 is wrong at its own head and
+  // none is right here.
+  assert.equal(result.fileCount, 1693);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -1070,7 +1076,10 @@ test("the live selectors scan an exact nonzero source census", () => {
       // THE IDENTITY/TENANCY REST REMAINDER (2026-09-15): adapters 6, contexts 7,
       // transports 7. Its integration suite is under `src/composition/`, which no
       // selector names, so 20 and not 21.
-      6 + 7 + 7
+      6 + 7 + 7 +
+      // WIN-271 (M4.5), D10: EIGHTEEN under `packages/adapters/channel-discord/src`,
+      // a new directory, so the whole directory and no net.
+      18
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1303,9 +1312,11 @@ test("the live selectors scan an exact nonzero source census", () => {
   // THE IDENTITY/TENANCY REST REMAINDER (2026-09-15), +20 across three terms:
   // CONTEXTS 1093 -> 1100, ADAPTERS 474 -> 480, APPS-TRANSPORTS 38 -> 45.
   //
-  // THE TWO TOGETHER, RE-MEASURED ON THE MERGED TREE:
-  // 30 + 1100 + 480 + 20 + 45 = 1675.
-  assert.equal(result.fileCount, 30 + 1100 + 480 + 20 + 45);
+  // WIN-271 (M4.5), D10, +18 IN ONE TERM: ADAPTERS again, 480 -> 498.
+  //
+  // THE THREE TOGETHER, RE-MEASURED ON THE MERGED TREE:
+  // 30 + 1100 + 498 + 20 + 45 = 1693.
+  assert.equal(result.fileCount, 30 + 1100 + 498 + 20 + 45);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

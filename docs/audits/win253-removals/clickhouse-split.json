@@ -1883,7 +1883,7 @@
       {
         "path": "docker-compose.platos.yml",
         "ownerAuthorizationSha256": "186f4a921d9d51adc8ce23e7de729e65ac9bf5879987246be74962dfd0aef882",
-        "currentSha256": "1fbddf69a063f1ff5c1616525d4d71f6f6003a5c7bd6429ff859f711984faddf",
+        "currentSha256": "34189f22d17649923e314bc4cd610f0ec3e34df1395cbae32868ed2989b8e999",
         "requiredReferences": [
           "dockerfile: internal-packages/tenancy-database/Dockerfile.migrations",
           "PLATOS_CLICKHOUSE_TIMEOUT_MS"
@@ -1898,8 +1898,8 @@
     ]
   },
   "integration": {
-    "lockfileSha256": "d86adc64d8fd5d21c80b2a542612a0d17e9e2666897a4465925b07d48fd143bc",
-    "vocabularySha256": "fa6cdaae4168aae22835cb4ccb70c5fb4179ebc0167a77453117bd16bb1298dd",
+    "lockfileSha256": "6dafadf93e0f5264a2ba5571dffcca335f879a565ffd5a14065c6ebb4402b34c",
+    "vocabularySha256": "c99b506c2381cde58387bbd532338c3f666e469c415b9dc14e214d3d05cd75b1",
     "retainedSchemaVocabularyRows": 251,
     "deletedPathVocabularyRows": 0
   }

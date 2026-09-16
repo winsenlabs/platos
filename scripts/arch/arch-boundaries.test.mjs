@@ -1407,15 +1407,12 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // `factory-entries/`, one per context, and `context-factories.test.ts`, which
     // loads each in a named case of its own. NOTHING under `packages/`: the six
     // manifests that gained the subpath are scaffolding, and this census reads
-    // source. The tranche first landed ten modules (1712); the other seven, for
-    // the `.` route, followed when a removed `.` entry was measured failing the
-    // whole suite at load instead of one case. 1701 + 18 = 1719.
+    // source. 1701 + 18 = 1719.
     //
     // M4 GATES (lane gates, founder decision D21), 1701 -> 1703 alone. TWO files,
     // BOTH under `apps/core-api/src/http/`: `mcp-body-cap.ts`, the MCP body cap
     // mirrored from apps/agent, and `mcp-body-cap.test.ts`, its real-socket proof.
-    // NOTHING under `packages/`; `runtime/lifecycle.ts` is an edit. Integrated
-    // after the factory entries: 1719 + 2 = 1721.
+    // Integrated after the factory entries: 1719 + 2 = 1721.
     //
     // THE IDENTITY/TENANCY REST REMAINDER (2026-09-15), 1701 -> 1722 alone.
     // TWENTY-ONE files: `notifier-email`'s six new source files, seven in
@@ -1424,11 +1421,18 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // controllers, the cookie codec, a unit suite, and the integration suite in
     // `composition/`). Integrated third: 1721 + 21 = 1742.
     //
-    // 1742 IS RE-MEASURED ON THIS MERGED TREE, not summed from the lane reports —
+    // WIN-271 (M4.5), D10 — THE SECOND CHANNEL RUNTIME, 1701 -> 1719 alone.
+    // EIGHTEEN files, ALL under `packages/adapters/channel-discord/src`: thirteen
+    // modules and five suites. NOT a net: the directory is new, so no generated
+    // placeholder was ever on disk for these to replace. NOTHING under
+    // `packages/contexts/`, which is the clause this directory exists to evidence,
+    // and nothing new under `apps/`. Integrated fourth: 1742 + 18 = 1760.
+    //
+    // 1760 IS RE-MEASURED ON THIS MERGED TREE, not summed from the lane reports —
     // each lane measured its own delta against 1701, and only the merge can say
-    // what the three together produce. `scripts/arch/env-access.mjs`'s
-    // EXPECTED_FILE_COUNT is the second independent copy and reads 1742 too.
-    assert.equal(result.fileCount, 1742, "the generated V1 source census must stay exact");
+    // what the four together produce. `scripts/arch/env-access.mjs`'s
+    // EXPECTED_FILE_COUNT is the second independent copy and reads 1760 too.
+    assert.equal(result.fileCount, 1760, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1530,7 +1534,10 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // suite; tenancy's administration gate, two read models and two suites),
       // transports 7 (five controllers, the cookie codec, its unit suite) and
       // composition 1 (the real-servers suite). 6 + 7 + 7 + 1 = 21.
-      6 + 7 + 7 + 1);
+      6 + 7 + 7 + 1 +
+      // WIN-271 (M4.5), D10: adapters 18 -- `channel-discord`'s thirteen modules and
+      // five suites, a new directory and so no placeholder to net against.
+      18);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

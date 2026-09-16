@@ -210,6 +210,21 @@ export const SDK_CONTAINMENT = [
     source: "node_modules/(chat|@chat-adapter)",
   },
   {
+    // WIN-271 (M4.5), D10. Discord's own client libraries get ONE home in the V1
+    // tree, the directory that speaks Discord. `channel-discord` runs none of
+    // them — it verifies with `node:crypto` and calls REST with `fetch` — and its
+    // one import is `discord-interactions`, from a TEST, as the oracle for the
+    // signature construction. The rule is still worth having precisely because
+    // the adapter needs none of them: the first file anywhere else that reaches
+    // for `discord.js`, `@discordjs/*`, `discord-api-types` or
+    // `discord-interactions` fails here instead of quietly becoming a second
+    // Discord client. `@chat-adapter/discord` stays under `chat-sdk-only` above,
+    // whose home is `channel-slack`, so this directory cannot import it either.
+    id: "discord-sdk-only",
+    home: "^packages/adapters/channel-discord/",
+    source: "node_modules/(discord\\.js|@discordjs|discord-api-types|discord-interactions)",
+  },
+  {
     id: "provider-sdk-only",
     home: MODEL_ROUTER_ADAPTER,
     source: "node_modules/(openai|@anthropic-ai)",

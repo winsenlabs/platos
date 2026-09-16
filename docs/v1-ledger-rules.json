@@ -2122,7 +2122,7 @@
     ]
   },
   "expected": {
-    "totalFiles": 5334,
+    "totalFiles": 5357,
     "areaCounts": {
       "apps-agent": 532,
       "apps-core-api": 137,
@@ -2130,26 +2130,26 @@
       "apps-webapp": 184,
       "docs-content": 746,
       "internal-packages": 1174,
-      "packages": 2215,
-      "root-infra": 338
+      "packages": 2236,
+      "root-infra": 340
     },
     "kindCounts": {
       "asset": 155,
-      "config": 324,
-      "doc": 613,
+      "config": 326,
+      "doc": 614,
       "fixture": 6,
       "generated": 48,
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2180,
-      "test": 1095
+      "source": 2195,
+      "test": 1100
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1706,
+      "move-refactor": 1708,
       "regenerate": 43,
-      "retain": 3576,
+      "retain": 3597,
       "unresolved": 2
     },
     "protectedCount": 1642,
@@ -2243,11 +2243,11 @@
       "internal-packages.source.typescript": 112,
       "internal-packages.test.suites": 63,
       "internal-packages.tooling.scripts": 9,
-      "packages.adapters.config": 58,
-      "packages.adapters.doc": 15,
+      "packages.adapters.config": 60,
+      "packages.adapters.doc": 16,
       "packages.adapters.fixture": 3,
-      "packages.adapters.source": 284,
-      "packages.adapters.test": 196,
+      "packages.adapters.source": 297,
+      "packages.adapters.test": 201,
       "packages.config.build": 30,
       "packages.contexts.config": 37,
       "packages.contexts.doc": 17,
@@ -2291,9 +2291,9 @@
       "root-infra.test.harness": 74,
       "root-infra.test.script-suites": 35,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 123,
+      "root-infra.tooling.scripts": 125,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "dad38e9db4865531a4bf1fd83fdf24136de676a87e7b5b78c00c6d3bbc87dfa6"
+    "classificationSha256": "99923274ef62899dba83d0b7659b6d8298830afc9c8d4b36739f8889d0267c83"
   }
 }

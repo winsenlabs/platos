@@ -24,6 +24,7 @@ import test from "node:test";
 
 import {
   ARCHIVED_CHANGESETS,
+  CHANGESET_DIRECTORY,
   GENERATED_SDK_ARTIFACTS,
   GOVERNING_LICENSE,
   NON_SHIPPING,
@@ -466,20 +467,31 @@ test("the two named->changed leniencies are closed, against real history", () =>
   }
   if (haveOracle) {
     const mergeBase = git(["merge-base", oracle, "HEAD"], repositoryRoot).trim();
-    const dropped = readDeletedChangesets(
-      [{ status: "D", path: ".changeset/ppr-34-platos-client-mvp.md" }],
-      mergeBase,
-      "HEAD",
-      repositoryRoot,
-    );
-    assert.equal(dropped.length, 1);
-    assert.ok(dropped[0].releases.length > 0);
-    for (const release of dropped[0].releases) {
-      assert.ok(
-        dropped[0].preserved.has(`${release.name}:${release.type}`),
-        `${release.name}:${release.type} is not preserved under ${ARCHIVED_CHANGESETS}/`,
-      );
+    // The names come from the ARCHIVE ITSELF, never written here: a literal naming a
+    // path this repository removed is exactly what `audit:root-manifest` refuses.
+    const archived = git(["ls-tree", "--name-only", "HEAD", `${ARCHIVED_CHANGESETS}/`], repositoryRoot)
+      .split("\n")
+      .filter(Boolean)
+      .map((path) => path.slice(ARCHIVED_CHANGESETS.length + 1))
+      .filter((name) => name.endsWith(".md") && name !== "README.md");
+    assert.ok(archived.length > 0, `nothing is archived under ${ARCHIVED_CHANGESETS}/`);
+    const rows = archived.map((name) => ({ status: "D", path: `${CHANGESET_DIRECTORY}/${name}` }));
+    const dropped = readDeletedChangesets(rows, mergeBase, "HEAD", repositoryRoot);
+    assert.ok(dropped.length > 0, "none of the archived entries existed at the merge base");
+    for (const entry of dropped) {
+      assert.ok(entry.releases.length > 0, `${entry.path} declared no release at the merge base`);
+      for (const release of entry.releases) {
+        assert.ok(
+          entry.preserved.has(`${release.name}:${release.type}`),
+          `${entry.path}: ${release.name}:${release.type} is not preserved under ${ARCHIVED_CHANGESETS}/`,
+        );
+      }
     }
+    // And the whole run is clean: no archived relocation is reported as a drop.
+    assert.deepEqual(
+      runGate({ base: oracle, root: repositoryRoot }).violations.filter((entry) => entry.kind === "deletes-pending-intent"),
+      [],
+    );
   }
   // And the carve-out is not a blanket pass: a live entry has no archived twin.
   const live = readDeletedChangesets(

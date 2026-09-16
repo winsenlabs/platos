@@ -397,6 +397,17 @@ module.exports = {
       }
     },
     {
+      "name": "discord-sdk-only",
+      "comment": "node_modules/(discord\\.js|@discordjs|discord-api-types|discord-interactions) may be imported only from its single owning adapter.",
+      "severity": "error",
+      "from": {
+        "pathNot": "^packages/adapters/channel-discord/"
+      },
+      "to": {
+        "path": "node_modules/(discord\\.js|@discordjs|discord-api-types|discord-interactions)"
+      }
+    },
+    {
       "name": "provider-sdk-only",
       "comment": "node_modules/(openai|@anthropic-ai) may be imported only from its single owning adapter.",
       "severity": "error",

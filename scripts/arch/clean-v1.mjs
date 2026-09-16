@@ -17,7 +17,9 @@ const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 // adapter directory. The list below is ORDERED and the root tsconfig's
 // references must match it exactly, so the entry goes where the generator emits
 // it: after `keyring-envelope` and before the two apps.
-export const EXPECTED_V1_PROJECT_COUNT = 35;
+// WIN-271 (M4.5), D10 35 -> 36. `packages/adapters/channel-discord`, the sixteenth
+// adapter directory, where the generator emits it: after `tokenmint-totp`.
+export const EXPECTED_V1_PROJECT_COUNT = 36;
 export const EXPECTED_V1_PROJECTS = [
   "packages/kernel",
   "packages/contexts/identity-access", "packages/contexts/tenancy", "packages/contexts/secrets",
@@ -36,6 +38,8 @@ export const EXPECTED_V1_PROJECTS = [
   "packages/adapters/node-crypto-digest",
   // WIN-267 A2: the fifteenth adapter directory.
   "packages/adapters/tokenmint-totp",
+  // WIN-271 (M4.5), D10: the sixteenth adapter directory.
+  "packages/adapters/channel-discord",
   "apps/core-api", "apps/mcp-stdio",
 ];
 

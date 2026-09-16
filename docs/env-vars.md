@@ -283,6 +283,8 @@ INSTALLATION tokens, which are rows in the `channels` context's store.
 |---|---|---|---|
 | `PLATOS_CHANNELS_SLACK_SIGNING_SECRET` | — | anchor | Verifies every inbound channel request. Minimum 32 characters. Anchoring the group on the signing secret rather than on an outbound token means "the channel is wired" and "the channel can tell a real caller from a forged one" are the same statement. |
 | `PLATOS_CHANNELS_SLACK_REQUEST_MAX_AGE_S` | `300` | No | How old a signed request may be before it is refused as a replay. |
+| `PLATOS_CHANNELS_DISCORD_PUBLIC_KEY` | — | anchor | The Discord application's public key (Developer Portal, General Information): exactly 64 hexadecimal digits. Verifies the Ed25519 signature on every inbound interaction. Not a secret — it can only verify. No bot token sits beside it: a connection's bot token is a credential in the `channels` store, read per send. |
+| `PLATOS_CHANNELS_DISCORD_REQUEST_MAX_AGE_S` | `300` | No | How old a signed interaction may be before it is refused as a replay. Discord documents no window; the timestamp is signed, and only a clock makes that mean anything. |
 | `PLATOS_CHANNELS_EMAIL_SMTP_URL` | — | anchor | Relay for budget notifications and operator sign-in links. Scheme `smtps:` (implicit TLS) or `smtp:` (upgraded with STARTTLS, which is required unless `PLATOS_CHANNELS_EMAIL_REQUIRE_TLS` is `false`; credentials are only ever sent over TLS). |
 | `PLATOS_CHANNELS_EMAIL_FROM` | — | with anchor | Envelope sender. |
 | `PLATOS_CHANNELS_EMAIL_LOGIN_URL` | — | with anchor | The page a sign-in email links to, e.g. `https://app.example.com/magic`; the single-use token is appended as `?token=`. Configuration only — never taken from a request. |

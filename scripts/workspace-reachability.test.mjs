@@ -281,12 +281,20 @@ test("committed baseline independently captures OCI, application/deployable, and
   // through `apps/core-api`, joins the union with it, and is traversed on a
   // frozen install. It is NOT in an OCI image closure (no shipping Dockerfile
   // roots it), NOT in the OCI+dev closure, and NOT a review candidate.
-  assert.equal(report.summary.registeredWorkspaceCount, 63);
-  assert.equal(report.summary.ociImageWorkspaceCount, 40);
-  assert.equal(report.summary.applicationDeployableWorkspaceCount, 40);
-  assert.equal(report.summary.deploymentUnionWorkspaceCount, 41);
-  assert.equal(report.summary.repositoryDevWorkspaceCount, 44);
-  assert.equal(report.summary.installTraversalWorkspaceCount, 63);
+  //
+  // WIN-271 (M4.5), D10 moves SIX by one and leaves the review candidates alone.
+  // `packages/adapters/channel-discord` is registered, traversed on a frozen
+  // install, in the repository-dev closure, and — unlike `node-crypto-digest`
+  // at A1 — IN the OCI image closure too, because `apps/core-api`'s image now
+  // roots every adapter workspace it depends on. Its external production
+  // snapshot adds nothing (core-api stays at 329 nodes): it has no runtime
+  // dependency outside the workspace.
+  assert.equal(report.summary.registeredWorkspaceCount, 64);
+  assert.equal(report.summary.ociImageWorkspaceCount, 41);
+  assert.equal(report.summary.applicationDeployableWorkspaceCount, 41);
+  assert.equal(report.summary.deploymentUnionWorkspaceCount, 42);
+  assert.equal(report.summary.repositoryDevWorkspaceCount, 45);
+  assert.equal(report.summary.installTraversalWorkspaceCount, 64);
   assert.equal(report.summary.reviewCandidateCount, 22);
   const applicationRootKinds = new Set(
     Object.values(report.roots.applicationDeployable.reasons)
@@ -349,7 +357,10 @@ test("the entire root-referenced V1 application graph is retained, never classif
   // `tejas/win-267-adapters` and no branch of WIN-267 noticed until the merge.
   // A3 adds none -- it ADOPTS `redis-ratelimit`, a project that has existed
   // since the skeleton was generated.
-  assert.equal(v1Projects.length, 35);
+  // WIN-271 (M4.5), D10 35 -> 36. `packages/adapters/channel-discord`, the
+  // THIRTY-SIXTH root reference, added to `tsconfig.json` by the generator AND
+  // counted here in the same commit.
+  assert.equal(v1Projects.length, 36);
   for (const project of v1Projects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);
     assert.equal(workspace.applicationDeployableClosure.reachable, true, project);
@@ -549,7 +560,7 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 114 outputs across 35 V1 projects", () => {
+test("generated ownership includes the generator's exact 117 outputs across 36 V1 projects", () => {
   const report = repositoryReport();
   // M2 INTEGRATION DELTA — 201 -> 117. Adoption RELEASES placeholders, so this
   // count only ever falls, and the adopting slices release placeholders from
@@ -772,26 +783,31 @@ test("generated ownership includes the generator's exact 114 outputs across 35 V
   // shape: an adoption removes generated files rather than adding them, and this
   // is the THIRD generated interface to be adopted.
   //
-  // D20 (2026-09-15, the identity/tenancy REST remainder), read back the same
-  // way, prints
-  // "106 scaffolding + 8 placeholder = 114 generated file(s) for 35 V1 projects
-  // and 123 project edges (31 project(s) adopted, 102 placeholder(s) released)".
-  // Scaffolding UNMOVED at 106 because `notifier-email` already existed as a
-  // directory; placeholders EMITTED 10 -> 8 because adoption RELEASES that
-  // project's two declaration placeholders; adopted 30 -> 31 and released
-  // 100 -> 102. Edges 122 -> 123 because the adapter gained a SECOND owner
-  // (`identity-access`, for `MagicLinkDelivery`) beside `cost-monitoring`. The
-  // generated total FALLS once more, 116 -> 114 — the fourth generated interface
-  // adopted, in the same shape as the three before it.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 114);
-  assert.equal(report.generatedOwnership.ownedOutputProjectCount, 35);
+  // THE TWO LANES MOVE THIS IN OPPOSITE DIRECTIONS, and the integrated figure is
+  // read back from the generator rather than summed from either report.
+  //
+  // D20 (2026-09-15, the identity/tenancy REST remainder) alone printed
+  // "106 scaffolding + 8 placeholder = 114 ... for 35 V1 projects and 123 project
+  // edges": scaffolding UNMOVED because `notifier-email` already existed as a
+  // directory, placeholders EMITTED 10 -> 8 because adoption RELEASES that
+  // project's two declaration placeholders.
+  //
+  // WIN-271 (M4.5), D10 alone printed "109 scaffolding + 10 placeholder = 119 ...
+  // for 36 V1 projects and 124 project edges": the OPPOSITE shape, a NEW directory
+  // bringing three scaffolding files that stay generator-owned while its two
+  // placeholders are emitted and released in the same run.
+  //
+  // INTEGRATED: 109 scaffolding + 8 placeholder = 117 for 36 V1 projects and 125
+  // project edges.
+  assert.equal(report.generatedOwnership.ownedOutputCount, 117);
+  assert.equal(report.generatedOwnership.ownedOutputProjectCount, 36);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 114 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 114);
+  // Same 117 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 117);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);
