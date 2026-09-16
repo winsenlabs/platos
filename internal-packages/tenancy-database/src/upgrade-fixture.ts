@@ -94,6 +94,41 @@ export const ROLLOUT_TOOL_HEALTH = Object.freeze({
   avgLatencyMs: 42,
 });
 
+/**
+ * THE HEARTBEAT BOTH PATHS SEND, AND THE ROW BOTH PATHS MUST LEAVE BEHIND.
+ *
+ * WIN-269 (M4.3). Two transports write this row: the LIVE WebSocket in
+ * `apps/agent/src/tool-gateway/tool-sync-ws.service.ts`, whose heartbeat handler
+ * upserts `{ lastStatus, avgLatencyMs }` straight through Prisma, and
+ * `POST /api/v1/tools/sync` in `apps/core-api`, which reaches
+ * `ToolsContract.recordToolHealth`. Their characterization suites are in
+ * different deployables and cannot import each other.
+ *
+ * THIS IS WHERE THEY ARE JOINED. Both send `ROLLOUT_TOOL_HEARTBEAT` and both
+ * assert `ROLLOUT_TOOL_HEALTH_AFTER_HEARTBEAT`, read from here rather than
+ * written down twice — so "the two paths agree" is one committed expectation two
+ * suites are held to, not two expectations that happen to match today.
+ *
+ * `failCount`, `totalCalls` AND `totalFailures` STAY AT ZERO AND `lastCalledAt`
+ * STAYS NULL, which is the half worth reading twice. A heartbeat is not a call.
+ * The oracle's update set is exactly two columns, and a fold that advanced the
+ * counters would make `isFailing` true for a tool nothing has ever dispatched to.
+ */
+export const ROLLOUT_TOOL_HEARTBEAT = Object.freeze({
+  status: "degraded",
+  avg_latency_ms: 91,
+  error_count_1h: 2,
+});
+
+export const ROLLOUT_TOOL_HEALTH_AFTER_HEARTBEAT = Object.freeze({
+  lastStatus: "degraded",
+  avgLatencyMs: 91,
+  failCount: 0,
+  totalCalls: 0,
+  totalFailures: 0,
+  lastCalledAt: null,
+});
+
 /** The whole legacy database, written by the release that provisioned it. */
 export async function seedAsLegacyBinary(
   client: UpgradeBaselineClient,

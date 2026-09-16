@@ -90,7 +90,9 @@ const FIXTURE = (() => {
         "process.stdout.write(JSON.stringify({" +
         "declaration: m.ROLLOUT_TOOL_DECLARATION," +
         "schemaHash: m.ROLLOUT_TOOL_SCHEMA_HASH," +
-        "health: m.ROLLOUT_TOOL_HEALTH }));",
+        "health: m.ROLLOUT_TOOL_HEALTH," +
+        "heartbeat: m.ROLLOUT_TOOL_HEARTBEAT," +
+        "after: m.ROLLOUT_TOOL_HEALTH_AFTER_HEARTBEAT }));",
     ],
     { cwd: process.cwd(), encoding: "utf8" },
   );
@@ -103,6 +105,19 @@ const FIXTURE = (() => {
     };
     readonly schemaHash: string;
     readonly health: { readonly lastStatus: string; readonly avgLatencyMs: number };
+    readonly heartbeat: {
+      readonly status: string;
+      readonly avg_latency_ms: number;
+      readonly error_count_1h: number;
+    };
+    readonly after: {
+      readonly lastStatus: string;
+      readonly avgLatencyMs: number;
+      readonly failCount: number;
+      readonly totalCalls: number;
+      readonly totalFailures: number;
+      readonly lastCalledAt: null;
+    };
   };
 })();
 
@@ -136,9 +151,10 @@ function reconnectBody(overrides: Record<string, unknown> = {}): Record<string, 
         annotations: { category: FIXTURE.declaration.category },
       },
     ],
-    tools_health: {
-      [FIXTURE.declaration.name]: { status: "degraded", avg_latency_ms: 91, error_count_1h: 2 },
-    },
+    // THE HEARTBEAT THE LIVE SOCKET'S CHARACTERIZATION SENDS, read from the same
+    // published constant. See `ROLLOUT_TOOL_HEARTBEAT`: that is where the two
+    // paths are joined.
+    tools_health: { [FIXTURE.declaration.name]: FIXTURE.heartbeat },
     ...overrides,
   };
 }
@@ -249,6 +265,12 @@ describe("POST /api/v1/tools/sync, from an entity that changed nothing", () => {
     // `pruned: 1`. Both are the shapes this clause forbids.
     expect(data["newTools"]).toBe(0);
     expect(data["pruned"]).toBe(0);
+    // `updated: 1` — the tool was already exposed here and was re-touched. THE
+    // LIVE SOCKET ANSWERS THE SAME FOUR NUMBERS for the same session, and
+    // `apps/agent/src/tool-gateway/tool-sync-characterization.integration.test.ts`
+    // reads them off its `tools_registered` frame as `count`, `new_tools`,
+    // `updated` and `pruned`. Two transports, one answer.
+    expect(data["updated"]).toBe(1);
     expect(data["unknownToolNames"]).toEqual([]);
 
     const listed = await tools.listTools({ authorization: grant, callableOnly: false });
@@ -289,7 +311,16 @@ describe("POST /api/v1/tools/sync, from an entity that changed nothing", () => {
     // is the oracle's own update set. `lastCalledAt` STAYS NULL and the counters
     // stay at zero because no call happened — a fold that advanced `totalCalls`
     // would make `isFailing` true for a tool nothing has ever dispatched to.
-    expect(folded).toBe("degraded|91|0|0|null");
+    //
+    // THE EXPECTATION IS `ROLLOUT_TOOL_HEALTH_AFTER_HEARTBEAT`, READ FROM THE
+    // FIXTURE PACKAGE, and `apps/agent/src/tool-gateway/tool-sync-characterization.integration.test.ts`
+    // asserts the SAME constant after driving the LIVE socket. That is the join
+    // between the two paths: one committed expectation, two transports.
+    const after = FIXTURE.after;
+    expect(folded).toBe(
+      `${after.lastStatus}|${String(after.avgLatencyMs)}|${String(after.failCount)}` +
+        `|${String(after.totalCalls)}|null`,
+    );
   });
 
   it("stamps the entity connected and dates the connection", async () => {

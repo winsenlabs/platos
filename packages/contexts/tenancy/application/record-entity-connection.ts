@@ -43,6 +43,7 @@ import { err, ok, runResult, type EntityId, type Result } from "@platos/kernel";
 
 import {
   entityNotInScope,
+  environmentForbidden,
   invalidConnectionStatus,
   isEntityConnectionStatus,
   markEntityConnected,
@@ -84,6 +85,18 @@ export function createRecordEntityConnection(
   return async (command) => {
     const granted = requireAuthorization(command.authorization);
     if (!granted.ok) return err(granted.error);
+    // `secret:mutate`, AND NOT BECAUSE A SECRET IS INVOLVED. `EnvironmentAccess`
+    // has two levels and the weaker one, `metadata`, is what a read of the
+    // environment earns; gate 4 narrows the stronger one to an organization
+    // admin or a project ADMIN. This is a WRITE to a liveness column every
+    // dispatch path consults, so an operator who may not reconfigure an
+    // environment may not flip its entity to `disconnected` either — which would
+    // take that entity's tools out of every model's reach without touching a
+    // single tool row. `tools.recordToolHealth` asks at the same level for the
+    // same reason, and `registerTools` already did.
+    if (granted.value.access !== "secret:mutate") {
+      return err(environmentForbidden("secret-mutate-role"));
+    }
     if (!isEntityConnectionStatus(command.status)) {
       return err(invalidConnectionStatus(String(command.status)));
     }
