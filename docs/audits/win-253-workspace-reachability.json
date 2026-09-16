@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "15840cbb4ddd9e279e1b05c8bc9fe92d37a5e9965cb657e168140d2e4caf30e4",
+  "evidenceSha256": "3d0a43265dd5502a8538665a35eee159c69eeed3fc65dc34db0ac0633e7596b7",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 40,
@@ -117,7 +117,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "01545a3278177eb4376386bf37f0d9616501762f1eed93f6feb1a016cfff5273",
+    "aggregateSha256": "6edf808b2e111e551496a9c26c5b52372ae271d00aee25d46a7c9e3affaf4b69",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2989,7 +2989,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/identity-rest.test.ts",
-        "sha256": "7e088b9250f61a081685112a2c7cdc047c292594f0739078dedf951b166001f3"
+        "sha256": "6a54b4152a0182f5d9c798630ce7f40d32cb7e07466c315eb5c214e4fc47be0b"
       },
       {
         "path": "apps/core-api/src/transports/rest/identity-session.controller.ts",
@@ -6645,7 +6645,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "9a68a3c5d47d6eeb7e9611ad877b0fc4c52ca516500214c170328f8776257d36"
+        "sha256": "54f44a75d964ddcfcc0679ccee02a90694068736e115196ae7ecd0737673be7a"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -20934,6 +20934,10 @@
       {
         "path": "scripts/license-distribution.test.mjs",
         "sha256": "5ee8af20819758312de193ddf66d2ef52359a10f91568ea59d5f67b868a7d1e9"
+      },
+      {
+        "path": "scripts/mutations-win257-t8.json",
+        "sha256": "d9e56bb81b67f592013cb385440d71217f83f8db150d6c3d09dccf94f3f65404"
       },
       {
         "path": "scripts/mutations-win267-a3.json",
