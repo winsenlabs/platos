@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "56be723492a39b9dc047ee6b6e86e1a606bcd2bdf1cdf752af1145a2a3d2fa32",
+  "evidenceSha256": "c4824a3e405f92d27cfe8e238e23b75639e9649e441009a310267a002a5c3e70",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "ae55dcea284984e870d0a079ed1f11950cb16104e7e6da1c50a9cafa7a78e980",
+    "aggregateSha256": "b66917ef457f15e8edf3a823178dfb8ccefa8eaa41d1c14ba73be2d8b09a1ab0",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -1811,7 +1811,7 @@
       },
       {
         "path": "apps/agent/src/openapi/openapi.generated.json",
-        "sha256": "e93e83da15247f33e45216a91026871a82a9eb7236f81d36a217de3364d8285a"
+        "sha256": "f845db6f843af6b1f15496408c916ccc5aa24f7ac77ae28a499c14c399e1a13f"
       },
       {
         "path": "apps/agent/src/openapi/openapi.module.ts",
@@ -3079,7 +3079,7 @@
       },
       {
         "path": "apps/mcp-stdio/src/testing/in-memory-runtime.ts",
-        "sha256": "432197ca7dd9d99359e22c67b590196e45d078b8e2380116679f864eb7e7e292"
+        "sha256": "e5fc4015acddadb5b2018a583e5377042d5791a26229c0c8aa4c617c25813ec5"
       },
       {
         "path": "apps/mcp-stdio/tsconfig.json",
@@ -6115,7 +6115,7 @@
       },
       {
         "path": "docs/openapi-v1-baseline.json",
-        "sha256": "8b17f325b2e02d94e6f3f7565c38306683264d5b7d8f4b5573b42b723d54a5ea"
+        "sha256": "bbe282cf882a1365a00089eba0f272b81e2f9df2c3430684243a392a8900f794"
       },
       {
         "path": "docs/openapi.yml",
@@ -19811,7 +19811,7 @@
       },
       {
         "path": "packages/platos-client-py/platos_client/generated/v1.py",
-        "sha256": "d70aa5907c39e5d3de54e71c7d161b3839ac43b68ebe8685d3fb5613d3db1efb"
+        "sha256": "a25187a096524cc25c9ad6e3e4d5b3be22e4171a0182b9b96e012d314883c07e"
       },
       {
         "path": "packages/platos-client-py/platos_client/py.typed",
@@ -19907,7 +19907,7 @@
       },
       {
         "path": "packages/platos-client/src/generated/v1.ts",
-        "sha256": "c95845b980c50dbc802b52450afee5fa6edcf92184d47b7a47a3001471d9e47a"
+        "sha256": "3981b8522a5ee88a31d3dd3ba88c7e69bf1331dc699c44917ceabd8332f0bdd7"
       },
       {
         "path": "packages/platos-client/src/index.ts",
@@ -21303,7 +21303,7 @@
       },
       {
         "path": "tests/sdk-contract/v1-fixtures.json",
-        "sha256": "65d04fb18424e2777b973f98d42b4c2c726579a279041a2057b9c9b861e6d07f"
+        "sha256": "39f64bba1ca08337f27deddda0637f5f683e0b54783926a483cffcd226a3aa6b"
       },
       {
         "path": "tests/vocabulary-fixtures/scenarios.mjs",

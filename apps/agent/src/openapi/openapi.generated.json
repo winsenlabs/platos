@@ -1618,7 +1618,9 @@
               "TENANCY_ARCHIVED",
               "TENANCY_AUTHORIZATION_FORGED",
               "TENANCY_CROSS_TENANT_MEMBERSHIP",
+              "TENANCY_ENTITY_NOT_IN_SCOPE",
               "TENANCY_ENVIRONMENT_FORBIDDEN",
+              "TENANCY_INVALID_CONNECTION_STATUS",
               "TENANCY_INVALID_NAME",
               "TENANCY_INVALID_SLUG",
               "TENANCY_INVITATION_ALREADY_ACTIVE",
@@ -1646,6 +1648,7 @@
               "TOOLS_ENTITY_NOT_IN_SCOPE",
               "TOOLS_ENVIRONMENT_NOT_IN_SCOPE",
               "TOOLS_EXPOSURE_NOT_FOUND",
+              "TOOLS_HEALTH_REPORT_INVALID",
               "TOOLS_MCP_DISABLED",
               "TOOLS_MCP_TRANSPORT_INVALID",
               "TOOLS_MCP_TRANSPORT_UNIMPLEMENTED",
@@ -12627,7 +12630,7 @@
     "undeclaredReason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)",
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
     "componentSchemas": 44,
-    "canonicalErrorCodes": 459,
+    "canonicalErrorCodes": 462,
     "queryParametersNotDerived": [],
     "openJsonProperties": [
       "ToolSyncDeclaration.paramSchema"
