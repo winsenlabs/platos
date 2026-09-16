@@ -465,8 +465,15 @@ export function buildRegister(root = repositoryRoot) {
 //
 // THE GLOB AND NOT THE DIRECTORY. dependency-cruiser 16 walks a bare directory
 // with its default extension set and reports "0 modules cruised" on a TypeScript
-// tree, which reads as a pass. Measured at the commit this landed on, the glob
-// form cruises 889 modules and 1609 dependencies.
+// tree, which reads as a pass. TWO MORE SILENT PASSES were found the same way and
+// are why the emitted options look as they do: without `typescript` resolvable
+// beside dependency-cruiser every relative `.ts` import resolves to `unknown` and
+// no rule matches, and `tsConfig: apps/agent/tsconfig.json` aborts with TS18003
+// because dependency-cruiser resolves a tsconfig's `include` globs against the
+// CWD. Measured at the commit this landed on, the glob form cruises 397 modules
+// and 1681 dependencies and finds no violation; the mutation that puts a
+// `tool-gateway -> agent-runtime` import back is reported by BOTH
+// `agent-tool-layer-below-runtime` and the `no-agent-area-cycles` circular rule.
 //
 // The `no-agent-area-cycles` rule is `circular` restricted with `viaOnly` to the
 // four layer areas, which is the clause's own sentence in dependency-cruiser's
