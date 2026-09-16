@@ -11,26 +11,42 @@
 // is not exactly one, which closes the window between the read and the write
 // without an extra lock.
 //
-// ONE GAP, RECORDED NOT INVENTED. Neither oracle function performs any
-// authorization: `issueInvitation` will mint an invitation for any
-// `organizationId` and `inviterId` it is handed, and the check that the inviter
-// may invite lives in the controller above it. That is a real gap, and closing
-// it here would be inventing a rule with no oracle, so the use case takes the
-// inviter as data and the transport keeps the duty until a decision is taken.
+// THE GAP THAT WAS RECORDED HERE IS CLOSED BY D1 (2026-09-15), in this use case
+// and not in a transport. Neither oracle function performs any authorization —
+// `issueInvitation` would mint an invitation for any `organizationId` and
+// `inviterId` it was handed — and the only gate was the Remix invite route's
+// `organization.findFirst` over OWNER/ADMIN memberships, which T8 deletes. D1
+// chose to mirror that gate: only an ACTIVE OWNER or ADMIN of the target
+// organization may issue, and anyone else is refused `TENANCY_INVITATION_FORBIDDEN`
+// with the gate in `details`. It is decided INSIDE the unit of work, before the
+// slot lock, so the membership that authorizes the write is read in the same
+// transaction that commits it.
+//
+// ONE MORE RULE, CHOSEN UNDER D1 RATHER THAN PORTED: an ADMIN may not invite an
+// OWNER. The Remix route only ever invited MEMBERs, so the question never arose
+// there; `changeMembershipRole` already refuses an ADMIN granting OWNER
+// (`mayChangeOwnership`, gate 3 of the ported policy), and an invitation that
+// could do what a role change may not would be the way around it.
 
 import type { OrganizationId, Result, TransactionScope } from "@platos/kernel";
 import { asIdentifier, err, ok, runResult } from "@platos/kernel";
 
 import {
   DEFAULT_INVITATION_TTL_MS,
+  OrganizationRole,
+  administrationGate,
   confirmInvitationConsumed,
+  invalidInvitationEmail,
+  invalidOrganizationRole,
+  invitationForbidden,
+  isOrganizationRole,
+  isInvitableEmail,
   decideInvitationAcceptance,
   normalizeEmail,
   planInvitationIssue,
   type OrganizationInvitationId,
   type OrganizationInvitationRecord,
   type OrganizationMembershipRecord,
-  type OrganizationRole,
   type UserId,
 } from "../domain/index.js";
 
@@ -38,7 +54,12 @@ import type { TenancyDependencies } from "./dependencies.js";
 
 export interface IssueInvitationCommand {
   readonly organizationId: OrganizationId;
-  readonly inviterId: UserId | null;
+  /**
+   * The operator issuing it — the EFFECTIVE user a transport authenticated. D1
+   * made this the authorization subject, so it can no longer be null: an
+   * invitation with no inviter is an invitation nobody was authorized to send.
+   */
+  readonly inviterId: UserId;
   readonly email: string;
   readonly role: OrganizationRole;
   /** Overrides the seven-day default. */
@@ -68,10 +89,24 @@ export function createIssueInvitation(dependencies: IssueDependencies): IssueInv
   return async (command) => {
     const now = clock.now();
     const email = normalizeEmail(command.email);
-    const minted = invitationTokens.mint();
-    const expiresAt = command.expiresAt ?? new Date(now.getTime() + DEFAULT_INVITATION_TTL_MS);
+    if (!isInvitableEmail(email)) return err(invalidInvitationEmail());
+    if (!isOrganizationRole(command.role)) return err(invalidOrganizationRole());
 
     return runResult(unitOfWork, async (transaction) => {
+      // D1. Read under the transaction, decided before anything is locked or minted.
+      const organization = await repository.loadOrganization(command.organizationId);
+      const inviter = await repository.findOrganizationMembershipByUser(
+        command.organizationId,
+        command.inviterId,
+      );
+      const gate = administrationGate({ organization, actorMembership: inviter });
+      if (gate !== null) return err(invitationForbidden(gate));
+      if (command.role === OrganizationRole.OWNER && inviter?.role !== OrganizationRole.OWNER) {
+        return err(invitationForbidden("owner-grant-requires-owner"));
+      }
+
+      const minted = invitationTokens.mint();
+      const expiresAt = command.expiresAt ?? new Date(now.getTime() + DEFAULT_INVITATION_TTL_MS);
       await locks.lockInvitationSlot(command.organizationId, email, transaction);
       const existing = await repository.findLiveInvitations(command.organizationId, email);
       const issued: OrganizationInvitationRecord = {

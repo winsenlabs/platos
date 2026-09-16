@@ -19,6 +19,9 @@ import { fileURLToPath } from 'node:url';
 import {
   loadLockfile, computeClosure, componentsFromSnapshots, parseKey, toSnapKey, IMAGES,
 } from './lib/pnpm-closure.mjs';
+import { parse as parseYaml } from 'yaml';
+import { REVIEWED_ABSENT } from './deploy-bundle-closure.mjs';
+import { derivationOf, lockDerivedComponents } from './lib/shipping-components.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LOCK = path.join(ROOT, 'pnpm-lock.yaml');
@@ -270,4 +273,87 @@ test('missing image receipt mutation is rejected', () => {
       assert.match(res.stderr, /DRIFT: receipt is missing image closure: webapp/);
     },
   );
+});
+
+// ---------------------------------------------------------------------------
+// THE SBOM IMAGE SET IS THE BUILD CANDIDATE SET.
+//
+// IMAGES decides what the SBOM, the licence index and the advisory scan call
+// "shipping". It used to be written independently of the workflow that builds the
+// images, so the fourth candidate (core-api) shipped for a whole tranche with no
+// SBOM, no licence entry for three of its components and no advisory scan, and no
+// gate noticed. This joins the two, row for row.
+// ---------------------------------------------------------------------------
+// Matrix rows with no IMAGES entry, each with the reason the root-lockfile walker
+// cannot describe it. Adding a row here is a reviewed decision, not a way out.
+const REVIEWED_CANDIDATES_WITHOUT_SBOM = Object.freeze({
+  migrations:
+    'internal-packages/tenancy-database/Dockerfile.migrations installs its own ' +
+    'migration-image/package.json against its own migration-image/pnpm-lock.yaml, ' +
+    'so its package set is not any importer closure of the root pnpm-lock.yaml ' +
+    'this walker reads. It has no SBOM; that gap is pre-existing and named here.',
+});
+
+function buildCandidateRows() {
+  const workflow = parseYaml(fs.readFileSync(path.join(ROOT, '.github/workflows/build-images.yml'), 'utf8'));
+  return workflow.jobs['build-candidates'].strategy.matrix.include;
+}
+
+test('IMAGES is the build-images candidate matrix, less only the reviewed rows without an SBOM', () => {
+  const matrixNames = buildCandidateRows().map((row) => row.name).sort();
+  assert.ok(matrixNames.length > 0, 'the matrix selector must not be empty');
+  assert.deepEqual(
+    [...Object.keys(IMAGES), ...Object.keys(REVIEWED_CANDIDATES_WITHOUT_SBOM)].sort(),
+    matrixNames,
+  );
+  for (const name of Object.keys(REVIEWED_CANDIDATES_WITHOUT_SBOM)) {
+    assert.ok(!Object.hasOwn(IMAGES, name), `${name} cannot be both SBOMed and reviewed as not SBOMed`);
+  }
+  // Each image's closure root is the package its candidate Dockerfile builds.
+  for (const row of buildCandidateRows().filter((candidate) => Object.hasOwn(IMAGES, candidate.name))) {
+    const dockerfile = fs.readFileSync(path.join(ROOT, row.dockerfile), 'utf8');
+    for (const root of IMAGES[row.name].roots) {
+      const packageName = JSON.parse(fs.readFileSync(path.join(ROOT, root, 'package.json'), 'utf8')).name;
+      assert.ok(
+        dockerfile.includes(`--filter ${packageName} `) || dockerfile.includes(`--filter ${packageName}...`) ||
+          dockerfile.includes(`build:platos:${row.name}`),
+        `${row.dockerfile} must build ${packageName}, the root IMAGES gives ${row.name}`,
+      );
+    }
+  }
+
+  // NEGATIVE CONTROL: a fifth matrix row with no IMAGES entry breaks the join.
+  const withFifth = [...matrixNames, 'invented-candidate'].sort();
+  assert.notDeepEqual([...Object.keys(IMAGES), ...Object.keys(REVIEWED_CANDIDATES_WITHOUT_SBOM)].sort(), withFifth);
+});
+
+test('an image is bundle-proven exactly when its candidate Dockerfile runs the bundle closure check for its root', () => {
+  for (const row of buildCandidateRows().filter((candidate) => Object.hasOwn(IMAGES, candidate.name))) {
+    const dockerfile = fs.readFileSync(path.join(ROOT, row.dockerfile), 'utf8');
+    for (const root of IMAGES[row.name].roots) {
+      const runsCheck = new RegExp(
+        `node scripts/deploy-bundle-closure\\.mjs check --bundle \\S+ --importer ${root.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}(?:\\s|$)`,
+      ).test(dockerfile);
+      assert.equal(
+        Object.hasOwn(REVIEWED_ABSENT, root),
+        runsCheck,
+        `${root}: REVIEWED_ABSENT entry and ${row.dockerfile} closure check must agree`,
+      );
+      assert.equal(derivationOf(row.name) === 'deploy-bundle-closure-check', runsCheck);
+    }
+  }
+});
+
+test('the core-api SBOM is its lock closure minus exactly the reviewed bundle absences', () => {
+  const { parsed } = loadLockfile(LOCK);
+  const closure = componentsFromSnapshots(computeClosure(IMAGES['core-api'].roots, parsed));
+  const shipped = lockDerivedComponents(parsed, 'core-api');
+  const shippedIds = new Set(shipped.map((c) => `${c.name}@${c.version}`));
+  const removed = closure.map((c) => `${c.name}@${c.version}`).filter((id) => !shippedIds.has(id)).sort();
+  assert.deepEqual(removed, [...REVIEWED_ABSENT['apps/core-api']].sort());
+  const sbom = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs/audits/sbom/platos-core-api.cdx.json'), 'utf8'));
+  assert.deepEqual(sbom.components.map((c) => `${c.name}@${c.version}`).sort(), [...shippedIds].sort());
+  const receipts = JSON.parse(fs.readFileSync(RECEIPTS, 'utf8'));
+  assert.equal(receipts.images['core-api'].derivation, 'deploy-bundle-closure-check');
+  assert.equal(receipts.images['core-api'].componentCount, shipped.length);
 });

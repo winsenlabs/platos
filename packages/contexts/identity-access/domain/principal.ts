@@ -109,6 +109,20 @@ export function normalizeEmail(value: string): EmailAddress {
   return value.trim().toLowerCase() as EmailAddress;
 }
 
+/**
+ * Whether a NORMALIZED address can be mailed.
+ *
+ * The oracle's sign-in form refused anything not matching `^\S+@\S+\.\S+$`
+ * after trimming and lower-casing, and this is that rule, moved to the context
+ * that now sends the message. `\S` is what keeps a CR or LF out of a mail
+ * header; the length ceiling is RFC 5321's path limit, beyond which a relay
+ * refuses the envelope anyway. Deliberately not the full RFC 5322 grammar — a
+ * relay rejecting an address is recoverable, a header injection is not.
+ */
+export function isDeliverableEmail(address: EmailAddress): boolean {
+  return address.length <= 254 && /^\S+@\S+\.\S+$/u.test(address);
+}
+
 export function sameEmail(left: string, right: string): boolean {
   return normalizeEmail(left) === normalizeEmail(right);
 }

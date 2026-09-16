@@ -3,14 +3,14 @@
   "generatedBy": "scripts/audit-sbom.mjs generate",
   "toolVersion": "1.0.0",
   "fixedTimestamp": "2026-08-28T00:00:00.000Z",
-  "lockfileSha256": "79d41ad4b0a27d19e41cff3b38d3a239673b69ccae76574a316aa40508823bb4",
-  "licenseIndexSha256": "6ddfd92742189cdb4a603a7799387fc49beb90c3cc1e126264538b0cf78ed8c1",
+  "lockfileSha256": "d4e733727913177bf6be76609a5f2a8783796d1728ffbe6a6406e93326c93a39",
+  "licenseIndexSha256": "18de97c7a7efe4e13511bd9297f888f4ab1efb7f9e2c2ff1a76afe54d8f7d580",
   "licenseOverlaySha256": "db436a3bfad82b7bfe9413d8023f86df0ea848e44ad4b5c86d78b727406a713b",
   "licensePolicySha256": "2c47d8ec03aed511b986f67ab1bca3f3735aef6f440255ca0ad5afabe06bd0d1",
   "images": {
     "agent": {
       "file": "docs/audits/sbom/platos-agent.cdx.json",
-      "sha256": "8b880df3301024028e23517dc24088f987baaf62005d800f6da8dad70bb485c8",
+      "sha256": "0d8dfddaab11cc4f3bbca893baa2fa1a9407adaf305aaa75e2548c7d04ff876e",
       "componentCount": 718,
       "distinctNames": 657,
       "roots": [
@@ -20,7 +20,7 @@
     },
     "webapp": {
       "file": "docs/audits/sbom/platos-webapp.cdx.json",
-      "sha256": "89c8d9d5d6948ea37eb32134b5f8aa648dc13740bb25e04c745ab53519344511",
+      "sha256": "4c00515664dc823f6eac34b98d044cc4470a61cc0bcd7f53706913e174251225",
       "componentCount": 330,
       "distinctNames": 303,
       "roots": [
@@ -54,7 +54,7 @@
       "buildInputs": [
         {
           "file": "apps/webapp/Dockerfile.platos",
-          "sha256": "e8c83f399085dcf44cc8c2a57d8e342e094556ea3ab46ea490d6c11ddcb14057"
+          "sha256": "503120a85c46cc9bd282e48dabdebb7db2c9dd841fab76447d46e357461fec6c"
         },
         {
           "file": "apps/webapp/package.json",
@@ -74,11 +74,11 @@
         },
         {
           "file": "package.json",
-          "sha256": "89ec870f9b230c23e79355d7a082bd561bc75508b88188548b90357680883e1b"
+          "sha256": "3d2f170523efc6a7466e9dd85c03b945f22a219e4382af71779ca44626fcc638"
         },
         {
           "file": "pnpm-lock.yaml",
-          "sha256": "79d41ad4b0a27d19e41cff3b38d3a239673b69ccae76574a316aa40508823bb4"
+          "sha256": "d4e733727913177bf6be76609a5f2a8783796d1728ffbe6a6406e93326c93a39"
         },
         {
           "file": "scripts/image-package-inventory.mjs",
@@ -89,7 +89,17 @@
           "sha256": "360b978afaf1d522a5b98479b5ab6f44e6b007e6cb71655f5c6ae55178f9fff7"
         }
       ],
-      "buildInputsSha256": "e683fb71ebfb047bd6695917fb97cf8a02ada6579dc2825d1bf68ca9a02371cc"
+      "buildInputsSha256": "8e25492cb31eb6bb532f9c2b1b32c3fd034c69dfa042d3213a804d2e0e8c6621"
+    },
+    "core-api": {
+      "file": "docs/audits/sbom/platos-core-api.cdx.json",
+      "sha256": "a178d363b5651af932583aa5359c344cd3793432e48ce857eb10bbfc4bc90c9c",
+      "componentCount": 326,
+      "distinctNames": 312,
+      "roots": [
+        "apps/core-api"
+      ],
+      "derivation": "deploy-bundle-closure-check"
     }
   }
 }

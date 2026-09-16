@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { parseDocument } from "yaml";
@@ -11,6 +13,7 @@ import {
   SUITE_ROOTS as AGENT_TENANCY_SUITE_ROOTS,
   SUITE_SUFFIX as AGENT_TENANCY_SUITE_SUFFIX,
   discoverSuites as discoverAgentTenancySuites,
+  requiredFlagsIn as requiredGateFlagsIn,
 } from "./agent-tenancy-postgres-integration.mjs";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "..");
@@ -33,6 +36,14 @@ const expectedCandidates = [
     dockerfile: "internal-packages/tenancy-database/Dockerfile.migrations",
     env_name: "MIGRATIONS",
   },
+  // The FOURTH candidate: the V1 composition root. See the note on
+  // `coreApiBuildScriptTarget` for what its Dockerfile runs.
+  {
+    name: "core-api",
+    image: "platos-core-api",
+    dockerfile: "apps/core-api/Dockerfile",
+    env_name: "CORE_API",
+  },
 ];
 const expectedInstallInstructions = new Map([
   [
@@ -51,6 +62,13 @@ const expectedInstallInstructions = new Map([
   [
     "internal-packages/tenancy-database/Dockerfile.migrations",
     ["RUN pnpm install --frozen-lockfile --prod"],
+  ],
+  // NO STORE CACHE MOUNT, unlike the agent line above. The core-api Dockerfile
+  // avoids BuildKit-only syntax so the same file builds under the classic
+  // builder as well as buildx; its own header states the trade.
+  [
+    "apps/core-api/Dockerfile",
+    ["RUN pnpm install --frozen-lockfile"],
   ],
 ]);
 const expectedPnpmRunInstructions = new Map([
@@ -74,6 +92,18 @@ const expectedPnpmRunInstructions = new Map([
   [
     "internal-packages/tenancy-database/Dockerfile.migrations",
     ["RUN pnpm install --frozen-lockfile --prod"],
+  ],
+  [
+    "apps/core-api/Dockerfile",
+    [
+      "RUN pnpm install --frozen-lockfile",
+      "RUN pnpm run build:platos:core-api",
+      // D-ZOD. The deploy is no longer a pnpm RUN of its own: it is
+      // `node scripts/deploy-bundle-closure.mjs deploy`, pnpm's non-legacy deploy
+      // from the shared lockfile, proven by the `check` RUN after it
+      // (scripts/audit-platos-build.mjs pins both instructions and refuses
+      // `--legacy`).
+    ],
   ],
 ]);
 // DELTA — WIN-284 moves ci from 3 to 4, and WIN-258 from 4 to 5. The count is
@@ -101,9 +131,13 @@ const expectedPnpmRunInstructions = new Map([
 // green pipeline, and 18 REACHABLE blockers were indistinguishable from the 107 that
 // genuinely need a browser. The new job produces the artifact and then asserts what
 // closing those cells MEANS: the residue is `browser evidence 107` and nothing else.
+//
+// build-images TWO, not one: `core-api-smoke` (job name `smoke-candidate-core-api`)
+// is the first job that STARTS the core-api candidate. It needs Node for the
+// smoke script and, like every job here, takes the version from .nvmrc.
 const expectedSetupNodeCounts = new Map([
   ["ci", 7],
-  ["buildImages", 1],
+  ["buildImages", 2],
 ]);
 const relocatedCommands = [
   "pnpm --filter platos-agent exec vitest run src/auth/rate-limit.guard.test.ts",
@@ -212,6 +246,14 @@ const v1ReleaseGateCommands = [
   // `SameSite=None` credential, the per-agent cookie scope and the guest session
   // expiry could every one of them be broken with a green CI.
   "pnpm test:public-guest-boundary",
+  // M2/M4 INTEGRATION, +1. THE AUTHORED DOCS EXAMPLES AND THE QUICKSTART ENVIRONMENT.
+  // `test:docs-examples` checks every authored request and SDK example against the
+  // generated contracts, and that the documented `cp .env.example .env` gives a
+  // Compose model that evaluates (`docker compose config`, no daemon) with the
+  // parent shell's variables stripped. It passed locally and ran in no workflow, so
+  // the quickstart could lose a required variable with a green CI. Its script
+  // already existed, so root package.json does not move.
+  "pnpm test:docs-examples",
   // WIN-267 (M4.1), +1. THE COMPATIBILITY-ALIAS DEPRECATION SIGNAL, read back off
   // a real socket. WIN-267's acceptance asks that "aliases preserve old clients and
   // emit deprecation metadata", and ADR M0.4 §4.2's REST row names the wire signal
@@ -357,8 +399,22 @@ const licenseDeterminismTestTarget = "node --test scripts/audit-licenses.test.mj
 // sentence is about.
 const agentBuildScriptTarget =
   'pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter "@platos/context-identity-access..." build && pnpm --filter "@platos/context-tools..." build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies';
+// The exact `build:platos:core-api`, spelled ONCE for the same reason as the
+// agent's above: the equality rule and its mutation control both read it.
+//
+// ONE FILTER, AND A COLD BUILD IS WHY THAT IS ENOUGH. `@platos/core-api...` is the
+// deployable and every workspace package it depends on, which includes
+// `@platos/tenancy-database`; pnpm runs that package's `prebuild` client
+// generation before its `build`, and runs the graph in dependency order. The
+// agent string above lists its prerequisites one by one because the agent's
+// strict build reaches packages that are not its dependencies; this graph has no
+// such reach. Proven on a fresh worktree with no dist anywhere, not on a warm tree.
+const coreApiBuildScriptTarget = 'pnpm --filter "@platos/core-api..." build';
 const agentRuntimeSmokeInvocation =
   "tests/persisted-state-gate/smoke-agent-runtime-image.sh \\\n  2>&1 | tee artifacts/win235/agent-runtime-smoke.log";
+// The one command that starts the core-api candidate, and the verifier it must follow.
+const coreApiSmokeCommand = "node tests/persisted-state-gate/smoke-core-api-image.mjs";
+const candidatePreparationScriptPath = "tests/persisted-state-gate/prepare-candidate-images.sh";
 const expectedV1EvidenceCommands = [
   "pnpm test:ci-policy",
   ...repositoryGovernanceCommands,
@@ -381,6 +437,16 @@ const expectedV1EvidenceCommands = [
   "node --test scripts/webapp-bff-matrix.test.mjs",
   "node scripts/operator-operations.mjs --check",
   "node --test scripts/license-distribution.test.mjs",
+  // The prune and the lockfile-closure check apps/core-api/Dockerfile runs on its
+  // deploy bundle, with their negative controls. Invoked directly for the same
+  // reason as the capability-matrix suite above: root package.json is a webapp
+  // image build input.
+  "node --test scripts/deploy-bundle-closure.test.mjs",
+  // What the core-api candidate smoke (build-images.yml `core-api-smoke`) reads
+  // from the compose file and the operation manifest, and every refusal of its
+  // readiness readback, each with a negative control. Invoked directly for the
+  // same reason: root package.json is a webapp image build input.
+  "node --test tests/persisted-state-gate/smoke-core-api-image.test.mjs",
   "node scripts/arch/gen-v1-skeleton.mjs --check",
   "pnpm test:v1-foundation",
   "pnpm test:install-git-hooks",
@@ -494,6 +560,14 @@ const expectedV1EvidenceCommands = [
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:public-guest-boundary",
+  // M2/M4 INTEGRATION, +1. THE AUTHORED DOCS EXAMPLES AND THE QUICKSTART ENVIRONMENT.
+  // `test:docs-examples` checks every authored request and SDK example against the
+  // generated contracts, and that the documented `cp .env.example .env` gives a
+  // Compose model that evaluates (`docker compose config`, no daemon) with the
+  // parent shell's variables stripped. It passed locally and ran in no workflow, so
+  // the quickstart could lose a required variable with a green CI. Its script
+  // already existed, so root package.json does not move.
+  "pnpm test:docs-examples",
   // WIN-267 (M4.1), +1. THE COMPATIBILITY-ALIAS DEPRECATION SIGNAL, read back off
   // a real socket. WIN-267's acceptance asks that "aliases preserve old clients and
   // emit deprecation metadata", and ADR M0.4 §4.2's REST row names the wire signal
@@ -642,6 +716,24 @@ const expectedDifferentialConservationCommand = "pnpm test:differential-harness:
 // suite under either joins with no line to add.
 const agentTenancyPostgresJob = "agent-tenancy-postgres";
 const agentTenancyPostgresCommand = "pnpm test:agent-tenancy-postgres:integration";
+// WIN-268/WIN-269 (M4). Three suites under the walked roots — the MCP protocol
+// conformance matrix, the two-process legacy SSE suite and the tool-call parity
+// suite — need a real Redis as well as the database, and the SDK 1.30.x
+// candidate's compatibility result is re-derived in the same job, where both
+// services exist. Deleting the service, its URL or either command is exactly how
+// that evidence would stop being produced while the job stayed green, so each is
+// its own violation with its own control.
+const mcpSdkCandidateCommands = [
+  "node --test scripts/mcp-sdk-candidate-compatibility.test.mjs",
+  "node scripts/mcp-sdk-candidate-compatibility.mjs --check",
+];
+const agentTenancyRedisUrl = "redis://127.0.0.1:6379";
+const expectedAgentTenancyRedisService = {
+  image: "redis:7",
+  ports: ["6379:6379"],
+  options:
+    '--health-cmd "redis-cli ping" --health-interval 2s --health-timeout 5s --health-retries 30',
+};
 const expectedAgentTenancyPostgresScripts = new Map([
   [
     "test:agent-tenancy-postgres:integration",
@@ -744,6 +836,9 @@ const expectedV1PackageScripts = new Map([
   // WIN-299 (M2.6): test:advisory now covers the disposition gate's unit suite
   // alongside the receipt suite, the same two-file shape test:webapp-image-inventory
   // already uses above.
+  // M2/M4 INTEGRATION: the docs-examples gate joins the V1 release gate selector,
+  // so the command its CI line resolves to is pinned here too.
+  ["test:docs-examples", "node --test scripts/docs-examples.test.mjs"],
   ["test:advisory", "node --test scripts/audit-advisory.test.mjs scripts/advisory-dispositions.test.mjs"],
   ["audit:advisory:check", "node scripts/audit-advisory.mjs --check"],
   ["audit:advisory:nonvacuity", "node scripts/verify-advisory-nonvacuity.mjs"],
@@ -1834,8 +1929,24 @@ function policyViolations(input) {
   const agentTenancyJob = ciJobs.get(agentTenancyPostgresJob);
   if (agentTenancyJob === undefined) {
     violations.push("CI must retain the agent tenancy real-PostgreSQL job");
-  } else if (countExact(normalizedRunCommands(agentTenancyJob), agentTenancyPostgresCommand) !== 1) {
-    violations.push("agent tenancy PostgreSQL job must run its suite walker exactly once");
+  } else {
+    const agentTenancyRuns = normalizedRunCommands(agentTenancyJob);
+    if (countExact(agentTenancyRuns, agentTenancyPostgresCommand) !== 1) {
+      violations.push("agent tenancy PostgreSQL job must run its suite walker exactly once");
+    }
+    for (const command of mcpSdkCandidateCommands) {
+      if (countExact(agentTenancyRuns, command) !== 1) {
+        violations.push(`agent tenancy PostgreSQL job must run ${command} exactly once`);
+      }
+    }
+    if (
+      JSON.stringify(agentTenancyJob.services?.redis) !== JSON.stringify(expectedAgentTenancyRedisService) ||
+      agentTenancyJob.env?.PLATOS_TEST_REDIS_URL !== agentTenancyRedisUrl
+    ) {
+      violations.push(
+        "agent tenancy PostgreSQL job must serve the exact Redis 7 its MCP and tool-call parity suites require"
+      );
+    }
   }
 
   // M4 finish — the non-browser completion evidence job. A separate job for the
@@ -1982,6 +2093,9 @@ function policyViolations(input) {
   }
   if (packageScripts["build:platos:agent"] !== agentBuildScriptTarget) {
     violations.push("package.json must build workload identity before the strict Agent shipping build");
+  }
+  if (packageScripts["build:platos:core-api"] !== coreApiBuildScriptTarget) {
+    violations.push("package.json must build the exact core-api workspace graph its image runs");
   }
   if (packageScripts["test:workload-identity-package"] !== workloadPackageTestTarget) {
     violations.push("package.json must wire the workload identity shipping package test");
@@ -2283,6 +2397,101 @@ function policyViolations(input) {
     violations.push(
       "persisted-state must run the exact Agent runtime package and health smoke after starting the candidate"
     );
+  }
+
+  // THE CORE-API CANDIDATE IS SERVED, NOT ONLY BUILT. An independent verifier
+  // showed a loopback-bound listener and a CMD naming a missing file each passing
+  // every gate that only builds, verifies or loads the image. `core-api-smoke`
+  // starts it; each rule below is how that job could stop meaning anything.
+  const coreApiSmokeJob = buildJobs.get("core-api-smoke");
+  const coreApiSmokeSteps = workflowSteps(coreApiSmokeJob);
+  const flatRun = (step) =>
+    typeof step?.run === "string" ? step.run.replace(/\\\n\s*/gu, " ").replace(/\s+/gu, " ").trim() : "";
+  const coreApiNeeds = [coreApiSmokeJob?.needs ?? []].flat();
+  if (
+    coreApiSmokeJob === undefined ||
+    coreApiSmokeJob.name !== "smoke-candidate-core-api" ||
+    JSON.stringify(coreApiNeeds) !== JSON.stringify(["build-candidates"]) ||
+    coreApiSmokeJob.if !== "${{ !cancelled() }}" ||
+    coreApiSmokeJob["continue-on-error"] !== undefined ||
+    coreApiSmokeJob.defaults?.run?.shell !== undefined ||
+    coreApiSmokeSteps.some((step) => step["continue-on-error"] !== undefined)
+  ) {
+    violations.push(
+      "build-images must serve the core-api candidate in a fail-fast smoke job that runs whenever the candidate matrix finished"
+    );
+  }
+  const coreApiPrepareIndex = coreApiSmokeSteps.findIndex((step) => flatRun(step).startsWith(`${candidatePreparationScriptPath} `));
+  const coreApiSelected = /^\S+ artifacts\/candidates "\$RUNNER_TEMP\/core-api-smoke-oci" true "([^"]+)"$/u
+    .exec(flatRun(coreApiSmokeSteps[coreApiPrepareIndex]))?.[1]
+    ?.split(" ");
+  const matrixNames = new Set(candidates.map((candidate) => candidate.name));
+  if (
+    JSON.stringify(coreApiSelected) !== JSON.stringify(["core-api", "migrations"]) ||
+    !coreApiSelected.every((name) => matrixNames.has(name))
+  ) {
+    violations.push("core-api smoke must verify and load exactly the core-api and migrations candidates");
+  }
+  const coreApiSmokeIndex = coreApiSmokeSteps.findIndex((step) => flatRun(step) === coreApiSmokeCommand);
+  if (
+    countSubstring([input.buildImages], coreApiSmokeCommand) !== 1 ||
+    coreApiSmokeIndex === -1 ||
+    coreApiPrepareIndex === -1 ||
+    coreApiSmokeIndex <= coreApiPrepareIndex ||
+    coreApiSmokeSteps[coreApiSmokeIndex].if !== undefined
+  ) {
+    violations.push("core-api smoke must run the exact smoke script once, unconditionally, after verifying the candidates");
+  }
+
+  // D-PUBLISH-CORE. PUBLICATION OF TESTED IDENTITIES ONLY. An independent
+  // verifier added core-api to publish-images.yml's identity loops and its import
+  // loop while candidate-images.json recorded no tested core-api identity, and all
+  // of CI stayed green. So the set this workflow publishes is joined to the set
+  // build-images.yml records as tested, in every place publication names an
+  // identity; and core-api, which the persisted-state job does not start, is
+  // recorded only from the identity smoke-candidate-core-api reported serving.
+  const identityVariables = (text) => [...new Set(text.match(/WIN235_[A-Z_]+_IMAGE\b/gu) ?? [])].sort();
+  const recordingJob = buildJobs.get("persisted-state");
+  const recordStep = workflowSteps(recordingJob).find((step) => step.name === "Record tested candidate identities");
+  const recordRun = typeof recordStep?.run === "string" ? recordStep.run : "";
+  const recordedImages = /const images = \{([\s\S]*?)\};/u.exec(recordRun)?.[1] ?? "";
+  const testedIdentities = [...recordedImages.matchAll(/^\s*[A-Za-z]+: process\.env\.(WIN235_[A-Z_]+_IMAGE),\s*$/gmu)]
+    .map((match) => match[1])
+    .sort();
+  const publishRun = workflowSteps(publishJob)
+    .map((step) => (typeof step.run === "string" ? step.run : ""))
+    .join("\n")
+    .replace(/\\\n\s*/gu, " ");
+  const identityLoops = [...publishRun.matchAll(/for identity_variable in ([^;]+); do/gu)].map((match) => identityVariables(match[1]));
+  const importLoop = identityVariables(/for candidate in ([^;]+); do/u.exec(publishRun)?.[1] ?? "");
+  const importNames = [...(/for candidate in ([^;]+); do/u.exec(publishRun)?.[1] ?? "").matchAll(/"([a-z-]+) WIN235_/gu)].map((match) => match[1]).sort();
+  const sourcedNames = [...new Set([...publishRun.matchAll(/source artifacts\/candidates\/([a-z-]+)\.env/gu)].map((match) => match[1]))].sort();
+  const publishedRecord = identityVariables(/const published = \{([\s\S]*?)\};/u.exec(publishRun)?.[1] ?? "");
+  const testedKey = JSON.stringify(testedIdentities);
+  if (
+    testedIdentities.length === 0 ||
+    identityLoops.length !== 2 ||
+    identityLoops.some((loop) => JSON.stringify(loop) !== testedKey) ||
+    JSON.stringify(importLoop) !== testedKey ||
+    JSON.stringify(publishedRecord) !== testedKey ||
+    JSON.stringify(importNames) !== JSON.stringify(sourcedNames) ||
+    !importNames.every((name) => matrixNames.has(name))
+  ) {
+    violations.push("publish-images must publish exactly the candidate identities build-images records as tested");
+  }
+  const smokeIdentityStepIndex = coreApiSmokeSteps.findIndex((step) => step.id === "tested-identity");
+  const smokeIdentityStep = coreApiSmokeSteps[smokeIdentityStepIndex];
+  if (
+    coreApiSmokeJob?.outputs?.["tested-image"] !== "${{ steps.tested-identity.outputs.image }}" ||
+    smokeIdentityStepIndex <= coreApiSmokeIndex ||
+    smokeIdentityStep?.if !== undefined ||
+    !flatRun(smokeIdentityStep).includes('echo "image=$WIN235_CORE_API_IMAGE" >> "$GITHUB_OUTPUT"') ||
+    !JSON.stringify([recordingJob?.needs ?? []].flat()).includes('"core-api-smoke"') ||
+    recordStep?.env?.WIN235_CORE_API_SMOKE_TESTED_IMAGE !== "${{ needs.core-api-smoke.outputs.tested-image }}" ||
+    !recordRun.includes("smokeTested !== process.env.WIN235_CORE_API_IMAGE") ||
+    !testedIdentities.includes("WIN235_CORE_API_IMAGE")
+  ) {
+    violations.push("build-images must record core-api as tested only from the identity smoke-candidate-core-api served");
   }
 
   const inventoryShellCommands = normalizedShellCommands(input.webappInventoryAudit);
@@ -2592,10 +2801,12 @@ function mutateWorkflowJob(input, key, jobName, mutate) {
 }
 
 test("committed CI and image-build policy is executable, correlated, and complete", () => {
-  assert.equal(expectedCandidates.length, 3, "candidate selector must be non-empty and explicit");
+  // 3 -> 4, 3 -> 4 and 4 -> 5: `apps/core-api/Dockerfile` is the fourth candidate,
+  // the fourth shipping Dockerfile, and carries exactly one shipping install.
+  assert.equal(expectedCandidates.length, 4, "candidate selector must be non-empty and explicit");
   assert.equal(
     shippingDockerfiles.length,
-    3,
+    4,
     "shipping Dockerfile selector must be non-empty and explicit"
   );
   assert.equal(
@@ -2603,8 +2814,8 @@ test("committed CI and image-build policy is executable, correlated, and complet
       (total, instructions) => total + instructions.length,
       0
     ),
-    4,
-    "shipping install selector must cover all four executable installs"
+    5,
+    "shipping install selector must cover all five executable installs"
   );
   assert.equal(
     relocatedCommands.length,
@@ -2660,10 +2871,12 @@ test("committed CI and image-build policy is executable, correlated, and complet
   //      `x-platos-sunset` against the manifest's own rows — was folded into
   //      `scripts/arch/contract-map.mjs`, which is already a gate here, rather
   //      than minting a second script for a sibling clause of the same section.
-  // 26 + 2 + 4 + 2 + 2 + 2 + 2 + 1 + 1 = 42.
+  //   +1 M2/M4 INTEGRATION: the authored docs examples and the quickstart
+  //      environment (`test:docs-examples`). See its own note in the list above.
+  // 26 + 2 + 4 + 2 + 2 + 2 + 2 + 1 + 1 + 1 = 43, measured on the integrated tree.
   assert.equal(
     v1ReleaseGateCommands.length,
-    42,
+    43,
     "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate, the secret-response census, the MCP store-ownership register and the tool-lifecycle register"
   );
   assert.equal(
@@ -3481,6 +3694,25 @@ test("CI policy controls fail under generated semantic source mutations", async 
           "        run: echo skipped"
         ),
     },
+    // WIN-268/WIN-269 (M4) — the candidate evidence and the Redis the suites
+    // need. Each deletion is a way the job stays green while the evidence stops.
+    ...mcpSdkCandidateCommands.map((command) => ({
+      name: `agent tenancy PostgreSQL job cannot stop running ${command}`,
+      expected: `agent tenancy PostgreSQL job must run ${command} exactly once`,
+      mutate: (input) => mutateFixture(input, "ci", `          ${command}\n`, "          echo skipped\n"),
+    })),
+    {
+      name: "agent tenancy PostgreSQL job cannot lose the Redis URL its suites read",
+      expected:
+        "agent tenancy PostgreSQL job must serve the exact Redis 7 its MCP and tool-call parity suites require",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `platos_agent_tenancy_ci?schema=public\n      PLATOS_TEST_REDIS_URL: ${agentTenancyRedisUrl}\n`,
+          "platos_agent_tenancy_ci?schema=public\n"
+        ),
+    },
     ...[...expectedAgentTenancyPostgresScripts].map(([name, target]) => ({
       name: `agent tenancy PostgreSQL script ${name} cannot be repointed`,
       expected: `package.json must wire exact agent tenancy PostgreSQL script ${name}: ${target}`,
@@ -4122,6 +4354,19 @@ test("CI policy controls fail under generated semantic source mutations", async 
         ),
     },
     {
+      name: "core-api image build graph narrowed",
+      expected: "package.json must build the exact core-api workspace graph its image runs",
+      // Dropping the trailing `...` builds the deployable without the contexts and
+      // adapters it composes, which a warm tree hides and a cold image build does not.
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "packageJson",
+          jsonEncoded(coreApiBuildScriptTarget),
+          jsonEncoded(coreApiBuildScriptTarget.replace('"@platos/core-api..."', "@platos/core-api"))
+        ),
+    },
+    {
       name: "workload identity package test wiring",
       expected: "package.json must wire the workload identity shipping package test",
       mutate: (input) =>
@@ -4168,6 +4413,65 @@ test("CI policy controls fail under generated semantic source mutations", async 
           "tests/persisted-state-gate/smoke-agent-runtime-image.sh",
           "echo skipped-agent-runtime-smoke"
         ),
+    },
+    {
+      name: "core-api candidate smoke skipped",
+      expected: "core-api smoke must run the exact smoke script once, unconditionally, after verifying the candidates",
+      mutate: (input) =>
+        mutateFixture(input, "buildImages", `run: ${coreApiSmokeCommand}`, "run: echo skipped-core-api-smoke"),
+    },
+    {
+      name: "core-api published while the gate records no tested core-api identity",
+      expected: "publish-images must publish exactly the candidate identities build-images records as tested",
+      mutate: (input) =>
+        mutateFixture(input, "buildImages", "            coreApi: process.env.WIN235_CORE_API_IMAGE,\n", ""),
+    },
+    {
+      name: "an untested identity added to a publication loop",
+      expected: "publish-images must publish exactly the candidate identities build-images records as tested",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "publishImages",
+          "WIN235_MIGRATIONS_IMAGE WIN235_CORE_API_IMAGE; do",
+          "WIN235_MIGRATIONS_IMAGE WIN235_CORE_API_IMAGE WIN235_UNTESTED_IMAGE; do"
+        ),
+    },
+    {
+      name: "core-api dropped from the publication record while still published",
+      expected: "publish-images must publish exactly the candidate identities build-images records as tested",
+      mutate: (input) =>
+        mutateFixture(input, "publishImages", "            coreApi: process.env.WIN235_CORE_API_IMAGE,\n", ""),
+    },
+    {
+      name: "core-api recorded as tested without the smoke job's report",
+      expected: "build-images must record core-api as tested only from the identity smoke-candidate-core-api served",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "buildImages",
+          "WIN235_CORE_API_SMOKE_TESTED_IMAGE: ${{ needs.core-api-smoke.outputs.tested-image }}",
+          "WIN235_CORE_API_SMOKE_TESTED_IMAGE: ${{ env.WIN235_CORE_API_IMAGE }}"
+        ),
+    },
+    {
+      name: "persisted-state stops waiting for the core-api smoke it records",
+      expected: "build-images must record core-api as tested only from the identity smoke-candidate-core-api served",
+      mutate: (input) =>
+        mutateFixture(input, "buildImages", "needs: [build-candidates, core-api-smoke]", "needs: build-candidates"),
+    },
+    {
+      name: "core-api candidate smoke verifies a narrower candidate set",
+      expected: "core-api smoke must verify and load exactly the core-api and migrations candidates",
+      mutate: (input) =>
+        mutateFixture(input, "buildImages", 'true "core-api migrations"', 'true "migrations"'),
+    },
+    {
+      name: "core-api candidate smoke job gated off",
+      expected:
+        "build-images must serve the core-api candidate in a fail-fast smoke job that runs whenever the candidate matrix finished",
+      mutate: (input) =>
+        mutateFixture(input, "buildImages", "if: ${{ !cancelled() }}\n    runs-on: ubuntu-latest", "if: false\n    runs-on: ubuntu-latest"),
     },
     {
       name: "exact YAML parser dependency",
@@ -4940,12 +5244,37 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   those steps resolve to. Five rather than three because this job runs two
   //   commands: producing the 18 cells and saying what closing them means are
   //   different claims, and deleting either is how a number stops being stated.
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 = 386. The count is
-  // pinned rather than derived so that a control silently disappearing is a failure
-  // rather than a smaller number nobody reads.
+  //   CORE-API IMAGE, +1. The exact `build:platos:core-api` pin that
+  //   apps/core-api/Dockerfile's build step resolves to.
+  //   CORE-API CANDIDATE, +3. `apps/core-api/Dockerfile` joins the shipping
+  //   Dockerfile table with ONE install instruction, and the install loop derives
+  //   THREE controls per such file (the install commented out, the frozen lockfile
+  //   dropped, and every install removed).
+  //   CORE-API SMOKE, +4. The `core-api-smoke` job, the first that STARTS the
+  //   core-api candidate. ONE for its `setup-node` step (build-images' count 1 -> 2),
+  //   and THREE for its rules: the smoke command skipped, the verified candidate set
+  //   narrowed, and the job gated off.
+  //   DOCS EXAMPLES (M2/M4 integration), +2. `pnpm test:docs-examples` joins the V1
+  //   release gate selector, which derives its `|| true` control, and the exact
+  //   script table, which derives one for the command it resolves to. Measured at 396
+  //   PUBLISH CORE-API (core-residue lane), +5. Publication of tested identities
+  //   only: an identity published but not recorded, an untested identity added to a
+  //   publication loop, one dropped from the publication record, core-api recorded
+  //   without the smoke job's report, and the recording job no longer waiting for
+  //   that smoke.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 2 + 5 = 401. The
+  // count is pinned rather than derived so that a control silently disappearing is a
+  //   MCP CONFORMANCE LANE, +3. The `agent-tenancy-postgres` job gains a Redis
+  //   service and the SDK 1.30.x candidate's re-derived compatibility result. TWO
+  //   for its commands — the derivation's own tests and the `--check` — and ONE for
+  //   the Redis URL the conformance, two-process SSE and tool-call parity suites
+  //   read. No setup-node step is added: it is the same job.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 2 + 5 + 3 = 404. The
+  // count is pinned rather than derived so that a control silently disappearing is a
+  // failure rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    386,
+    404,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
@@ -5408,6 +5737,25 @@ const NEWLY_GATED_AGENT_SUITES = [
 ];
 
 /**
+ * WIN-268/WIN-269 (M4) — the three suites that tranche added under the walked
+ * roots, NAMED as well as walked.
+ *
+ * The walk is what RUNS them, and a new suite still joins this job by existing.
+ * What a walk cannot notice is one of ITS OWN suites going away: delete one of
+ * these files, or rename it out of `SUITE_SUFFIX`, and the job keeps passing with
+ * the evidence gone — which is the gate-darkness pattern this file exists to
+ * close, one turn later. Two of the three are also pinned by `SUITES` in
+ * `scripts/mcp-sdk-candidate-compatibility.mjs`, which asserts they exist and
+ * import both SDK builds; the tool-call parity suite was pinned by nothing at
+ * all, so its filename was one rename away from being dropped in silence.
+ */
+const M4_CONFORMANCE_AGENT_SUITES = [
+  "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+  "apps/agent/src/mcp-platform/mcp-sse-multi-node.integration.test.ts",
+  "apps/agent/src/tool-gateway/tool-call-parity.integration.test.ts",
+];
+
+/**
  * MEASURED, not intended: every `*.integration.test.ts` under `apps/agent/src`
  * that no CI job executes, with the reason each was left alone.
  *
@@ -5481,6 +5829,35 @@ test("the agent tenancy job's walker covers the suites that were dark, read from
       `${suite} ran in NO CI job before this job existed and must still be covered by it`
     );
   }
+  for (const suite of M4_CONFORMANCE_AGENT_SUITES) {
+    assert.ok(
+      gated.includes(suite),
+      `${suite} is the MCP conformance / tool-call parity evidence for M4 and the walker no longer ` +
+        "finds it: it was deleted, moved out of the walked roots, or renamed out of the suffix"
+    );
+  }
+});
+
+test("the named M4 conformance suites gate fails when one of them is renamed away", () => {
+  // THE NEGATIVE CONTROL for the loop above. The assertion is a membership test
+  // against a filesystem walk, so it is worth proving it can fail: the same walk
+  // with one of the three names missing must reject, naming that file.
+  const gated = discoverAgentTenancySuites().filter(
+    (suite) => suite !== M4_CONFORMANCE_AGENT_SUITES[2]
+  );
+  assert.equal(
+    gated.length,
+    discoverAgentTenancySuites().length - 1,
+    "the control removed nothing; the parity suite is not in the walk to begin with"
+  );
+  assert.throws(
+    () => {
+      for (const suite of M4_CONFORMANCE_AGENT_SUITES) {
+        assert.ok(gated.includes(suite), `${suite} is no longer found by the walker`);
+      }
+    },
+    /tool-call-parity\.integration\.test\.ts is no longer found by the walker/u
+  );
 });
 
 test("every apps/agent integration suite is gated or recorded as ungated, with a reason", async () => {
@@ -5557,4 +5934,700 @@ test("the agent census fails when a suite is neither gated nor recorded", () => 
     [...UNGATED_AGENT_INTEGRATION_SUITES.keys()].sort(),
     "adding an unreachable suite must break the census"
   );
+});
+
+// ---------------------------------------------------------------------------
+// THE CANDIDATE VERIFIER NAMES EVERY MATRIX ROW, AND REFUSES AN UNNAMED ARCHIVE.
+//
+// `tests/persisted-state-gate/prepare-candidate-images.sh` verifies each OCI
+// archive's checksum, manifest digest and revision label before anything loads
+// or publishes it. It used to iterate a hand-written list of three, so a fourth
+// matrix row would have produced an archive that was downloaded next to the
+// others and verified by nothing. The list is now joined to the matrix here, and
+// the script itself refuses an archive it has no row for.
+// ---------------------------------------------------------------------------
+const candidatePreparationScript = "tests/persisted-state-gate/prepare-candidate-images.sh";
+
+function preparationCandidates(script) {
+  const block = script.match(/^candidates=\(\n([\s\S]*?)\n\)$/mu);
+  if (block === null) return [];
+  return block[1]
+    .split("\n")
+    .map((line) => line.trim().match(/^"(\S+) (\S+) (\S+)"$/u))
+    .map((match) => (match === null ? null : { name: match[1], env_name: match[2], image: match[3] }));
+}
+
+function matrixCandidateRows(workflowSource) {
+  return imageCandidates(workflowJobs(parseWorkflow(workflowSource, "build-images.yml", [])).get("build-candidates"))
+    .map(({ name, env_name, image }) => ({ name, env_name, image }));
+}
+
+test("the candidate verifier's list is the build-images matrix, row for row", () => {
+  const rows = preparationCandidates(source(candidatePreparationScript));
+  assert.ok(rows.length > 0, "the verifier's candidate selector must be non-empty");
+  assert.deepEqual(rows, matrixCandidateRows(source(".github/workflows/build-images.yml")));
+  assert.deepEqual(
+    rows.map(({ name }) => name),
+    expectedCandidates.map(({ name }) => name),
+    "the verifier must name the same reviewed candidates this policy pins"
+  );
+
+  // NEGATIVE CONTROL: dropping a row is detected.
+  const withoutMigrations = source(candidatePreparationScript).replace(
+    '  "migrations MIGRATIONS platos-migrations"\n',
+    ""
+  );
+  assert.notEqual(withoutMigrations, source(candidatePreparationScript), "the control must change the script");
+  assert.notDeepEqual(
+    preparationCandidates(withoutMigrations),
+    matrixCandidateRows(source(".github/workflows/build-images.yml"))
+  );
+});
+
+test("the candidate verifier refuses an archive it has no verification row for", () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "platos-candidate-archives-"));
+  try {
+    writeFileSync(path.join(directory, "unreviewed.oci.tar"), "not an image\n");
+    const result = spawnSync("bash", [path.join(repositoryRoot, candidatePreparationScript), directory, path.join(directory, "layout"), "false"], {
+      encoding: "utf8",
+      env: { ...process.env, PLATOS_CANDIDATE_SHA: "0".repeat(40), GITHUB_REPOSITORY_OWNER: "example" },
+    });
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, /unexpected candidate archive with no verification entry: unreviewed\.oci\.tar/u);
+
+    // CONTROL: an archive the list DOES name gets past the guard and fails later,
+    // on its missing env file, which is a different refusal with no such message.
+    rmSync(path.join(directory, "unreviewed.oci.tar"));
+    writeFileSync(path.join(directory, "migrations.oci.tar"), "not an image\n");
+    const named = spawnSync("bash", [path.join(repositoryRoot, candidatePreparationScript), directory, path.join(directory, "layout"), "false"], {
+      encoding: "utf8",
+      env: { ...process.env, PLATOS_CANDIDATE_SHA: "0".repeat(40), GITHUB_REPOSITORY_OWNER: "example" },
+    });
+    assert.notEqual(named.status, 0);
+    assert.doesNotMatch(named.stderr, /unexpected candidate archive/u);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("the candidate verifier's subset selection refuses an unknown name and an archive it would leave unverified", () => {
+  // `core-api-smoke` verifies two candidates, not four, so the script takes a
+  // selection. A selection must not become a way to download an archive and
+  // verify nothing about it, nor to name a candidate the list does not have.
+  //
+  // WHERE IT STOPS, NOT ONLY WHAT IT SAYS. Every candidate in these fixtures lacks
+  // its env file, so a guard that printed its refusal and carried on would still
+  // exit 1 a line later, at `test -s`, with the same message already on stderr.
+  // A mutation battery showed exactly that: deleting a guard's `exit 1` left the
+  // status and message assertions green. So the script runs under `bash -x`, and
+  // a refusal must stop before any per-candidate check executes.
+  const directory = mkdtempSync(path.join(os.tmpdir(), "platos-candidate-selection-"));
+  const run = (selection) =>
+    spawnSync("bash", ["-x", path.join(repositoryRoot, candidatePreparationScript), directory, path.join(directory, "layout"), "false", selection], {
+      encoding: "utf8",
+      env: { ...process.env, PLATOS_CANDIDATE_SHA: "0".repeat(40), GITHUB_REPOSITORY_OWNER: "example" },
+    });
+  const reachedCandidateChecks = (result) => /^\++ test -s /mu.test(result.stderr);
+  try {
+    const unknown = run("core-api no-such-candidate");
+    assert.equal(unknown.status, 1, unknown.stderr);
+    assert.match(unknown.stderr, /selected candidate with no verification entry: no-such-candidate/u);
+    assert.equal(reachedCandidateChecks(unknown), false, "an unknown selection must stop before any candidate is checked");
+
+    writeFileSync(path.join(directory, "webapp.oci.tar"), "not an image\n");
+    const unselected = run("core-api migrations");
+    assert.equal(unselected.status, 1, unselected.stderr);
+    assert.match(unselected.stderr, /candidate archive present but not selected for verification: webapp\.oci\.tar/u);
+    assert.equal(reachedCandidateChecks(unselected), false, "an unselected archive must stop before any candidate is checked");
+
+    // CONTROL: the same archive, selected, gets past both guards and fails later on
+    // its missing env file: a different refusal carrying neither message, and one
+    // that DOES reach the per-candidate checks, so the trace probe can tell them apart.
+    const selected = run("webapp");
+    assert.notEqual(selected.status, 0);
+    assert.doesNotMatch(selected.stderr, /not selected for verification|no verification entry/u);
+    assert.equal(reachedCandidateChecks(selected), true, "the control must reach the per-candidate checks");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// M4 GATES — THREE CLAUSES WHOSE SUITES WERE DARK, EACH ON A NAMED STEP.
+//
+//   WIN-272 "No duplicate tool-result or trailing invalid frames"
+//   WIN-268 "auth/isolation/body-limit regression suite passes"
+//   WIN-269 "external MCP failures are isolated"   (D13: remote-http/remote-sse)
+//
+// Every suite behind these three sentences either did not exist or was named by
+// no job: `streaming-terminal-frame.test.ts` and `tool-sync-ws.test.ts` passed
+// locally and ran nowhere, the body cap had no test at all, and no suite drove the
+// live MCP client pool. The typecheck job and `agent-tenancy-postgres` select
+// agent suites by EXPLICIT FILENAME, so the steps name them — and this case is
+// what keeps a step, a filename, a gate flag or a prerequisite build from being
+// dropped quietly.
+//
+// TWO SIDES, NEITHER A LIST ONLY THIS FILE HOLDS. The step table below is checked
+// against `ci.yml`; and, independently, every agent suite (`*.test.ts` or
+// `*.spec.ts`) that IMPORTS one of the gated subject modules — found by walking
+// `apps/agent/src` and resolving each relative import — must be named ON THE STEP
+// OF THE CLAUSE THAT SUBJECT BELONGS TO, not merely by some agent Vitest run
+// somewhere in the workflow. A new suite for the body cap, the terminal frame, the
+// tool-sync frames or the MCP pool that its clause's step does not name turns this
+// red without anybody editing this table, and so does one named only by an
+// unrelated step.
+// ---------------------------------------------------------------------------
+
+const AGENT_PACKAGE_ROOT = "apps/agent";
+const AGENT_VITEST_PREFIX = "pnpm --filter platos-agent exec vitest run ";
+const CORE_API_PACKAGE_ROOT = "apps/core-api";
+const CORE_API_VITEST_PREFIX = "pnpm --filter @platos/core-api exec vitest run ";
+
+const M4_GATE_STEPS = Object.freeze([
+  {
+    job: "typecheck",
+    name: "WIN-272 legacy SSE terminal-frame and duplicate tool-result suites",
+    suites: ["src/streaming/streaming-terminal-frame.test.ts", "src/tool-gateway/tool-sync-ws.test.ts"],
+    subjects: ["src/streaming/streaming.service", "src/tool-gateway/tool-sync-ws.service"],
+    // WIN-269 (M4.3) — THE SECOND FORM OF THIS CLAUSE'S GATE, AND WHY IT IS NOT A
+    // LINE ON THE STEP ABOVE.
+    //
+    // `tool-sync-characterization.integration.test.ts` is a suite about
+    // `tool-sync-ws.service`, so the clause-step rule below wants it named here.
+    // It cannot be: it needs a REAL PostgreSQL, and the `typecheck` job has no
+    // database service. Naming it on that step would run it with no server, where
+    // it gates itself off and reports nothing — a silent skip, which is precisely
+    // the state this whole table exists to end.
+    //
+    // It runs in `agent-tenancy-postgres`, which HAS the server and whose step
+    // selects suites by WALKING `apps/agent/src/tool-gateway` — so the suite joins
+    // that job by existing, and that runner refuses any report containing a
+    // pending test or suite. `walkedBy` records that, and the case below proves it
+    // rather than trusting it: the named step must exist, must run the walking
+    // script, and the script's own `SUITE_ROOTS` must contain the suite's
+    // directory. A suite listed here that the walk does not reach fails the gate.
+    walkedBy: {
+      job: "agent-tenancy-postgres",
+      name: "MCP-surface and tool-lifecycle real-PostgreSQL suites",
+      script: "pnpm test:agent-tenancy-postgres:integration",
+      suites: ["src/tool-gateway/tool-sync-characterization.integration.test.ts"],
+    },
+    after: ["pnpm --filter @platos/tenancy-database build", "pnpm --filter @internal/workload-identity build"],
+  },
+  {
+    job: "typecheck",
+    name: "WIN-269 external MCP failure isolation against real remote MCP servers",
+    suites: [
+      "src/tool-gateway/mcp-transport/mcp-client-pool-isolation.test.ts",
+      "src/tool-gateway/mcp-transport/mcp-connected-entity.acceptance.test.ts",
+    ],
+    subjects: ["src/tool-gateway/mcp-transport/mcp-client-pool.service"],
+    after: ["pnpm --filter @platos/tenancy-database build", "pnpm --filter @internal/workload-identity build"],
+    // A SECOND STEP FOR THE SAME CLAUSE, IN THE JOB THAT HAS THE STORES.
+    //
+    // The tool-call parity suite drives the SAME `McpConnectionPool` through the
+    // whole executor seam, so the subject join below puts it on this clause — but
+    // it composes the real application and needs PostgreSQL and Redis, which the
+    // `typecheck` job does not have. Naming it on the step above would make it
+    // SKIP, which is the one outcome this table exists to prevent, so the clause
+    // gets a step in `agent-tenancy-postgres` instead and both steps count as
+    // "this clause's step". Without this entry the suite reached CI only through
+    // `scripts/agent-tenancy-postgres-integration.mjs`'s directory walk plus the
+    // `.integration.test.ts` suffix: renaming the file dropped it from CI with
+    // nothing going red.
+    servicesStep: {
+      job: "agent-tenancy-postgres",
+      name: "WIN-269 tool-call parity across the direct, bridged and channel turns",
+      suites: ["src/tool-gateway/tool-call-parity.integration.test.ts"],
+      after: ["pnpm --filter @internal/workload-identity build", "pnpm --filter @internal/docs build"],
+    },
+  },
+  {
+    job: "agent-tenancy-postgres",
+    name: "WIN-268 MCP auth, isolation and body-limit regression suite",
+    suites: [
+      "src/http/request-body-limits.test.ts",
+      "src/auth/scope.guard.test.ts",
+      "src/mcp-platform/token.service.test.ts",
+      "src/mcp-platform/mcp-bearer-token.service.test.ts",
+      "src/mcp-platform/mcp-entity.controller.test.ts",
+      "src/oauth/oauth.service.test.ts",
+      "src/oauth/oauth.controller.test.ts",
+      "src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
+      "src/mcp-platform/tools/end-users-tenancy-postgres.integration.test.ts",
+    ],
+    subjects: ["src/http/request-body-limits"],
+    // THE CONFORMANCE MATRIX IMPORTS THIS SUBJECT AND IS NOT A BODY-CAP SUITE.
+    // `mcp-protocol-conformance.integration.test.ts` reads `resolveUnauthBodyCaps`
+    // to state, in its harness-fidelity case, exactly which piece of the production
+    // `/mcp` path the harness does NOT mount. That import is a real dependency and
+    // the subject join is right to see it -- but the suite belongs to the
+    // conformance clause, not this one, and it needs a real PostgreSQL and a real
+    // Redis. It already runs in THIS job, selected by the walking script's roots,
+    // which is the same shape the clause above delegates with and is checked by the
+    // same five rules: the step exists, is unconditional and fail-fast, runs the
+    // walking script, the walk's own roots reach the file, and the file still reads
+    // a `*_REQUIRED` flag so the walk's refusal of a pending suite has something to
+    // refuse with.
+    walkedBy: {
+      job: "agent-tenancy-postgres",
+      name: "MCP-surface and tool-lifecycle real-PostgreSQL suites",
+      script: "pnpm test:agent-tenancy-postgres:integration",
+      suites: ["src/mcp-platform/mcp-protocol-conformance.integration.test.ts"],
+    },
+    // D21's core-api mirror is the same clause in the other deployable, so it is
+    // the step's SECOND command rather than a line in another job.
+    coreApiSuites: ["src/http/mcp-body-cap.test.ts"],
+    after: [
+      "pnpm --filter @platos/tenancy-database build",
+      "pnpm --filter @internal/workload-identity build",
+      "pnpm --filter @platosdev/token-mint build",
+      "pnpm --filter @platos/core-api^... build",
+    ],
+  },
+]);
+
+/**
+ * The gated SUBJECTS, as agent-root-relative module paths without extension. A
+ * suite importing one of these is a suite about a gated rule, and it belongs on
+ * the step whose `subjects` list it (above).
+ */
+const M4_GATED_SUBJECTS = Object.freeze(M4_GATE_STEPS.flatMap((gate) => gate.subjects));
+
+/** The gated core-api subject, core-api-root-relative without extension (D21). */
+const M4_GATED_CORE_API_SUBJECTS = Object.freeze(["src/http/mcp-body-cap"]);
+
+/** The file arguments of one normalized `pnpm --filter <prefix> exec vitest run` command. */
+function vitestFiles(command, prefix) {
+  if (!command.startsWith(prefix)) return [];
+  return command
+    .slice(prefix.length)
+    .split(" ")
+    .filter((argument) => argument !== "" && !argument.startsWith("-"));
+}
+
+const agentVitestFiles = (command) => vitestFiles(command, AGENT_VITEST_PREFIX);
+const coreApiVitestFiles = (command) => vitestFiles(command, CORE_API_VITEST_PREFIX);
+
+/**
+ * The step specifications a gate declares: its own, and the services step it
+ * declares for the same clause when one of its suites needs real stores. Both are
+ * held to the same rules, and the subject join below accepts either.
+ */
+function gateStepSpecs(gate) {
+  const own = { job: gate.job, name: gate.name, suites: gate.suites, after: gate.after, coreApiSuites: gate.coreApiSuites };
+  return gate.servicesStep === undefined ? [own] : [own, { ...gate.servicesStep, coreApiSuites: undefined }];
+}
+
+function m4GateViolations(workflowText, readSuite) {
+  const violations = [];
+  const workflow = parseWorkflow(workflowText, ".github/workflows/ci.yml", violations);
+  const jobs = workflowJobs(workflow);
+  for (const gate of M4_GATE_STEPS.flatMap(gateStepSpecs)) {
+    const steps = workflowSteps(jobs.get(gate.job));
+    const matching = steps.filter((step) => step.name === gate.name);
+    if (matching.length !== 1) {
+      violations.push(`${gate.job} must contain exactly one step named "${gate.name}"`);
+      continue;
+    }
+    const step = matching[0];
+    if (step.if !== undefined || step["continue-on-error"] !== undefined || step.shell !== undefined) {
+      violations.push(`"${gate.name}" must be unconditional and fail-fast`);
+    }
+    const commands = typeof step.run === "string" ? normalizedShellCommands(step.run) : [];
+    const expectedCommands = gate.coreApiSuites === undefined ? 1 : 2;
+    if (commands.length !== expectedCommands || !commands[0].startsWith(AGENT_VITEST_PREFIX)) {
+      violations.push(
+        gate.coreApiSuites === undefined
+          ? `"${gate.name}" must be exactly one direct platos-agent Vitest run`
+          : `"${gate.name}" must be a direct platos-agent Vitest run followed by a direct core-api Vitest run`
+      );
+      continue;
+    }
+    const named = agentVitestFiles(commands[0]);
+    const missing = gate.suites.filter((suite) => !named.includes(suite));
+    if (missing.length > 0) violations.push(`"${gate.name}" no longer names ${missing.join(", ")}`);
+    if (gate.coreApiSuites !== undefined) {
+      const namedCoreApi = coreApiVitestFiles(commands[1]);
+      const missingCoreApi = gate.coreApiSuites.filter((suite) => !namedCoreApi.includes(suite));
+      if (missingCoreApi.length > 0) {
+        violations.push(`"${gate.name}" no longer names core-api ${missingCoreApi.join(", ")}`);
+      }
+    }
+
+    // A SKIP IS A FAILURE: every `*_REQUIRED` flag a named suite reads must be set.
+    const flags = requiredGateFlagsIn(named.map((suite) => readSuite(suite)));
+    for (const flag of flags) {
+      if (String(step.env?.[flag] ?? "") !== "1") {
+        violations.push(`"${gate.name}" must set ${flag}=1, or a suite that reads it can skip green`);
+      }
+    }
+
+    const stepIndex = steps.indexOf(step);
+    for (const fragment of gate.after) {
+      const buildIndex = steps.findIndex(
+        (candidate) =>
+          typeof candidate.run === "string" && normalizedShellCommands(candidate.run).includes(fragment)
+      );
+      if (buildIndex === -1 || buildIndex >= stepIndex) {
+        violations.push(`"${gate.name}" must run after a step running "${fragment}" in ${gate.job}`);
+      }
+    }
+  }
+  return violations;
+}
+
+/** A Vitest suite file name. apps/agent writes both suffixes (`turn-dispatch.service.spec.ts`). */
+const SUITE_FILE = /\.(?:test|spec)\.ts$/u;
+
+/** Every suite file under `packageRoot/src`, relative to that root. */
+function suiteFilesUnder(packageRoot) {
+  const found = [];
+  const walk = (relativeDirectory) => {
+    for (const entry of readdirSync(path.join(repositoryRoot, packageRoot, relativeDirectory), { withFileTypes: true })) {
+      if (entry.name === "node_modules" || entry.name === "dist") continue;
+      const next = path.posix.join(relativeDirectory, entry.name);
+      if (entry.isDirectory()) walk(next);
+      else if (SUITE_FILE.test(entry.name)) found.push(next);
+    }
+  };
+  walk("src");
+  return found.sort();
+}
+
+/** The subjects among `subjects` that `suite`'s relative imports resolve to. */
+function subjectsImportedBy(suite, subjects, source) {
+  const imported = new Set();
+  for (const match of source.matchAll(/from\s+["'](\.{1,2}\/[^"']+)["']/gu)) {
+    const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(suite), match[1])).replace(/\.(?:js|ts)$/u, "");
+    if (subjects.includes(resolved)) imported.add(resolved);
+  }
+  return [...imported].sort();
+}
+
+/** Every suite (`*.test.ts` or `*.spec.ts`) under `packageRoot` that imports one of `subjects`, relative to that root. */
+function suitesImportingSubjects(packageRoot, subjects, readFile = (file) => readFileSync(path.join(repositoryRoot, packageRoot, file), "utf8")) {
+  return suiteFilesUnder(packageRoot).filter((suite) => subjectsImportedBy(suite, subjects, readFile(suite)).length > 0);
+}
+
+/**
+ * Each agent suite importing a gated subject, joined to the step of the clause that
+ * subject belongs to: `[suite, step name]` for every pair where that step's agent
+ * Vitest run does not name the suite. A suite named only by another step counts as
+ * unnamed.
+ */
+function agentSuitesOffTheirClauseStep(workflowText, readFile = readAgentSuite) {
+  const violations = [];
+  const workflow = parseWorkflow(workflowText, ".github/workflows/ci.yml", violations);
+  const jobs = workflowJobs(workflow);
+  const missing = [];
+  for (const suite of suitesImportingSubjects(AGENT_PACKAGE_ROOT, M4_GATED_SUBJECTS, readFile)) {
+    const imported = subjectsImportedBy(suite, M4_GATED_SUBJECTS, readFile(suite));
+    for (const gate of M4_GATE_STEPS.filter((candidate) => candidate.subjects.some((subject) => imported.includes(subject)))) {
+      // NAMED ON EITHER OF THE CLAUSE'S STEPS. A clause with a services step has two
+      // — one in `typecheck` and one in the job with the stores — and a suite on
+      // either is on its clause's step. A suite on NEITHER is still a violation, and
+      // one named only by an unrelated step still counts as unnamed.
+      const named = gateStepSpecs(gate).flatMap((spec) => {
+        const step = workflowSteps(jobs.get(spec.job)).find((candidate) => candidate.name === spec.name);
+        return typeof step?.run === "string" ? normalizedShellCommands(step.run).flatMap(agentVitestFiles) : [];
+      });
+      // THE CLAUSE'S OTHER FORM. A suite this gate delegates to its `walkedBy`
+      // step is satisfied there and not here; `walkedByStepCovers` is what proves
+      // that step exists, runs the walking script, and reaches this suite.
+      if (named.includes(suite)) continue;
+      if ((gate.walkedBy?.suites ?? []).includes(suite)) continue;
+      missing.push([suite, gate.name]);
+    }
+  }
+  return missing;
+}
+
+const agentSuitesImportingGatedSubjects = () => suitesImportingSubjects(AGENT_PACKAGE_ROOT, M4_GATED_SUBJECTS);
+const coreApiSuitesImportingGatedSubjects = () =>
+  suitesImportingSubjects(CORE_API_PACKAGE_ROOT, M4_GATED_CORE_API_SUBJECTS);
+
+/** The core-api files named by the one core-api Vitest run on the WIN-268 step, and nowhere else. */
+function coreApiVitestFilesOnRegressionStep(workflowText) {
+  const violations = [];
+  const workflow = parseWorkflow(workflowText, ".github/workflows/ci.yml", violations);
+  const gate = M4_GATE_STEPS.find((candidate) => candidate.coreApiSuites !== undefined);
+  const step = workflowSteps(workflowJobs(workflow).get(gate.job)).find((candidate) => candidate.name === gate.name);
+  const run = typeof step?.run === "string" ? step.run : "";
+  return new Set(normalizedShellCommands(run).flatMap(coreApiVitestFiles));
+}
+
+function agentVitestFilesNamedAnywhere(workflowText) {
+  const violations = [];
+  const workflow = parseWorkflow(workflowText, ".github/workflows/ci.yml", violations);
+  return new Set(
+    [...workflowJobs(workflow).values()].flatMap((job) =>
+      executableRunValues(job).flatMap((run) => normalizedShellCommands(run).flatMap(agentVitestFiles))
+    )
+  );
+}
+
+const readAgentSuite = (suite) => readFileSync(path.join(repositoryRoot, AGENT_PACKAGE_ROOT, suite), "utf8");
+const ciWorkflowText = () => readFileSync(path.join(repositoryRoot, ".github/workflows/ci.yml"), "utf8");
+
+test("M4 gates: the three dark clauses are each named by one fail-fast step, after their builds, with no skippable flag", () => {
+  for (const gate of M4_GATE_STEPS.flatMap(gateStepSpecs)) {
+    for (const suite of gate.suites) {
+      assert.ok(
+        readdirSync(path.join(repositoryRoot, AGENT_PACKAGE_ROOT, path.posix.dirname(suite))).includes(path.posix.basename(suite)),
+        `${gate.name} names ${suite}, which does not exist`
+      );
+    }
+  }
+  assert.deepEqual(m4GateViolations(ciWorkflowText(), readAgentSuite), []);
+  // NON-VACUITY for the flag rule: the regression step's suites really read flags.
+  const regression = M4_GATE_STEPS.find((gate) => gate.job === "agent-tenancy-postgres");
+  assert.deepEqual(requiredGateFlagsIn(regression.suites.map(readAgentSuite)), [
+    "END_USER_TENANCY_REQUIRED",
+    "MCP_FORGED_SCOPE_REQUIRED",
+  ]);
+});
+
+test("M4 gates: a clause delegated to a walking step is really reached by that walk", () => {
+  // WIN-269 (M4.3). `walkedBy` is an ESCAPE FROM THE NAMING RULE, so it has to
+  // cost more than the rule does. Four things are checked, and a delegated suite
+  // that fails any of them is worse off than one that was simply unnamed.
+  const violations = [];
+  const workflow = parseWorkflow(ciWorkflowText(), ".github/workflows/ci.yml", violations);
+  assert.deepEqual(violations, []);
+  const jobs = workflowJobs(workflow);
+  const delegating = M4_GATE_STEPS.filter((gate) => gate.walkedBy !== undefined);
+  // NON-VACUITY: something is delegated, or this case asserts nothing at all.
+  assert.ok(delegating.length > 0, "no clause delegates to a walking step; this case is dead");
+
+  const walkRoots = AGENT_TENANCY_SUITE_ROOTS;
+  for (const gate of delegating) {
+    const { job, name, script, suites } = gate.walkedBy;
+    // (1) THE STEP EXISTS, in the job that has the database.
+    const step = workflowSteps(jobs.get(job)).find((candidate) => candidate.name === name);
+    assert.ok(step !== undefined, `${gate.name} delegates to "${name}" in ${job}, which does not exist`);
+    // (2) IT IS UNCONDITIONAL AND FAIL-FAST, like every other gate step here.
+    assert.equal(step.if, undefined, `"${name}" must be unconditional`);
+    assert.equal(step["continue-on-error"], undefined, `"${name}" must be fail-fast`);
+    // (3) IT RUNS THE WALKING SCRIPT. A step that had been rewritten to name
+    // files would no longer reach a suite by existing, and the delegation would
+    // be a hole.
+    assert.deepEqual(normalizedShellCommands(step.run ?? ""), [script]);
+    for (const suite of suites) {
+      // (4) THE SUITE EXISTS AND THE WALK'S OWN ROOTS REACH IT. The roots are read
+      // from the script, not restated here.
+      assert.ok(
+        readdirSync(path.join(repositoryRoot, AGENT_PACKAGE_ROOT, path.posix.dirname(suite))).includes(
+          path.posix.basename(suite)
+        ),
+        `${gate.name} delegates ${suite}, which does not exist`
+      );
+      const absolute = path.posix.join(AGENT_PACKAGE_ROOT, suite);
+      assert.ok(
+        walkRoots.some((root) => absolute.startsWith(`${root}/`)),
+        `${suite} is delegated to a walk whose roots (${walkRoots.join(", ")}) do not reach it`
+      );
+      // (5) AND IT STILL GATES ITSELF, so the walk's refusal of a pending suite
+      // has something to refuse with.
+      assert.ok(
+        requiredGateFlagsIn([readAgentSuite(suite)]).length > 0,
+        `${suite} is delegated to a walking step and reads no *_REQUIRED flag, so it can skip silently`
+      );
+    }
+  }
+});
+
+test("M4 gates: every agent suite importing a gated subject is named on its clause's step", () => {
+  // NON-VACUITY for the suffix: the walk sees apps/agent's `.spec.ts` suites too.
+  assert.ok(
+    suiteFilesUnder(AGENT_PACKAGE_ROOT).includes("src/agent-runtime/turn-dispatch.service.spec.ts"),
+    "the suite walk no longer sees apps/agent's .spec.ts suites"
+  );
+  // Every step's subjects are distinct from every other step's: one clause per subject.
+  assert.equal(new Set(M4_GATED_SUBJECTS).size, M4_GATED_SUBJECTS.length);
+  const importing = agentSuitesImportingGatedSubjects();
+  // NON-VACUITY: the walk and the resolver find the suites this tranche wrote.
+  for (const expected of [
+    "src/http/request-body-limits.test.ts",
+    "src/streaming/streaming-terminal-frame.test.ts",
+    "src/tool-gateway/tool-sync-ws.test.ts",
+    "src/tool-gateway/mcp-transport/mcp-client-pool-isolation.test.ts",
+  ]) {
+    assert.ok(importing.includes(expected), `the subject walk no longer finds ${expected}`);
+  }
+  assert.deepEqual(
+    agentSuitesOffTheirClauseStep(ciWorkflowText()),
+    [],
+    "an apps/agent suite tests a gated M4 subject and its clause's step does not name it; add it to that step"
+  );
+
+  // The same join for core-api's D21 mirror, held to the WIN-268 step itself: a
+  // second suite for the MCP body cap that the step does not name turns this red.
+  const importingCoreApi = coreApiSuitesImportingGatedSubjects();
+  assert.ok(importingCoreApi.includes("src/http/mcp-body-cap.test.ts"), "the core-api subject walk no longer finds mcp-body-cap.test.ts");
+  const namedCoreApi = coreApiVitestFilesOnRegressionStep(ciWorkflowText());
+  assert.deepEqual(
+    importingCoreApi.filter((suite) => !namedCoreApi.has(suite)),
+    [],
+    "an apps/core-api suite tests the D21 MCP body cap and the WIN-268 step does not name it"
+  );
+});
+
+test("M4 gates: the checkers fail on the mutations they exist to catch", () => {
+  const pristine = ciWorkflowText();
+  const mutations = [
+    {
+      name: "a suite dropped from the WIN-272 step",
+      text: pristine.replace(" src/tool-gateway/tool-sync-ws.test.ts\n", "\n"),
+      expected: "no longer names src/tool-gateway/tool-sync-ws.test.ts",
+    },
+    {
+      name: "the WIN-269 step renamed",
+      text: pristine.replace(
+        "- name: WIN-269 external MCP failure isolation against real remote MCP servers",
+        "- name: MCP pool tests"
+      ),
+      expected: 'exactly one step named "WIN-269 external MCP failure isolation',
+    },
+    {
+      name: "a gate flag removed from the WIN-268 step",
+      text: pristine.replace('          MCP_FORGED_SCOPE_REQUIRED: "1"\n', ""),
+      expected: "must set MCP_FORGED_SCOPE_REQUIRED=1",
+    },
+    {
+      name: "the WIN-268 step allowed to fail",
+      text: pristine.replace(
+        "      - name: WIN-268 MCP auth, isolation and body-limit regression suite\n",
+        "      - name: WIN-268 MCP auth, isolation and body-limit regression suite\n        continue-on-error: true\n"
+      ),
+      expected: "must be unconditional and fail-fast",
+    },
+    {
+      name: "the token-mint prerequisite build removed",
+      text: pristine.replace(
+        "&& pnpm --filter @platosdev/token-mint build &&",
+        "&&"
+      ),
+      expected: 'after a step running "pnpm --filter @platosdev/token-mint build"',
+    },
+    {
+      name: "the core-api dependency build removed",
+      text: pristine.replace(' && pnpm --filter "@platos/core-api^..." build\n', "\n"),
+      expected: 'after a step running "pnpm --filter @platos/core-api^... build"',
+    },
+    {
+      name: "the core-api D21 mirror dropped from the WIN-268 step",
+      text: pristine.replace("          pnpm --filter @platos/core-api exec vitest run src/http/mcp-body-cap.test.ts\n", ""),
+      expected: "followed by a direct core-api Vitest run",
+    },
+    {
+      name: "the core-api D21 mirror swapped for another core-api suite",
+      text: pristine.replace(
+        "pnpm --filter @platos/core-api exec vitest run src/http/mcp-body-cap.test.ts",
+        "pnpm --filter @platos/core-api exec vitest run src/http/api-surface.test.ts"
+      ),
+      expected: "no longer names core-api src/http/mcp-body-cap.test.ts",
+    },
+    // THE SERVICES STEP IS HELD TO THE SAME RULES AS THE STEP IT STANDS BESIDE:
+    // renamed, emptied, allowed to fail, or with its `*_REQUIRED` flag dropped so
+    // an absent store could skip it green. Without these four the second step of
+    // the WIN-269 clause would be a line in this table nothing could falsify.
+    {
+      name: "the WIN-269 services step renamed",
+      text: pristine.replace(
+        "- name: WIN-269 tool-call parity across the direct, bridged and channel turns",
+        "- name: Tool call parity"
+      ),
+      expected: 'exactly one step named "WIN-269 tool-call parity across the direct, bridged and channel turns"',
+    },
+    {
+      name: "the parity suite dropped from the WIN-269 services step",
+      text: pristine.replace(
+        "run: pnpm --filter platos-agent exec vitest run src/tool-gateway/tool-call-parity.integration.test.ts",
+        "run: pnpm --filter platos-agent exec vitest run src/tool-gateway/tool-sync-ws.test.ts"
+      ),
+      expected: "no longer names src/tool-gateway/tool-call-parity.integration.test.ts",
+    },
+    {
+      name: "the WIN-269 services step allowed to fail",
+      text: pristine.replace(
+        "      - name: WIN-269 tool-call parity across the direct, bridged and channel turns\n",
+        "      - name: WIN-269 tool-call parity across the direct, bridged and channel turns\n        continue-on-error: true\n"
+      ),
+      expected: "must be unconditional and fail-fast",
+    },
+    {
+      name: "the parity gate flag removed from the WIN-269 services step",
+      text: pristine.replace('          TOOL_CALL_PARITY_REQUIRED: "1"\n', ""),
+      expected: "must set TOOL_CALL_PARITY_REQUIRED=1",
+    },
+  ];
+  for (const mutation of mutations) {
+    assert.notEqual(mutation.text, pristine, `${mutation.name}: the mutation did not apply`);
+    const violations = m4GateViolations(mutation.text, readAgentSuite);
+    assert.ok(
+      violations.some((violation) => violation.includes(mutation.expected)),
+      `${mutation.name} did not trip ${JSON.stringify(mutation.expected)}: ${violations.join("; ")}`
+    );
+  }
+
+  // The subject join, asked about a workflow that names none of the suites.
+  const unnamed = pristine
+    .replaceAll("src/streaming/streaming-terminal-frame.test.ts", "src/streaming/elsewhere.test.ts")
+    .replaceAll("src/http/request-body-limits.test.ts", "src/http/elsewhere.test.ts");
+  assert.deepEqual(agentSuitesOffTheirClauseStep(unnamed), [
+    ["src/http/request-body-limits.test.ts", "WIN-268 MCP auth, isolation and body-limit regression suite"],
+    ["src/streaming/streaming-terminal-frame.test.ts", "WIN-272 legacy SSE terminal-frame and duplicate tool-result suites"],
+  ]);
+
+  // The subject join, asked about a workflow that still names a gated suite, but
+  // only on an UNRELATED step: named somewhere is not named on its clause's step.
+  const elsewhere = pristine
+    .replace(" src/tool-gateway/tool-sync-ws.test.ts\n", "\n")
+    .replace(
+      "vitest run chat-session.task.test.ts internal-chat-turn-options.test.ts",
+      "vitest run chat-session.task.test.ts internal-chat-turn-options.test.ts src/tool-gateway/tool-sync-ws.test.ts"
+    );
+  assert.notEqual(elsewhere, pristine);
+  assert.ok(agentVitestFilesNamedAnywhere(elsewhere).has("src/tool-gateway/tool-sync-ws.test.ts"));
+  assert.deepEqual(agentSuitesOffTheirClauseStep(elsewhere), [
+    ["src/tool-gateway/tool-sync-ws.test.ts", "WIN-272 legacy SSE terminal-frame and duplicate tool-result suites"],
+  ]);
+
+  // BOTH STEPS OF THE SAME CLAUSE, AND NEITHER IS ENOUGH ON ITS OWN. With the
+  // parity suite renamed out of the services step, the subject join reports it
+  // against the clause even though the clause's OTHER step is untouched — so the
+  // services step is load-bearing rather than decorative, and the "either step"
+  // reading below is not a hole.
+  const parityDropped = pristine.replace(
+    "run: pnpm --filter platos-agent exec vitest run src/tool-gateway/tool-call-parity.integration.test.ts",
+    "run: pnpm --filter platos-agent exec vitest run src/tool-gateway/tool-sync-ws.test.ts"
+  );
+  assert.notEqual(parityDropped, pristine);
+  assert.deepEqual(agentSuitesOffTheirClauseStep(parityDropped), [
+    ["src/tool-gateway/tool-call-parity.integration.test.ts", "WIN-269 external MCP failure isolation against real remote MCP servers"],
+  ]);
+
+  // The suffix: a `.spec.ts` suite importing a gated subject is a suite like any
+  // other. Asked through an injected reader, the real turn-dispatch spec that
+  // "imports" the MCP pool must be named on the WIN-269 step.
+  const specImportsPool = (file) =>
+    file === "src/agent-runtime/turn-dispatch.service.spec.ts"
+      ? 'import { McpConnectionPool } from "../tool-gateway/mcp-transport/mcp-client-pool.service";\n'
+      : readAgentSuite(file);
+  assert.deepEqual(agentSuitesOffTheirClauseStep(pristine, specImportsPool), [
+    ["src/agent-runtime/turn-dispatch.service.spec.ts", "WIN-269 external MCP failure isolation against real remote MCP servers"],
+  ]);
+
+  // The core-api join, asked about a workflow whose WIN-268 step no longer names
+  // the mirror (and which names it in a DIFFERENT step instead, which must not count).
+  const moved = pristine
+    .replace("          pnpm --filter @platos/core-api exec vitest run src/http/mcp-body-cap.test.ts\n", "")
+    .replace(
+      "run: pnpm test:agent-tenancy-postgres:integration",
+      "run: pnpm test:agent-tenancy-postgres:integration && pnpm --filter @platos/core-api exec vitest run src/http/mcp-body-cap.test.ts"
+    );
+  assert.notEqual(moved, pristine);
+  const onStep = coreApiVitestFilesOnRegressionStep(moved);
+  assert.deepEqual(coreApiSuitesImportingGatedSubjects().filter((suite) => !onStep.has(suite)), ["src/http/mcp-body-cap.test.ts"]);
 });

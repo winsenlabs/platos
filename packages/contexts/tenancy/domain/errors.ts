@@ -54,6 +54,63 @@ export function membershipMutationForbidden(reason: string): DomainError {
   );
 }
 
+/**
+ * D1 (2026-09-15) — an invitation refused because the inviter does not administer
+ * the organization, or asked for a role only an OWNER may grant.
+ *
+ * ITS OWN CODE, NOT `TENANCY_MEMBERSHIP_FORBIDDEN`: that one refuses a ROLE
+ * CHANGE, and two guards under one code cannot be told apart in a log. The gate is
+ * in `details` (log-only) for the reason `organization-administration.ts` gives.
+ */
+export function invitationForbidden(gate: string): DomainError {
+  return domainError(
+    "TENANCY_INVITATION_FORBIDDEN",
+    "forbidden",
+    "Operator is not authorized to invite members to this organization",
+    { details: { gate } },
+  );
+}
+
+/**
+ * The team listing refused. Ported from `settings.team`'s 403; a code of its own
+ * for the reason `invitationForbidden` has one.
+ */
+export function memberListForbidden(gate: string): DomainError {
+  return domainError(
+    "TENANCY_MEMBER_LIST_FORBIDDEN",
+    "forbidden",
+    "Operator is not authorized to list this organization's members",
+    { details: { gate } },
+  );
+}
+
+/**
+ * An invitation addressed to something that cannot be an email address.
+ *
+ * The oracle's invite route refused `^\S+@\S+\.\S+$` failures with a 400 before
+ * calling the service; the rule moves into the use case with the route's deletion.
+ * The field is named, the value is not echoed.
+ */
+export function invalidInvitationEmail(): DomainError {
+  return domainError("TENANCY_INVALID_EMAIL", "invalid_input", "Enter a valid email address", {
+    fields: [{ field: "email", code: "TENANCY_INVALID_EMAIL", message: "must be an email address" }],
+  });
+}
+
+/**
+ * A role that is not one of `OrganizationRole`'s three.
+ *
+ * Refused in the use case because the value now arrives from a wire: the Remix
+ * route checked `Object.values(OrganizationRole).includes(role)` before calling
+ * the service, and without that check a `SUPERUSER` would reach the enum column
+ * and fail as a store fault instead of a caller's mistake.
+ */
+export function invalidOrganizationRole(): DomainError {
+  return domainError("TENANCY_INVALID_ROLE", "invalid_input", "Role must be OWNER, ADMIN or MEMBER", {
+    fields: [{ field: "role", code: "TENANCY_INVALID_ROLE", message: "must be OWNER, ADMIN or MEMBER" }],
+  });
+}
+
 /** The 409 `owner_invariant` of `changeMembershipRole`. */
 export function lastOwnerInvariant(): DomainError {
   return domainError(
@@ -137,6 +194,51 @@ export function forgedAuthorization(): DomainError {
 
 export function tenantNotFound(kind: "organization" | "project" | "environment" | "entity"): DomainError {
   return domainError("TENANCY_NOT_FOUND", "not_found", `No such ${kind}`, { details: { kind } });
+}
+
+/**
+ * A genuine authorization, offered for an entity that is not inside it.
+ *
+ * DISTINCT FROM `TENANCY_NOT_FOUND` ON PURPOSE. "There is no such entity" and
+ * "there is such an entity and it hangs off a project this grant does not cover"
+ * are different facts and send an operator to different places: the first to
+ * their entity id, the second to the environment they authorized against. They
+ * were one code while nothing wrote an `Entity`, and the first writer
+ * (`recordEntityConnection`) is what makes the difference reachable.
+ *
+ * It is ALSO distinct from `TENANCY_AUTHORIZATION_FORGED`, which is the refusal
+ * for a value this context never minted. A forged grant never reaches the
+ * project comparison at all, so the two guards can never answer for each other.
+ */
+export function entityNotInScope(entityId: string, projectId: string): DomainError {
+  return domainError(
+    "TENANCY_ENTITY_NOT_IN_SCOPE",
+    "forbidden",
+    "That entity does not hang off the project this authorization covers",
+    { details: { entityId, projectId } },
+  );
+}
+
+/**
+ * `Entity.connectionStatus` was offered a value the running product never
+ * writes. See `domain/entity.ts` for why the vocabulary is exactly two.
+ */
+export function invalidConnectionStatus(value: string): DomainError {
+  return domainError(
+    "TENANCY_INVALID_CONNECTION_STATUS",
+    "invalid_input",
+    "An entity is either connected or disconnected",
+    {
+      fields: [
+        {
+          field: "status",
+          code: "TENANCY_INVALID_CONNECTION_STATUS",
+          message: "must be connected or disconnected",
+        },
+      ],
+      details: { value },
+    },
+  );
 }
 
 export function slugTaken(kind: "organization" | "project" | "environment"): DomainError {

@@ -21,9 +21,11 @@
 //
 // FAILURE IS A VALUE, NOT AN EXCEPTION. `consume` returns `Result`, so "the
 // limiter is unreachable" arrives as data the use case must handle rather than
-// as a throw it might not catch. The fail-open decision is then made once, in
+// as a throw it might not catch. What an outage MEANS is then decided once, in
 // the open, by `domain/rate-limit.ts`'s `LIMITER_UNAVAILABLE_POLICY` — instead
-// of being an empty `catch` block somebody has to notice.
+// of being an empty `catch` block somebody has to notice. Under D3 (2026-09-15)
+// that policy is `"deny"`: an unreachable limiter REFUSES the request with
+// `RATE_LIMIT_FAILED_CLOSED`, it does not admit it.
 
 import type {
   AuthRateLimitAction,

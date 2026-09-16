@@ -48,6 +48,7 @@ import {
   type V1Request,
   type V1Transport,
 } from "./generated/v1.js";
+import { EventStreamReader, type V1EventStream, type V1StreamOptions } from "./v1-stream.js";
 
 /** M0.4 section 2's replay marker, as the middleware spells it. */
 export const IDEMPOTENCY_REPLAYED_HEADER = "idempotency-replayed";
@@ -171,6 +172,14 @@ export class V1HttpTransport implements V1Transport {
   }
 
   async send<T>(request: V1Request): Promise<T> {
+    // WIN-272 (M4.6). An event stream through this path is the defect this guard
+    // closes: `JSON.parse` threw on every valid stream, and the per-try timeout plus
+    // the GET retry below would re-read a live stream from the start with no cursor.
+    if (request.operation.responseKind === "event-stream") {
+      throw new Error(
+        `V1: ${request.operation.operationId} answers with an event stream; read it through stream(), not send()`,
+      );
+    }
     const fetchImpl = this.options.fetch ?? globalThis.fetch;
     const sleep = this.options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
     const maxRetries = this.options.maxRetries ?? DEFAULTS.maxRetries;
@@ -225,6 +234,42 @@ export class V1HttpTransport implements V1Transport {
       throw refusal;
     }
     throw last ?? new PlatosServerError(0, "exhausted retries");
+  }
+
+  /**
+   * An event-stream operation, read by `EventStreamReader`: parsed, admitted by the
+   * kernel's rule, and resumed with `Last-Event-ID`. NO per-request timeout — a
+   * stream is long by design; the reader's idle timeout replaces it — and no
+   * `Idempotency-Key`, because a read carries none.
+   */
+  stream(request: V1Request, options?: V1StreamOptions): V1EventStream {
+    if (request.operation.responseKind !== "event-stream") {
+      throw new Error(`V1: ${request.operation.operationId} answers with JSON; call it through send(), not stream()`);
+    }
+    const headers = this.headersFor(request, null);
+    delete headers["accept"];
+    return new EventStreamReader(
+      {
+        url: this.urlFor(request),
+        method: request.operation.method,
+        headers,
+        // THE SAME `fetchOptions` `send()` merges. A browser caller that
+        // authenticates with the session cookie passes `credentials: "include"`
+        // here (see `operatorToken`); a stream that dropped it would be refused
+        // on the one path the cookie pattern exists for.
+        init: this.options.fetchOptions ?? {},
+        // The reader calls this as a plain function. A browser's `fetch` is a
+        // WebIDL operation on `Window` and throws "Illegal invocation" when it is
+        // called as a method of any other object.
+        fetch: this.options.fetch ?? globalThis.fetch,
+        sleep: this.options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms))),
+        backoffMs: (reconnectIndex) => this.backoffMs(reconnectIndex),
+      },
+      {
+        ...(this.options.fetchOptions?.signal ? { signal: this.options.fetchOptions.signal } : {}),
+        ...options,
+      },
+    );
   }
 
   private backoffMs(retryCount: number): number {

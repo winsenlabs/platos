@@ -24,30 +24,12 @@ import { DEFAULT_PROVIDER_CATALOGUE, DEFAULT_PROVIDERS_POLICY } from "@platos/co
 import { agentsContract } from "@platos/context-agents";
 import { secretsContract } from "@platos/context-secrets";
 import { providersContract } from "@platos/context-providers";
-// WIN-267 G3. THE OTHER THREE FACTORIES ON A `.` ENTRY POINT, imported for the
-// same reason: the sentence this suite reads back named `agents`, `tools`,
-// `memory` and `cost-monitoring` as the four contexts with no assembler, and
-// the only honest way to withdraw a claim about another package's exports is to
-// resolve them. Nothing composes these three; the import IS the assertion.
-import { toolsContract } from "@platos/context-tools";
-import { memoryContract } from "@platos/context-memory";
-import { costMonitoringContract } from "@platos/context-cost-monitoring";
-// WIN-302. THE SEVENTH FACTORY ON A `.` ENTRY POINT, and the one that had been
-// sitting on `UNIMPORTABLE_CONTEXT_FACTORIES` while being importable the whole
-// time. `conversations/contracts/index.ts` re-exports `createConversationsContract`
-// as a VALUE, so this import resolves — and the reason nobody noticed is the
-// reason the derived half of the partition below now exists: route one was
-// enumerated by a hand-written literal, and a literal compared to another literal
-// cannot fail. Nothing composes this context; the import IS the assertion.
-import { createConversationsContract } from "@platos/context-conversations";
-// And the THREE reached through `./application/index.js` instead. STATIC, so
-// rule (C4) can see them: `composition-root.mjs` refuses a specifier assembled
-// at run time, and this is the shape that proves the resolver rather than
-// evading it. `app.module.ts` already imports the first two this way.
-import { createIdentityAccessService } from "@platos/context-identity-access/application/index.js";
-import { createGovernanceContract } from "@platos/context-governance/application/index.js";
-import { createTenancyService } from "@platos/context-tenancy/application/index.js";
-import { createSkillsContract } from "@platos/context-skills/application/index.js";
+// WIN-302. THE OTHER FOURTEEN FACTORIES ARE NOT IMPORTED HERE ANY MORE, and
+// that is the point rather than a loss. This suite loads `app.module.ts` and
+// `context-ports.ts`, which import three contexts' `./application/index.js`
+// statically, so a removed entry point fails this FILE at load instead of a
+// named case. `context-factories.test.ts` imports all seventeen, one named case
+// per context, and holds the partition that used to live below.
 
 import { composeApplication } from "../app.module.js";
 import { loadPlatformConfiguration } from "../config/platform.js";
@@ -58,6 +40,7 @@ import {
   ADAPTER_BINDINGS,
   UNIMPLEMENTED_ADAPTERS,
   constructAdapters,
+  postgresSocketTimeoutSeconds,
   type AdapterConstruction,
   type AdapterName,
 } from "./adapter-bindings.js";
@@ -103,6 +86,16 @@ const FULLY_DECLARED = Object.freeze({
   // secret worth the name for an HMAC an attacker can grind offline against a
   // body they chose.
   PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(64),
+  // D20 (2026-09-15). The email relay group — relay, sender and the page a sign-in
+  // link opens. Constructing the adapter opens no socket; it only admits the three.
+  PLATOS_CHANNELS_EMAIL_SMTP_URL: "smtp://127.0.0.1:1",
+  PLATOS_CHANNELS_EMAIL_FROM: "login@platos.example",
+  PLATOS_CHANNELS_EMAIL_LOGIN_URL: "https://app.platos.example/magic",
+  // WIN-271 (M4.5), D10. Discord's anchor is a PUBLIC KEY, and this one is a real
+  // Ed25519 point — RFC 8032 §7.1 TEST 1's — rather than 64 repeated characters,
+  // because the field's grammar is "a raw Ed25519 public key" and a fixture that
+  // only satisfied the regex would stop being a key the day the field checked.
+  PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
 });
 
 /** Nothing wired at all — the install part-way through setup that must boot. */
@@ -131,6 +124,14 @@ const GROUP_BUILDS: Readonly<Record<string, AdapterName>> = Object.freeze({
   // signing secret from the start, and until this tranche `channel-slack` was a
   // generated interface with no constructor to hand it to.
   "channels.slack": "channel-slack",
+  // D20 (2026-09-15). The SIXTH: the relay group now builds `notifier-email`, which
+  // left `UNIMPLEMENTED_ADAPTERS` in the same tranche.
+  "channels.emailNotifier": "notifier-email",
+  // WIN-271 (M4.5), D10. The SEVENTH group to name a directory on the integrated
+  // tree (the SIXTH on its own lane, which had no relay group above it), and the
+  // first section to name two directories behind the SAME port pair: the channels
+  // registry chooses between them by provider.
+  "channels.discord": "channel-discord",
 });
 
 /**
@@ -209,6 +210,20 @@ function readiness(env: Readonly<Record<string, string>>) {
 }
 
 describe("constructing the adapters an install declared", () => {
+  it("gives the database client a deadline that can only cut off a server that stopped answering", () => {
+    // Joined to the schema, not restated: every statement timeout the stores
+    // section accepts must leave the server time to cancel and report first.
+    const field = PLATFORM_SECTIONS.flatMap((section) => section.groups)
+      .flatMap((group) => [group.anchor, ...group.requiredWithAnchor, ...group.optional])
+      .find((candidate) => candidate.name === "PLATOS_STORE_POSTGRES_STATEMENT_TIMEOUT_MS");
+    expect(field?.minimum).toBeDefined();
+    expect(field?.maximum).toBeDefined();
+    for (const statementTimeoutMs of [field!.minimum!, Number(field!.defaultValue), field!.maximum!]) {
+      expect(postgresSocketTimeoutSeconds(statementTimeoutMs) * 1000).toBeGreaterThanOrEqual(statementTimeoutMs + 5000);
+    }
+    expect(postgresSocketTimeoutSeconds(Number(field!.defaultValue))).toBe(20);
+  });
+
   it("builds the directory every declared configuration group configures", () => {
     const declared = platform(FULLY_DECLARED).declaredGroups;
     // The left-hand column is a claim about the CONFIGURATION CONTRACT, so it is
@@ -277,7 +292,10 @@ describe("constructing the adapters an install declared", () => {
     // configuration half of the SAME list, because with nothing declared it is
     // still unwired -- just for a reason an operator can fix. The split below is
     // what moved, and it is asserted per directory rather than by this total.
-    expect(construction.unwired).toHaveLength(13);
+    // 13 -> 14 (WIN-271 (M4.5), D10): `channel-discord` is one more directory an
+    // operator wires by setting a variable, so with nothing declared it is one
+    // more CONFIGURATION row — asserted per directory by the GROUP_BUILDS loop.
+    expect(construction.unwired).toHaveLength(14);
     for (const adapter of BUILT_UNCONDITIONALLY) {
       expect(byCause.get(adapter)).toBeUndefined();
       expect(construction.adapters[adapter]).toBeDefined();
@@ -394,7 +412,7 @@ describe("readiness over what was actually constructed", () => {
     );
   });
 
-  it("reports 50 of 57, and the 7 that remain are exactly the bindings with no implementation", () => {
+  it("reports 59 of 63, and the 4 that remain are exactly the bindings with no implementation", () => {
     // THE ARITHMETIC, PINNED AND DERIVED. The literal catches drift in either
     // direction; the identity beside it says WHY the number is that number, so a
     // future tranche that implements one of the remaining directories sees both
@@ -447,18 +465,30 @@ describe("readiness over what was actually constructed", () => {
     // 51 + 1 (the new row) + 2 (the two rows the directory now serves, minus
     // the one it used to fail) — stated as 59 - 6 = 53 below and derived rather
     // than written, so the two halves cannot drift.
-    expect(ADAPTER_BINDINGS).toHaveLength(60);
-    expect(unimplementable).toHaveLength(5);
+    // 60 -> 63 DECLARED AND 5 -> 4 UNIMPLEMENTABLE on the integrated tree, and the
+    // two lanes move the two figures differently.
+    //
+    // D20 (2026-09-15): +1 declared and 5 -> 4 unimplementable (61/4 on its lane).
+    // `notifier-email` gained `MagicLinkDelivery` and left `UNIMPLEMENTED_ADAPTERS`,
+    // and FULLY_DECLARED now declares its group, so satisfied moves by TWO.
+    //
+    // WIN-271 (M4.5), D10: +2 declared and unimplementable UNCHANGED (62/5 on its
+    // lane). `channel-discord` arrived with a constructor, so both of its bindings
+    // are satisfiable from the first commit and none joins the unimplementable side.
+    expect(ADAPTER_BINDINGS).toHaveLength(63);
+    expect(unimplementable).toHaveLength(4);
     // WIN-267 A1 + A2: 41 -> 45. Two new directories brought FOUR bindings
     // between them and both directories are constructible, so all four are
     // satisfied; the eight that remained were the same eight.
     // WIN-267 A3: 45 -> 47 of 53 -> 54, by the two independent steps above.
     // WIN-267 G1: 47 -> 48 of 54 -> 55. WIN-267 G2: 48 -> 51 of 55 -> 58.
     // WIN-271 (M4.5): 51 -> 53 of 58 -> 59. WIN-272 (M4.6): 53 -> 55 of 59 -> 60.
-    // See the subtraction above.
-    expect(verdict.detail.satisfiedBindings).toHaveLength(55);
+    // 55 -> 59 of 60 -> 63 on the integrated tree: `notifier-email`'s two and both
+    // Discord rows, all four satisfied because this fixture declares
+    // `channels.emailNotifier` and `channels.discord`. See the subtraction above.
+    expect(verdict.detail.satisfiedBindings).toHaveLength(59);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
-    expect(verdict.detail.unsatisfiedBindings).toHaveLength(5);
+    expect(verdict.detail.unsatisfiedBindings).toHaveLength(4);
     // STILL RED, AND HONESTLY SO. Five ports have no implementation in this
     // build, so this process cannot serve the routes that need them. Going green
     // on "everything this install could have wired" would be comparing the
@@ -466,7 +496,7 @@ describe("readiness over what was actually constructed", () => {
     expect(verdict.ready).toBe(false);
   });
 
-  it("is 3 of 57 with nothing wired, and says which kind of nothing the other 54 are", () => {
+  it("is 3 of 63 with nothing wired, and says which kind of nothing the other 60 are", () => {
     // IT USED TO BE 0 OF 49, AND THE CHANGE IS THE DELIVERABLE RATHER THAN A
     // RELAXATION. Before WIN-267 there was no port in this tree an install could
     // satisfy without configuring something, so "nothing configured" and
@@ -505,7 +535,9 @@ describe("readiness over what was actually constructed", () => {
     // bindings move to the satisfied side.
     // 6 -> 5 (WIN-272, M4.6): `redis-streams` is now built too, off the
     // `stores.redis` group -- the same subtraction a third time.
-    expect(construction.unwired).toHaveLength(5);
+    // 5 -> 4 (D20, 2026-09-15): `notifier-email` is now built, from the
+    // `channels.emailNotifier` group this fixture declares -- a fourth time.
+    expect(construction.unwired).toHaveLength(4);
     expect(app.unwired).toEqual(construction.unwired);
     expect(verdict.detail.unwiredAdapters).toEqual(construction.unwired);
   });
@@ -567,6 +599,7 @@ describe("the context bundles those adapters can satisfy", () => {
     const owned = ADAPTER_BINDINGS.filter((binding) => binding.owner === "identity-access");
     expect(owned.map((binding) => binding.port).sort()).toEqual([
       "IdentityAccessRepository",
+      "MagicLinkDelivery",
       "MfaSecretCipher",
       "RateLimiter",
       "SecretHasher",
@@ -592,7 +625,11 @@ describe("the context bundles those adapters can satisfy", () => {
     const bundle = assembly.ports.identityAccess;
     expect(bundle, "the assembler must have produced the bundle").toBeDefined();
     expect(Object.keys(bundle ?? {}).sort()).toEqual(Object.keys(IDENTITY_ACCESS_SLOT_SOURCES).sort());
-    expect(Object.keys(IDENTITY_ACCESS_SLOT_SOURCES)).toHaveLength(10);
+    // 10 -> 11 (D20, 2026-09-15): `magicLinks`, filled here because FULLY_DECLARED
+    // declares the relay; the next case proves it is the one slot whose absence
+    // does not stop the context composing.
+    expect(Object.keys(IDENTITY_ACCESS_SLOT_SOURCES)).toHaveLength(11);
+    expect(bundle?.magicLinks).toBe(construction.adapters["notifier-email"]);
 
     // AND THE SLOTS THAT COULD BE TRANSPOSED ARE PINNED BY IDENTITY. `minter`
     // and `totp` come off the SAME object, so a bundle that had swapped them
@@ -659,6 +696,17 @@ describe("the context bundles those adapters can satisfy", () => {
     const withoutStore = { ...construction.adapters };
     delete withoutStore["postgres-tenancy"];
     expect(assembleContextPorts(withoutStore, defaults).safetyEventSink).toBeNull();
+
+    // AND THE ONE DIRECTORY WHOSE REMOVAL MUST NOT STOP IT (D20, 2026-09-15).
+    // `notifier-email` fills the optional `magicLinks` slot: without it the context
+    // still composes, and only that slot is gone — an install with no relay can
+    // authenticate every session it already has.
+    const withoutRelay = { ...construction.adapters };
+    delete withoutRelay["notifier-email"];
+    const relayless = assembleContextPorts(withoutRelay, defaults).ports.identityAccess;
+    expect(relayless, "identity-access must still assemble without a relay").toBeDefined();
+    expect(Object.keys(relayless ?? {})).not.toContain("magicLinks");
+    expect(Object.keys(relayless ?? {})).toHaveLength(10);
   });
 
   it("still cannot compose governance, and names the chain that stops it", () => {
@@ -698,6 +746,10 @@ describe("the context bundles those adapters can satisfy", () => {
     // deadline — and `channels` is still absent.
     const { app, construction } = readiness(FULLY_DECLARED);
     expect(construction.adapters["channel-slack"]).toBeDefined();
+    // WIN-271 (M4.5), D10: and a SECOND runtime changes nothing about that. Two
+    // providers can verify their own deliveries and `channels` is still absent,
+    // for the same one missing directory.
+    expect(construction.adapters["channel-discord"]).toBeDefined();
     expect(app.contexts.channels).toBeUndefined();
 
     // THE CHAIN, JOINED TO THE BINDING TABLE AND TO THE UNIMPLEMENTED LIST
@@ -736,10 +788,11 @@ describe("the context bundles those adapters can satisfy", () => {
     expect(app.eventBus).toBe(construction.adapters["redis-streams"]);
     expect(app.streamJournal).toBe(construction.adapters["redis-streams"]?.journal);
 
-    // The context's factory is not importable either, which is the SECOND
-    // blocker and the one `UNIMPORTABLE_CONTEXT_FACTORIES` measures against
-    // Node's own resolver.
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toContain("channels");
+    // AND PACKAGING IS NO LONGER A SECOND BLOCKER. This used to assert that the
+    // context's factory could not be imported. WIN-302 published `channels`'
+    // `./application/index.js`, and `context-factories.test.ts` imports
+    // `createChannelsContract` through it, so the chain above is all that is left.
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).not.toContain("channels");
   });
 
   it("holds the governance port partition, and the sink it does build", () => {
@@ -1042,236 +1095,6 @@ describe("the context bundles those adapters can satisfy", () => {
     for (const binding of owned) expect(AGENTS_UNBOUND_PORTS).not.toContain(binding.port);
   });
 
-  it("cannot import SIX context factories, and partitions all seventeen by DERIVING route one", () => {
-    // THE OTHER HALF OF THE SAME CORRECTION, and the one that will bite the next
-    // tranche. Every one of the seventeen contexts publishes a factory over its
-    // whole contract; SIX of them keep it in `application/` behind a manifest
-    // that publishes no `./application/index.js`, so this package cannot name it.
-    //
-    // THE COUNT HAS MOVED TWICE AND ONLY ONE OF THE MOVES WAS A CHANGE TO THE
-    // TREE. It was EIGHT until WIN-267 published `governance`'s subpath, which
-    // this file's own import of `createGovernanceSafetyEventSink` required — a
-    // real change. WIN-302 takes it from seven to SIX and nothing about
-    // `conversations` moved: its root barrel has re-exported
-    // `createConversationsContract` all along, so the list was simply WRONG, and
-    // it was wrong in the direction that costs a tranche its plan. The derived
-    // half below is what makes that class of error a red test instead of a
-    // paragraph somebody has to re-measure.
-    //
-    // JOINED TO THE MANIFESTS, WHICH IS WHAT THE RESOLVER READS. A negative
-    // about packaging is exactly the kind of claim this file has been wrong
-    // about three times, so it is measured against the `exports` map of every
-    // context package rather than asserted -- and against ALL SEVENTEEN, as a
-    // PARTITION, so a context cannot fall out of both halves and be counted by
-    // neither. The day a manifest publishes the subpath, it moves from one side
-    // of the partition to the other and this case fails.
-    //
-    // IT READS THE FILES RATHER THAN IMPORTING THE SUBPATHS, and that is rule
-    // (C4) rather than a preference: a specifier assembled at run time is one
-    // `composition-root.mjs` refuses outside `apps/mcp-stdio/src/runtime.ts`,
-    // because no boundary rule can see it, and a LITERAL dynamic import of a
-    // subpath that does not exist fails in Vite's transform -- the whole file
-    // fails to load and no case runs, which is a vacuous red rather than an
-    // assertion. `config/sections.test.ts` reads the platform's own files the
-    // same way for the same reason.
-    const root = fileURLToPath(new URL("../../../../", import.meta.url));
-    const manifestOf = (context: string): { readonly exports?: Record<string, unknown> } =>
-      JSON.parse(readFileSync(`${root}packages/contexts/${context}/package.json`, "utf8")) as {
-        readonly exports?: Record<string, unknown>;
-      };
-
-    // The seventeen ADR M0.3 §4 names, spelled out rather than globbed: a
-    // directory listing would shrink silently with the tree and make the
-    // partition below a statement about whatever happened to be there.
-    const contexts = [
-      "identity-access", "tenancy", "secrets", "providers", "agents", "skills",
-      "tools", "memory", "channels", "files", "observability", "cost-monitoring",
-      "governance", "jobs", "conversations", "eventing", "privacy",
-    ] as const;
-    expect(contexts).toHaveLength(17);
-
-    // A FACTORY IS IMPORTABLE BY EITHER OF TWO ROUTES, and getting that wrong is
-    // how the sentence being withdrawn stayed wrong: `cost-monitoring`, `memory`,
-    // `providers` and `tools` publish NO `./application/index.js` and are
-    // importable anyway, because their factory is on the `.` entry point. A
-    // partition drawn on the manifest subpath alone would put those four on the
-    // wrong side and reproduce the original error in a new place.
-    //
-    // ROUTE ONE, PROVED BY THE MODULE GRAPH. Every one of these was imported
-    // statically at the head of this file, from the `.` specifier
-    // `app.module.ts` already imports each context's TYPE from. Delete any of
-    // the six exports and this file stops resolving.
-    const onDotEntry = {
-      agents: agentsContract,
-      "cost-monitoring": costMonitoringContract,
-      memory: memoryContract,
-      providers: providersContract,
-      secrets: secretsContract,
-      tools: toolsContract,
-      // WIN-302 — see this entry's import. It was missing here and PRESENT on
-      // `UNIMPORTABLE_CONTEXT_FACTORIES`, which is the drift the derived half
-      // below now makes impossible.
-      conversations: createConversationsContract,
-    } as const;
-    // ROUTE TWO, PROVED THE SAME WAY, through the subpath the remaining SEVEN do
-    // not have. WIN-267 adds `governance`: this file imports
-    // `createGovernanceSafetyEventSink` from that subpath, which is why the
-    // manifest publishes it, and `createGovernanceContract` rides the same
-    // barrel. It is named here by the CONTRACT factory rather than by the sink,
-    // because what this partition measures is whether the context's assembler
-    // can be reached -- and the answer for `governance` is now yes, while the
-    // context still cannot be BUILT for the reasons three cases above state.
-    const onApplicationEntry = {
-      governance: createGovernanceContract,
-      "identity-access": createIdentityAccessService,
-      skills: createSkillsContract,
-      tenancy: createTenancyService,
-    } as const;
-    for (const [context, factory] of [
-      ...Object.entries(onDotEntry),
-      ...Object.entries(onApplicationEntry),
-    ]) {
-      expect(typeof factory, `${context} publishes an importable factory`).toBe("function");
-    }
-
-    // ---------------------------------------------------------------------
-    // WIN-302 — ROUTE ONE IS NOW DERIVED FROM THE CONTEXTS' OWN BARRELS, AND
-    // THAT IS THE GATE THAT SHOULD HAVE EXISTED SINCE WIN-267 G3.
-    //
-    // The literal above proves that each named factory RESOLVES; the module
-    // graph settles that and nothing else can. What it could never prove is the
-    // COMPLEMENT — that no OTHER context also publishes one from `.` — because
-    // the literal and `UNIMPORTABLE_CONTEXT_FACTORIES` are both maintained by
-    // hand, and this programme's first lesson is that an assertion comparing two
-    // things you control cannot fail. It did not fail: `conversations`
-    // re-exported `createConversationsContract` from its root barrel and sat on
-    // the unimportable list for two tranches, and the partition below was green
-    // the whole time because both of its sides had been edited to agree.
-    //
-    // SO THE EXPECTATION IS COMPUTED FROM SEVENTEEN FILES THIS PACKAGE DOES NOT
-    // OWN. For each context, the accepted factory NAMES are derived from the
-    // DIRECTORY NAME — `cost-monitoring` -> `costMonitoringContract` /
-    // `createCostMonitoringContract` / `costMonitoringService` /
-    // `createCostMonitoringService` — so nothing here is a list of names somebody
-    // has to remember to extend. The day a context re-exports its assembler from
-    // `contracts/index.ts`, this case fails until the literal above and the
-    // constant below both move.
-    //
-    // IT READS THE FILES RATHER THAN IMPORTING THEM, for the two reasons this
-    // case already records: rule (C4) refuses a specifier assembled at run time,
-    // and a literal dynamic import of a subpath that does not exist fails in
-    // Vite's TRANSFORM, taking the whole file down as a vacuous red.
-    //
-    // `export * from` IS FOLLOWED, up to two levels. `tenancy`, `agents` and
-    // `privacy` all star-export inside their root barrels today, so a rule that
-    // stopped at the barrel's own text would silently answer "no factory" for a
-    // context that publishes one through a star — reintroducing the exact blind
-    // spot this derivation exists to close, in a new place.
-    const factoryNames = (context: string): readonly string[] => {
-      const pascal = context
-        .split("-")
-        .map((part) => `${(part[0] ?? "").toUpperCase()}${part.slice(1)}`)
-        .join("");
-      const camel = `${(pascal[0] ?? "").toLowerCase()}${pascal.slice(1)}`;
-      return [
-        `${camel}Contract`,
-        `create${pascal}Contract`,
-        `${camel}Service`,
-        `create${pascal}Service`,
-      ];
-    };
-    const exportedFactory = (file: string, wanted: readonly string[], depth = 0): string | null => {
-      if (depth > 2 || !existsSync(file)) return null;
-      const source = readFileSync(file, "utf8");
-      for (const name of wanted) {
-        if (new RegExp(`^export function ${name}\\s*(?:<|\\()`, "mu").test(source)) return name;
-        if (new RegExp(`^export const ${name}\\b`, "mu").test(source)) return name;
-        if (new RegExp(`^export \\{[^}]*\\b${name}\\b[^}]*\\} from `, "msu").test(source)) return name;
-      }
-      for (const match of source.matchAll(/^export \* from "(\.[^"]+)";/gmu)) {
-        const relative = (match[1] ?? "").replace(/\.js$/u, ".ts");
-        const target = new URL(relative, new URL(file, "file:///"));
-        const found = exportedFactory(fileURLToPath(target), wanted, depth + 1);
-        if (found !== null) return found;
-      }
-      return null;
-    };
-    const derivedOnDotEntry = contexts.filter(
-      (context) =>
-        exportedFactory(`${root}packages/contexts/${context}/contracts/index.ts`, factoryNames(context)) !==
-        null,
-    );
-    // THE JOIN. Not a length, not a superset: set equality in both directions, so
-    // a factory added to a barrel fails here and a name deleted from the literal
-    // fails here too.
-    expect([...derivedOnDotEntry].sort()).toEqual([...Object.keys(onDotEntry)].sort());
-    // AND IT IS NOT VACUOUS. A derivation that matched nothing — a typo in the
-    // name rule, a moved barrel — would make the equality above a comparison of
-    // two empty sets, which is exactly the failure this whole case is about.
-    expect(derivedOnDotEntry.length).toBeGreaterThan(1);
-    for (const context of derivedOnDotEntry) {
-      expect(
-        exportedFactory(`${root}packages/contexts/${context}/contracts/index.ts`, factoryNames(context)),
-        `${context} must publish a factory whose name the DIRECTORY implies`,
-      ).not.toBeNull();
-    }
-
-    // THE MANIFEST HALF, which is the only instrument that can speak for the
-    // absent: route two exists exactly when the package publishes the subpath.
-    const publishesEntry = contexts.filter(
-      (context) => manifestOf(context).exports?.["./application/index.js"] !== undefined,
-    );
-    expect([...publishesEntry].sort()).toEqual(
-      [...Object.keys(onApplicationEntry), "agents", "secrets"].sort(),
-    );
-    // AND `governance` MUST HAVE LEFT THE UNIMPORTABLE LIST, in both directions:
-    // the list shrank by exactly one and the name that left is the one whose
-    // manifest changed. A list edited without the manifest, or a manifest
-    // changed without the list, fails here.
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toHaveLength(6);
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).not.toContain("governance");
-    expect(publishesEntry).toContain("governance");
-    // WIN-302 — AND `conversations` HAS LEFT IT TOO, by the OTHER route. It never
-    // needed the subpath: its root barrel re-exports the factory, so it was
-    // importable on the day the list first named it. Both halves are asserted so
-    // the removal cannot be mistaken for a manifest change that did not happen.
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).not.toContain("conversations");
-    expect(publishesEntry).not.toContain("conversations");
-    expect(derivedOnDotEntry).toContain("conversations");
-
-    // AND THE PARTITION OVER ALL SEVENTEEN. Importable is the UNION of the two
-    // routes -- `agents` and `secrets` are in both -- and the complement is the
-    // list. 10 + 7 = 17, so a context cannot fall out of both halves and be
-    // counted by neither, which is what a list checked only against itself
-    // allows. It was 9 + 8 until WIN-267 published `governance`'s subpath.
-    const importable = new Set([
-      ...Object.keys(onDotEntry),
-      ...Object.keys(onApplicationEntry),
-    ]);
-    expect(importable.size).toBe(11);
-    expect([...contexts].filter((context) => !importable.has(context)).sort()).toEqual(
-      [...UNIMPORTABLE_CONTEXT_FACTORIES].sort(),
-    );
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toHaveLength(6);
-    for (const context of UNIMPORTABLE_CONTEXT_FACTORIES) {
-      expect(contexts, `${context} must be one of the seventeen`).toContain(context);
-      // The manifest IS there and publishes `.` -- so each of these is a context
-      // that declined to publish the subpath, not a package that is missing,
-      // which is what a misspelled name on the list would be.
-      expect(Object.keys(manifestOf(context).exports ?? {})).toContain(".");
-      expect(manifestOf(context).exports?.["./application/index.js"]).toBeUndefined();
-    }
-
-    // `governance` WAS THE ONE THAT MATTERED, and WIN-267 closed it. G3's
-    // finding was that a tranche landing all five of `GOVERNANCE_UNBOUND_PORTS`
-    // still could not compose the context because `createGovernanceContract`
-    // could not be NAMED from here. Both halves moved in this tranche: the five
-    // ports landed and the subpath is published, so what is left is the peer
-    // chain and nothing about packaging.
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).not.toContain("governance");
-    expect(typeof createGovernanceContract).toBe("function");
-  });
-
   it("declines secrets and providers by NAMING the directory that is missing", () => {
     // FALSIFIABILITY, FROM THE OTHER SIDE. An install with a database and no
     // root key ring composes tenancy and neither of the two new contexts, and
@@ -1420,15 +1243,17 @@ describe("composing tools, whose two remaining ports no adapter directory may ho
     // AND THE BINDING COUNT DID NOT MOVE. This is the sentence `process.test.ts`
     // reads off a real socket, asserted here against the table instead: composing
     // `tools` adds a CONTEXT and no BINDING, so `declaredBindings` is untouched.
-    expect(ADAPTER_BINDINGS).toHaveLength(60);
+    // (60 -> 63 is D20's `notifier-email:MagicLinkDelivery` plus WIN-271 (M4.5),
+    // D10's two `channel-discord` rows; neither is tools'.)
+    expect(ADAPTER_BINDINGS).toHaveLength(63);
   });
 
   it("publishes the adapters barrel from EXACTLY ONE of the seventeen, and it is the SDK's home", () => {
     // THE MANIFESTS ARE READ AND THE SUBPATHS ARE NOT IMPORTED, which is the trap
-    // the `UNIMPORTABLE_CONTEXT_FACTORIES` case above already documents and paid
-    // for: a LITERAL dynamic import of a subpath that does not exist fails in
-    // Vite's TRANSFORM, so the whole file fails to load and no case runs at all — a
-    // vacuous red rather than an assertion. Measured here after reproducing it.
+    // `context-factories.test.ts` documents and routes around: a LITERAL dynamic
+    // import of a subpath that does not exist fails in Vite's TRANSFORM, so the
+    // whole file fails to load and no case runs at all — a vacuous red rather than
+    // an assertion. Measured here after reproducing it, and again at WIN-302.
     const root = fileURLToPath(new URL("../../../../", import.meta.url));
     const contexts = [
       "identity-access", "tenancy", "secrets", "providers", "agents", "skills",

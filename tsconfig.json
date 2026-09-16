@@ -119,6 +119,9 @@
       "path": "./packages/adapters/tokenmint-totp"
     },
     {
+      "path": "./packages/adapters/channel-discord"
+    },
+    {
       "path": "./apps/core-api"
     },
     {

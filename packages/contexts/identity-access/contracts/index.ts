@@ -13,14 +13,33 @@
 // `tokenHash`, `parentSessionId` and the impersonation chain — internals it has
 // no business with, and which could not then be changed without breaking it.
 //
-// WHAT IS DELIBERATELY ABSENT: minting. No other context may issue a session, a
-// magic link, an access key or an OAuth pair. Those use cases exist in
-// `application/` and are reachable only from the composition root's transports,
-// so "who can create a credential" has exactly one answer.
+// MINTING IS PUBLISHED ONLY WHERE THE SECRET CANNOT LEAK THROUGH THE CALLER.
 //
-// `issueSessionCookie` IS NOT AN EXCEPTION TO THAT. It mints no credential: it
-// takes a token `issueOperatorSession` already returned and decides how a
-// browser must hold it. A caller that has no token cannot obtain one here.
+// This banner used to say minting was "deliberately absent" from this contract,
+// and that had stopped being true twice before it was corrected (2026-09-15).
+// `mintBearerCredential` is published because a V1 route may only reach a
+// contract method and two `required` one-time-secret mints had no handler; the
+// magic-link pair is published for the same reason — the webapp's sign-in form is
+// one of the flows T8 deletes from the Remix tree. What survives of the old rule
+// is the part that was ever load-bearing, stated as three shapes a reader can
+// check against the methods below:
+//
+//   `mintBearerCredential`   returns the secret ONCE, to an operator already
+//                            authorized at `secret:mutate`, behind a `required`
+//                            Idempotency-Key — the one-time-reveal class D9
+//                            approves.
+//   `startMagicLinkLogin`    returns NO secret. The token goes to the
+//                            `MagicLinkDelivery` port and to nobody else (D20),
+//                            so the caller learns an address and an expiry.
+//   `completeMagicLinkLogin` returns the session token only INSIDE a registered
+//                            `SessionCookieDirectiveView`, the same object
+//                            `issueSessionCookie` mints and `verifySessionCookie`
+//                            recognises, so a BFF can put it in a browser and has
+//                            no JSON field to put it anywhere else.
+//
+// No other context may issue a session, an access key or an OAuth pair; those use
+// cases stay in `application/`. `issueSessionCookie` mints no credential either:
+// it takes a token a session already has and decides how a browser holds it.
 
 import type { DomainError, PrincipalId, Result, TenantScope } from "@platos/kernel";
 
@@ -240,9 +259,18 @@ export interface SessionCookieDirectiveView {
   readonly maxAgeSeconds: number;
 }
 
-/** ONE fact decides the shape: whether the browser reaches this over TLS. */
+/**
+ * ONE fact decides the shape: whether the browser reaches this over TLS.
+ *
+ * D-COOKIE adds two OPTIONAL facts the fronting deployable owns: the base cookie
+ * name and the SameSite mode. Absent, the shape is the extraction source's
+ * (`__Host-platos_operator_session` / `platos_operator_session`, `lax`). The
+ * `__Host-` prefix is still decided here from `secure` and never supplied.
+ */
 export interface SessionTransport {
   readonly secure: boolean;
+  readonly cookieName?: string;
+  readonly sameSite?: "lax" | "strict";
 }
 
 export interface IssueSessionCookieRequest extends SessionTransport {
@@ -261,7 +289,14 @@ export interface RotateSessionCookieRequest extends IssueSessionCookieRequest {
 export interface RateLimitRequest {
   readonly action: "LOGIN" | "INVITE_ACCEPT" | "MFA_VERIFY";
   readonly identifier: string;
-  readonly scope: TenantScope;
+  /**
+   * The tenant the spend is recorded against, or null for a budget spent before
+   * any tenant is known — `INVITE_ACCEPT` is spent before the invitation names its
+   * organization. A null scope is LOGGED under the rule rather than written to the
+   * safety sink, which requires a tenant; the budget is spent either way. Widened
+   * from `TenantScope` for the accept route; every existing caller still fits.
+   */
+  readonly scope: TenantScope | null;
   readonly principalId: PrincipalId | null;
 }
 
@@ -378,6 +413,44 @@ export interface RevokedBearerCredentialView {
 }
 
 /**
+ * D20 — ask for a sign-in link.
+ *
+ * ONE FIELD. The LOGIN bucket is derived from the address inside the context
+ * (`magicLinkLoginBucket`), so a transport cannot choose whose budget a request
+ * spends, and there is no tenant because none is known before an operator is.
+ */
+export interface StartMagicLinkLoginRequest {
+  readonly email: string;
+}
+
+/**
+ * What a started login reports — and note what is missing: the token.
+ *
+ * The same shape for an address that has an account and one that does not, so
+ * this cannot be used to ask whether somebody is a user.
+ */
+export interface StartedMagicLinkLoginView {
+  readonly email: string;
+  readonly expiresAt: Date;
+}
+
+/** D20 — spend a sign-in link. `secure` decides the cookie's shape, as everywhere. */
+export interface CompleteMagicLinkLoginRequest extends SessionTransport {
+  readonly presentedToken: string;
+}
+
+/**
+ * A completed login. The session token exists ONLY inside `cookie`, which is a
+ * registered directive — see the banner.
+ */
+export interface CompletedMagicLinkLoginView {
+  readonly userId: string;
+  readonly sessionId: string;
+  readonly expiresAt: Date;
+  readonly cookie: SessionCookieDirectiveView;
+}
+
+/**
  * The identity-access façade.
  *
  * Every method returns `Result`, so a consumer's failure handling is
@@ -437,9 +510,14 @@ export interface IdentityAccessContract {
   /**
    * Spend one unit of an authentication budget.
    *
-   * A `degraded` outcome means the limiter was unreachable and the request was
-   * allowed through under the documented fail-open policy. It is reported rather
-   * than hidden, so a caller that must not run unlimited can refuse.
+   * An unreachable limiter is REFUSED under D3's fail-closed policy with
+   * `RATE_LIMIT_FAILED_CLOSED`, distinct from `RATE_LIMITED`. `degraded` remains
+   * in the outcome type because it is what the domain reports if the policy is
+   * ever set back to `allow`; no install produces it today.
+   *
+   * `POST /invitations/accept` spends `INVITE_ACCEPT` through this method
+   * before tenancy looks at the token, as the oracle's `acceptInvitation` spends
+   * it before its transaction.
    */
   consumeRateLimit(request: RateLimitRequest): Promise<Result<RateLimitDecisionView>>;
 
@@ -505,6 +583,29 @@ export interface IdentityAccessContract {
   mintBearerCredential(
     command: MintBearerCredentialCommand,
   ): Promise<Result<MintedBearerCredentialView>>;
+
+  /**
+   * D20 — mint a single-use sign-in link and hand it to the delivery port.
+   *
+   * Refusals, each its own code: `INVALID_EMAIL_ADDRESS` (the address cannot be
+   * mailed), `MAGIC_LINK_DELIVERY_UNAVAILABLE` (no relay composed — nothing minted,
+   * no budget spent), `RATE_LIMITED` / `RATE_LIMIT_FAILED_CLOSED` (the LOGIN
+   * budget, D3), and `MAGIC_LINK_DELIVERY_FAILED` (the relay did not accept it).
+   */
+  startMagicLinkLogin(
+    request: StartMagicLinkLoginRequest,
+  ): Promise<Result<StartedMagicLinkLoginView>>;
+
+  /**
+   * D20 — spend a link, open a session, and return it as a cookie directive.
+   *
+   * An unknown, expired, already-spent or raced link, and a disabled account, all
+   * answer the same `UNAUTHENTICATED`: a stranger holding a leaked URL learns
+   * nothing about the address it was mailed to.
+   */
+  completeMagicLinkLogin(
+    request: CompleteMagicLinkLoginRequest,
+  ): Promise<Result<CompletedMagicLinkLoginView>>;
 
   /**
    * LIST one environment's MCP bearer credentials, WITHOUT their material.
@@ -584,6 +685,10 @@ export const IDENTITY_ACCESS_ERROR_CODES = [
   "MFA_REQUIRED",
   "INVALID_MFA_CODE",
   "RATE_LIMITED",
+  "RATE_LIMIT_FAILED_CLOSED",
+  "INVALID_EMAIL_ADDRESS",
+  "MAGIC_LINK_DELIVERY_UNAVAILABLE",
+  "MAGIC_LINK_DELIVERY_FAILED",
   "FORBIDDEN_SCOPE",
   "MISSING_PERMISSION",
   "IMPERSONATION_FORBIDDEN",

@@ -25,3 +25,21 @@ test.platos.dev {
 agent.test.platos.dev {
 	reverse_proxy localhost:3100
 }
+
+# core-api (the V1 composition root, docker-compose.platos.yml profile
+# `core-api`, loopback host port 3200) on a host of its own. No path above
+# changes target: pointing any existing route at core-api is the cutover, and
+# that is a separate decision. This hostname needs a DNS record before Caddy
+# can obtain its certificate.
+#
+# SET-COOKIE PASSES THROUGH. Caddy terminates TLS and proxies plain HTTP with its
+# own X-Forwarded-Proto. core-api believes that header only from the one peer
+# PLATOS_CORE_API_TRUSTED_PROXY names (apps/core-api/src/runtime/trusted-proxy.ts),
+# and with PLATOS_SECURITY_SESSION_COOKIE_SECURE at its default it sets the
+# operator session cookie only as a Secure __Host- cookie on a request TLS reached;
+# any other request is refused and carries no cookie. So this block no longer
+# strips Set-Cookie: without the trusted proxy configured no session cookie is
+# issued through it, and with it configured the cookie is the Secure one.
+core.test.platos.dev {
+	reverse_proxy localhost:3200
+}

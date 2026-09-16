@@ -5,14 +5,14 @@
   "baseline": "89c12b8 (frozen main oracle); re-enumerated from operation-manifest.generated.json + tenancy Prisma schemas",
   "generatedBy": "scripts/capability-matrix.mjs",
   "totals": {
-    "restOperations": 313,
-    "operatorProtectedRest": 131,
+    "restOperations": 323,
+    "operatorProtectedRest": 139,
     "mcpTools": 202,
     "tenancyModels": 94,
     "endUserRestrictedModels": 14,
     "restOperationsByScanRoot": {
       "agent": 301,
-      "core-api-transports": 19
+      "core-api-transports": 29
     },
     "restOperationsSharedAcrossScanRoots": 7
   },
@@ -28,8 +28,8 @@
       {
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
-        "operations": 19,
-        "routeBindings": 19
+        "operations": 29,
+        "routeBindings": 29
       }
     ],
     "unattributed": [],
@@ -2797,6 +2797,30 @@
         "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
       },
       {
+        "id": "POST /api/v1/bff/magic-link",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/bff/magic-link",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "ownerSource": "path-prefix",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/bff/magic-link/complete",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/bff/magic-link/complete",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "ownerSource": "path-prefix",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
         "id": "DELETE /api/v1/bff/session",
         "surface": "rest",
         "method": "DELETE",
@@ -2941,6 +2965,42 @@
         "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
       },
       {
+        "id": "GET /api/v1/environments/:environmentId/variables",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/environments/:environmentId/variables",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "secrets",
+        "ownerSource": "path-prefix",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PUT /api/v1/environments/:environmentId/variables/:key",
+        "surface": "rest",
+        "method": "PUT",
+        "path": "/api/v1/environments/:environmentId/variables/:key",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "secrets",
+        "ownerSource": "path-prefix",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/environments/by-slugs",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/environments/by-slugs",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "ownerSource": "path-prefix",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
         "id": "GET /api/v1/identity/session",
         "surface": "rest",
         "method": "GET",
@@ -2948,6 +3008,18 @@
         "classification": "REST_ONLY",
         "requiresOperator": true,
         "owner": "identity-access",
+        "ownerSource": "path-prefix",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/invitations/accept",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/invitations/accept",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
         "ownerSource": "path-prefix",
         "persistence": "see owner context (M0.3 ADR)",
         "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
@@ -3149,6 +3221,42 @@
         "surface": "rest",
         "method": "POST",
         "path": "/api/v1/organizations",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "ownerSource": "path-prefix",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/organizations/:organizationId/invitations",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/organizations/:organizationId/invitations",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "ownerSource": "path-prefix",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/organizations/:organizationId/members",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/organizations/:organizationId/members",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "ownerSource": "path-prefix",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/organizations/:organizationId/members/:membershipId",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/organizations/:organizationId/members/:membershipId",
         "classification": "REST_ONLY",
         "requiresOperator": true,
         "owner": "tenancy",
@@ -3368,6 +3476,18 @@
         "classification": "PUBLIC_TRANSPORT",
         "requiresOperator": false,
         "owner": "identity-access",
+        "ownerSource": "path-prefix",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/tools/sync",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/tools/sync",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tools",
         "ownerSource": "path-prefix",
         "persistence": "see owner context (M0.3 ADR)",
         "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
@@ -6073,19 +6193,19 @@
       "tenancy",
       "tools"
     ],
-    "restRows": 313,
+    "restRows": 323,
     "mcpRows": 202,
     "oracleDerivedRestRows": 42,
-    "pathPrefixRestRows": 271,
+    "pathPrefixRestRows": 281,
     "platformTransportRows": 5,
     "byOwner": {
-      "tools": 229,
-      "tenancy": 42,
+      "tools": 230,
+      "tenancy": 47,
       "agents": 39,
       "conversations": 31,
       "cost-monitoring": 30,
+      "identity-access": 29,
       "memory": 28,
-      "identity-access": 27,
       "channels": 22,
       "governance": 14,
       "providers": 14,
@@ -6093,11 +6213,11 @@
       "skills": 12,
       "<platform-transport>": 5,
       "privacy": 5,
+      "secrets": 3,
       "observability": 2,
-      "files": 1,
-      "secrets": 1
+      "files": 1
     },
-    "note": "Every row names one of the 19 permitted values. 42 REST rows carry per-row evidence (the handler at the oracle and the canonical rows it writes) and are checked against table-ownership.mjs; the remaining 271 are derived from the URL prefix and are marked ownerSource \"path-prefix\" so the weaker claim is visible."
+    "note": "Every row names one of the 19 permitted values. 42 REST rows carry per-row evidence (the handler at the oracle and the canonical rows it writes) and are checked against table-ownership.mjs; the remaining 281 are derived from the URL prefix and are marked ownerSource \"path-prefix\" so the weaker claim is visible."
   },
   "persistedStateGaps": [
     {
@@ -6116,5 +6236,5 @@
     }
   ],
   "acceptanceCriterion": "Every REST binding in operation-manifest.generated.json and every tenancy Prisma model appears here; counts are read from source, never hardcoded; --check fails on any drift. Every row names an ADR M0.3 §1 context, or the one non-context value `<platform-transport>` under the admission rule in scripts/arch/route-ownership.mjs; the retired unresolved-owner placeholder is neither producible nor accepted, and is refused by its own named rule.",
-  "sourceDigest": "eaf1d7f641a320fcf5469a89851f977f244f2a0e7280a1671a134c5d1fea3df5"
+  "sourceDigest": "528d902f68ac203d94f238c7e5e520a95531a713c18c24c2751c90a5236e7a22"
 }

@@ -764,6 +764,75 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         THIS PARAGRAPH, LIKE THE THREE ABOVE IT, IS WRITTEN AROUND THE REFUSED
   //         WORD rather than quoting it -- the gate reads bytes, and the suite that
   //         pins the count is not exempt from the count.
+  //
+  //         THE CORE-API CANDIDATE SMOKE ADDS THREE, taking it to 19454, all in
+  //         `.github/workflows/build-images.yml` and all the same GitHub Actions
+  //         context: the re-run ordinal every artifact name in that workflow already
+  //         carries. The new `core-api-smoke` job downloads the core-api and
+  //         migrations candidates by their exact artifact names and uploads its own
+  //         evidence under the same naming scheme, so the context cannot be dropped
+  //         without matching a previous run's artifacts. Each row copies the
+  //         classification, owner and rationale of the file's existing rows for that
+  //         context. The smoke script's own loop counter was renamed instead.
+  //
+  //         THE M2/M4 DELEGATED-DECISIONS ADR ADDS THREE, taking it to 19457, all in
+  //         `docs/adr/M2-M4-delegated-decisions-2026-09-15.md` and all the external
+  //         durable-runtime vendor's own names: two in decision D7, which names that
+  //         product and its sessions SDK as the initial supplier behind the Platos-owned
+  //         adapter, and one in decision D22, which quotes the vendor package's export
+  //         condition it leaves in place. The ADR keeps every decision's wording as the
+  //         founder-delegated record gave it, so the names are quoted rather than
+  //         paraphrased; its own index table (section 7) was written around them. Each
+  //         row copies the classification and owner of the two M0 ADRs' vendor rows,
+  //         and its context digests are the gate's own computed values.
+  //
+  //         THE M2/M4 INTEGRATION REMOVES ONE, taking it to 19456. `.env.example`'s
+  //         comment on the component auth secret named the durable-runtime vendor's
+  //         task workers; the comment was rewritten when that line stopped handing
+  //         Compose an inline comment as the secret's value, and it now says "task
+  //         workers" alone. The one vendor row for that word is removed by
+  //         `--write`, not by hand, and every other `.env.example` row is unchanged.
+  //
+  //         THE SDK LANE REMOVES SIX MORE, taking it to 19450. Four rows in
+  //         `packages/platools-js/src/context.ts` and two in
+  //         `packages/platools-py/platools/context.py` excused doc comments that
+  //         described Platos-owned tenancy ids as an external vendor's ids, classified
+  //         `vendor`. The ids are Platos's, so the classification was wrong rather
+  //         than stale: the comments were reworded and `--write` removed exactly those
+  //         six as resolved. No row was added.
+  //
+  //         AND TWO MORE, taking it to 19448: the same misdescription survived in the
+  //         `currentScope()` / `current_scope()` example of each package README, which
+  //         ships in the npm tarball and the PyPI distribution beside the doc comments
+  //         it repeats. Both lines now name the Platos tenancy scope and `--write`
+  //         removed the two `vendor` rows.
+  //
+  //         19448 IS RE-MEASURED ON THE MERGED TREE. The sdk lane pinned 19446 because
+  //         it subtracted its eight from 19454, a head that had neither the delegated-
+  //         decisions ADR's three nor the integration's one removal in it.
+  //         19454 + 3 - 1 - 8 = 19448.
+  //
+  //         STILL OPEN, and PRE-EXISTING rather than a lane regression: many rows keyed
+  //         by line and column point at the wrong text in files the lanes edited —
+  //         .github/workflows/ci.yml 4 of 4, scripts/vocabulary-boundary.test.mjs 59 of
+  //         60, scripts/vendored-build-audit.mjs 7 of 8, scripts/vendored-build-audit.test.mjs
+  //         6 of 6, scripts/v1-ledger.test.mjs 1 of 2. This gate matches rows by CONTEXT
+  //         HASH and not by position, so it stays green and the count above is honest;
+  //         only the diagnostic a reader is shown points at the wrong line. Re-keying
+  //         them is a separate change, because `--write` moves every row it re-keys and
+  //         that diff would bury whatever else it travelled with.
+  //
+  //         THE TOOL-CALL PARITY SUITE ADDS THREE, taking it to 19451, all in
+  //         `apps/agent/src/tool-gateway/tool-call-parity.integration.test.ts` and all
+  //         the external durable-runtime vendor's own names: the two environment
+  //         variables whose presence makes `TurnDispatchService.resolveMode` read an
+  //         agent's binding (the suite's durable arm needs that read), and the bridge
+  //         module's directory in the import of `InternalExecuteToolController`. The
+  //         suite's prose was rewritten around every other occurrence. Each row copies
+  //         the classification and owner of `turn-dispatch.service.spec.ts`'s vendor
+  //         rows, and its context digests are the gate's own computed values. The lane
+  //         pinned 19460 against a head with neither the sdk lane's eight removals nor
+  //         the two README ones in it; 19448 + 3 = 19451 is what THIS tree produces.
   assert.equal(manifest.exceptions.length, 19451);
 });
 

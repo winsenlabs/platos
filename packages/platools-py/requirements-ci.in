@@ -1,0 +1,19 @@
+# The Platools Python SDK suite's CI dependencies, pinned for `pip install --require-hashes`.
+#
+# WIN-270 (M4.4). `.github/workflows/ci.yml` installs `requirements-ci.txt` with
+# `--require-hashes --no-deps`, so every distribution the pytest run imports is
+# named here at an exact version and verified by hash, the way every action in that
+# workflow is pinned by commit. The runtime pins are the `dependencies` floor of
+# `pyproject.toml` resolved to one version; pytest and pytest-asyncio are the `dev`
+# extra's test runners (ruff and mypy are not run in CI and are not installed).
+#
+# Regenerate after editing this file, with pip-tools on Python 3.12:
+#   pip-compile --allow-unsafe --generate-hashes --strip-extras --no-emit-index-url \
+#     --output-file requirements-ci.txt requirements-ci.in
+pydantic==2.13.5
+typing-extensions==4.16.0
+docstring-parser==0.18.0
+websockets==17.1
+pyyaml==6.0.3
+pytest==9.1.1
+pytest-asyncio==1.4.0

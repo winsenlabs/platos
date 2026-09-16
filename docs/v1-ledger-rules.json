@@ -391,6 +391,19 @@
         "evidence": "Package, compiler, and framework configuration read by the workspace scripts, plus static manifest data loaded by the module beside it. Declared ahead of the source rules because a *.config.ts is also a *.ts."
       },
       {
+        "id": "apps-core-api.tooling.scripts",
+        "match": [
+          "apps/core-api/scripts/**"
+        ],
+        "kind": "source",
+        "owner_capability": "Core API",
+        "disposition": "retain",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Invoked from apps/core-api/package.json scripts: scripts/dev.mjs is the dev script, which watches the package's build script and restarts its start script. Not part of the image, which copies only dist, the deployed node_modules and the manifest."
+      },
+      {
         "id": "apps-core-api.entry.composition-root",
         "match": [
           "apps/core-api/src/main.ts",
@@ -849,6 +862,20 @@
           "package-scripts"
         ],
         "evidence": "Python packaging metadata read by the build and publish steps."
+      },
+      {
+        "id": "packages.python.ci-requirements",
+        "match": [
+          "packages/*/requirements-ci.in",
+          "packages/*/requirements-ci.txt"
+        ],
+        "kind": "config",
+        "owner_capability": "Public SDKs",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "WIN-270 (M4.4): the hashed lock .github/workflows/ci.yml installs with --require-hashes --no-deps before running the package's pytest suite, and the exact pins it is compiled from."
       },
       {
         "id": "packages.doc.package",
@@ -2108,37 +2135,37 @@
     ]
   },
   "expected": {
-    "totalFiles": 5265,
+    "totalFiles": 5387,
     "areaCounts": {
-      "apps-agent": 529,
-      "apps-core-api": 107,
+      "apps-agent": 540,
+      "apps-core-api": 150,
       "apps-mcp-stdio": 8,
       "apps-webapp": 184,
-      "docs-content": 744,
-      "internal-packages": 1174,
-      "packages": 2193,
-      "root-infra": 326
+      "docs-content": 747,
+      "internal-packages": 1175,
+      "packages": 2240,
+      "root-infra": 343
     },
     "kindCounts": {
       "asset": 155,
-      "config": 316,
-      "doc": 612,
+      "config": 326,
+      "doc": 614,
       "fixture": 6,
-      "generated": 47,
+      "generated": 49,
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2141,
-      "test": 1075
+      "source": 2211,
+      "test": 1113
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1685,
-      "regenerate": 42,
-      "retain": 3529,
+      "move-refactor": 1720,
+      "regenerate": 44,
+      "retain": 3614,
       "unresolved": 2
     },
-    "protectedCount": 1640,
+    "protectedCount": 1643,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2147,15 +2174,17 @@
       "apps-agent.entry.process": 1,
       "apps-agent.generated.contract-artifacts": 2,
       "apps-agent.infra.container": 1,
-      "apps-agent.source.runtime": 280,
-      "apps-agent.test.suites": 214,
+      "apps-agent.source.runtime": 284,
+      "apps-agent.test.suites": 221,
       "apps-agent.tooling.scripts": 13,
-      "apps-core-api.config.package": 7,
+      "apps-core-api.config.package": 8,
       "apps-core-api.doc.package": 1,
       "apps-core-api.entry.composition-root": 2,
-      "apps-core-api.source.process": 33,
-      "apps-core-api.source.transports": 30,
-      "apps-core-api.test.suites": 34,
+      "apps-core-api.infra.container": 1,
+      "apps-core-api.source.process": 55,
+      "apps-core-api.source.transports": 38,
+      "apps-core-api.test.suites": 44,
+      "apps-core-api.tooling.scripts": 1,
       "apps-mcp-stdio.config.package": 2,
       "apps-mcp-stdio.doc.package": 1,
       "apps-mcp-stdio.entry.bin": 1,
@@ -2180,10 +2209,10 @@
       "docs-content.design.canvas-style": 4,
       "docs-content.design.index": 1,
       "docs-content.design.provenance": 1,
-      "docs-content.evidence.adr": 2,
+      "docs-content.evidence.adr": 3,
       "docs-content.evidence.audit-history": 13,
       "docs-content.evidence.audit-notes": 14,
-      "docs-content.evidence.audit-receipts": 22,
+      "docs-content.evidence.audit-receipts": 24,
       "docs-content.evidence.lifecycle-controls": 2,
       "docs-content.generated.audit": 2,
       "docs-content.governance.root-manifest": 2,
@@ -2227,17 +2256,17 @@
       "internal-packages.schema.prisma": 3,
       "internal-packages.source.typescript": 112,
       "internal-packages.test.suites": 63,
-      "internal-packages.tooling.scripts": 9,
-      "packages.adapters.config": 58,
-      "packages.adapters.doc": 15,
+      "internal-packages.tooling.scripts": 10,
+      "packages.adapters.config": 60,
+      "packages.adapters.doc": 16,
       "packages.adapters.fixture": 3,
-      "packages.adapters.source": 280,
-      "packages.adapters.test": 194,
-      "packages.config.build": 29,
+      "packages.adapters.source": 297,
+      "packages.adapters.test": 201,
+      "packages.config.build": 30,
       "packages.contexts.config": 37,
       "packages.contexts.doc": 17,
-      "packages.contexts.source": 730,
-      "packages.contexts.test": 363,
+      "packages.contexts.source": 737,
+      "packages.contexts.test": 367,
       "packages.doc.package": 9,
       "packages.generated.release-history": 5,
       "packages.kernel.config": 3,
@@ -2245,11 +2274,12 @@
       "packages.kernel.source": 23,
       "packages.kernel.test": 7,
       "packages.legal.attribution": 11,
+      "packages.python.ci-requirements": 2,
       "packages.python.metadata": 4,
-      "packages.python.sources": 39,
-      "packages.source.typescript": 299,
+      "packages.python.sources": 40,
+      "packages.source.typescript": 300,
       "packages.style.sheet": 1,
-      "packages.test.suites": 64,
+      "packages.test.suites": 68,
       "packages.tooling.scripts": 1,
       "root-infra.automation.renovate": 1,
       "root-infra.build.workspace": 6,
@@ -2271,13 +2301,13 @@
       "root-infra.lockfile.workspace": 1,
       "root-infra.pin.public-proxy-example": 1,
       "root-infra.pin.submodule-index": 1,
-      "root-infra.release.changesets": 16,
-      "root-infra.test.harness": 70,
-      "root-infra.test.script-suites": 34,
+      "root-infra.release.changesets": 19,
+      "root-infra.test.harness": 74,
+      "root-infra.test.script-suites": 36,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 119,
+      "root-infra.tooling.scripts": 127,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "251fde5ff8ca452521e9bc7ef6dee59792eeabce8294f6fcf743b4fae4c5e146"
+    "classificationSha256": "d247e1c3ddecb4909b289a0c9ff855147b06ba82eb7ecd7d6fa709002fcfa999"
   }
 }

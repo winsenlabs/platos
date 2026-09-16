@@ -47,7 +47,7 @@ import type {
   EnvironmentId,
   ExposureId,
   ExternalEntityId,
-  HealthOutcome,
+  HealthStatus,
   IdentityMode,
   McpIdentityProvider,
   McpTransport,
@@ -68,7 +68,7 @@ import {
   CONNECTION_KINDS,
   decodeLabels,
   dispatchabilityOf,
-  HEALTH_OUTCOMES,
+  HEALTH_STATUSES,
   IDENTITY_MODES,
   MCP_TRANSPORTS,
   normalizeHeaderTemplate,
@@ -377,7 +377,15 @@ export function toHealth(row: ToolHealthRow): ToolHealth {
     lastStatus:
       row.lastStatus === null
         ? null
-        : readUnion<HealthOutcome>("ToolHealth.lastStatus", HEALTH_OUTCOMES, row.lastStatus),
+        : // BOTH VOCABULARIES, because the column has always held both. The call
+          // fold writes `success|failed|timeout` and the heartbeat fold writes
+          // `healthy|degraded|down` — see `HEALTH_REPORTS` in
+          // `packages/contexts/tools/domain/health.ts`. Narrowing against the
+          // call vocabulary alone made every row a LIVE installation's heartbeat
+          // had touched throw `UnreadableToolsRowError` on the way in, so a
+          // reconnecting entity's health history was not "reset", it was
+          // unreadable.
+          readUnion<HealthStatus>("ToolHealth.lastStatus", HEALTH_STATUSES, row.lastStatus),
     failCount: row.failCount,
     totalCalls: row.totalCalls,
     totalFailures: row.totalFailures,

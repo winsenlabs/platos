@@ -127,6 +127,8 @@ function sharedSseRedis() {
     EventEmitter & {
       channels: Set<string>;
       closed: boolean;
+      ready: boolean;
+      connect: ReturnType<typeof vi.fn>;
       subscribe: ReturnType<typeof vi.fn>;
       unsubscribe: ReturnType<typeof vi.fn>;
       quit: ReturnType<typeof vi.fn>;
@@ -140,10 +142,36 @@ function sharedSseRedis() {
     }),
     get: vi.fn(async (key: string) => values.get(key) ?? null),
     del: vi.fn(async (key: string) => Number(values.delete(key))),
-    duplicate: vi.fn(() => {
+    // THE DOUBLE MODELS THE LAZY DUPLICATE THE CONTROLLER NOW ASKS FOR.
+    //
+    // `mcp-platform/redis-subscriber.ts` creates the SSE subscriber as
+    // `redis.duplicate({ lazyConnect: true })` and awaits `connect()` before the
+    // first SUBSCRIBE, because an eagerly-duplicated ioredis connection accepts a
+    // SUBSCRIBE while CONNECTED-but-not-READY, fails its own ready check against a
+    // connection already in subscriber mode, reconnects, and loses any PUBLISH that
+    // lands in the gap. A double with no `connect` made `readySubscriber` throw and
+    // took the whole handshake with it.
+    //
+    // `ready` IS NOT DECORATION, AND IT IS ALSO NOT THE WHOLE GUARD. `publish` below
+    // delivers only to a subscriber that has connected AND subscribed, so a lazy
+    // duplicate whose `connect()` is dropped stops receiving here: MEASURED, that
+    // mutation fails the cross-replica cancellation case. What it does NOT catch is a
+    // revert to an EAGER `duplicate()`, because an eager duplicate is ready the
+    // instant it exists in this double just as it is in ioredis — the defect there is
+    // a socket-state RACE, not an API difference, and no in-memory double can
+    // reproduce it. That half is held by
+    // `mcp-platform/mcp-protocol-conformance.integration.test.ts` and the two-process
+    // SSE suite against a real Redis 7, which is where the lost frames were measured
+    // in the first place.
+    duplicate: vi.fn((options?: { lazyConnect?: boolean }) => {
+      const lazy = options?.lazyConnect === true;
       const subscriber = Object.assign(new EventEmitter(), {
         channels: new Set<string>(),
         closed: false,
+        ready: !lazy,
+        connect: vi.fn(async () => {
+          subscriber.ready = true;
+        }),
         subscribe: vi.fn(async (channel: string) => {
           subscriber.channels.add(channel);
           return 1;
@@ -167,7 +195,7 @@ function sharedSseRedis() {
     }),
     publish: vi.fn(async (channel: string, message: string) => {
       for (const subscriber of subscribers) {
-        if (!subscriber.closed && subscriber.channels.has(channel)) {
+        if (!subscriber.closed && subscriber.ready && subscriber.channels.has(channel)) {
           subscriber.emit("message", channel, message);
         }
       }

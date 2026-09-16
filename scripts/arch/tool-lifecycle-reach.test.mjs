@@ -230,10 +230,49 @@ test("MOVABLE is minted from the contract, and a column that over-claims is refu
       `${file} names no method and must have no movable site`,
     );
   }
-  assert.ok(
-    DISPOSITIONS["apps/agent/src/tool-gateway/tool-sync-ws.service.ts"].methods === undefined,
-    "the sync socket's only tools site is a ToolHealth upsert, which registerTools does not serve",
-  );
+  // THE SYNC SOCKET NOW NAMES METHODS, AND THE GUARD IS THE SAME ONE (WIN-269, M4.3).
+  //
+  // Its entry used to name NOTHING, and the case here asserted that. What that
+  // assertion was really protecting was the OVER-CLAIM the removal fixed:
+  // `registerTools` had been named for a file whose only `tools` site is a
+  // `ToolHealth` upsert, so a site nothing could serve was reported movable. The
+  // pin is moved to the fact that still carries that protection rather than
+  // deleted with the state it happened to describe.
+  //
+  //   The two methods named are the two WIN-269 published BECAUSE this file had no
+  //   published form: `tenancy.recordEntityConnection` for both `Entity.update`
+  //   sites, `tools.recordToolHealth` for the one `ToolHealth.upsert`.
+  //
+  //   `registerTools` IS STILL REFUSED. It is published, so the contract join in
+  //   `checkDispositions` would accept it; only this case says it must not be
+  //   here, and it must not, for the original reason — the registration half has
+  //   no ORM site in this file at all.
+  {
+    const sync = DISPOSITIONS["apps/agent/src/tool-gateway/tool-sync-ws.service.ts"];
+    assert.deepEqual(
+      sync.methods,
+      { tenancy: ["recordEntityConnection"], tools: ["recordToolHealth"] },
+      "the sync socket names exactly the two methods WIN-269 published for it",
+    );
+    assert.ok(
+      !(sync.methods.tools ?? []).includes("registerTools"),
+      "the sync socket's registration half has no ORM site here; registerTools serves none of them",
+    );
+    // AND THE FILE IS NOT CLAIMED WHOLE. Its `secrets` site — the ENTITY_SECRET
+    // lookup BY DIGEST that authenticates the socket — is served by no published
+    // method, so `secrets` is unnamed and the site stays blocked. A register that
+    // had quietly claimed the file would show this as zero.
+    assert.ok(sync.methods.secrets === undefined);
+    assert.ok(
+      register.sites.filter(
+        (site) =>
+          site.file === "apps/agent/src/tool-gateway/tool-sync-ws.service.ts" &&
+          site.owner === "secrets" &&
+          site.verdict === "blockedOnContract",
+      ).length > 0,
+      "the socket's entity-secret lookup is still blocked on a contract method",
+    );
+  }
   assert.ok(
     DISPOSITIONS["apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery-scheduler.service.ts"]
       .methods === undefined,

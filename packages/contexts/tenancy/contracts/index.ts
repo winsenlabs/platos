@@ -12,6 +12,8 @@ import type { EnvironmentScope, TenantScope } from "@platos/kernel";
 
 import type {
   AncestryLevel,
+  EmailAddress,
+  EntityConnectionStatus,
   EntityRecord,
   EnvironmentAccess,
   EnvironmentOperatorAuthorization,
@@ -39,11 +41,25 @@ export {
   authorizes,
 } from "../domain/authorization.js";
 
+/**
+ * The two values `Entity.connectionStatus` may hold, published as DATA.
+ *
+ * A caller writing this column needs the vocabulary at run time — a transport
+ * validating a wire frame cannot narrow against a type — and the alternative is
+ * each of them spelling `"connected"` for itself. See `domain/entity.ts` for why
+ * the set is exactly two and why it is lower case.
+ */
+export {
+  ENTITY_CONNECTION_STATUSES,
+  isEntityConnectionStatus,
+} from "../domain/entity.js";
+
 // --- published types ---------------------------------------------------------
 
 export type {
   AncestryLevel,
   EmailAddress,
+  EntityConnectionStatus,
   ProjectVisibility,
   EntityRecord,
   EnvironmentAccess,
@@ -182,6 +198,100 @@ export interface CreatedProject {
   readonly membership: ProjectMembershipRecord;
 }
 
+/**
+ * D1 (2026-09-15) — issue an invitation. `inviterUserId` is the authorization
+ * subject: the use case refuses unless it holds an ACTIVE OWNER/ADMIN membership
+ * of `organizationId`. `role` defaults to MEMBER, the only role the Remix route
+ * ever invited with; only an OWNER may invite an OWNER.
+ */
+export interface IssueInvitationRequest {
+  readonly organizationId: OrganizationId;
+  readonly inviterUserId: UserId;
+  readonly email: string;
+  readonly role?: OrganizationRole;
+}
+
+/**
+ * An issued invitation. `token` IS THE SECRET TO DELIVER, returned to the
+ * composition root exactly as the use case always returned it — and a transport
+ * must not put it in a response: D9 approves no class it would fall in, and
+ * `apps/core-api` answers with the other three fields.
+ */
+export interface IssuedInvitationView {
+  readonly invitationId: string;
+  readonly token: string;
+  readonly expiresAt: Date;
+  readonly supersededCount: number;
+}
+
+/** Accept one. The address is the one the accepting operator PROVED control of. */
+export interface AcceptInvitationRequest {
+  readonly token: string;
+  readonly userId: UserId;
+  readonly email: string;
+}
+
+export interface AcceptedInvitationView {
+  readonly organizationId: OrganizationId;
+  readonly role: OrganizationRole;
+  readonly membership: OrganizationMembershipRecord;
+}
+
+/** The team listing's request. Keyed by the organization named and the actor authenticated. */
+export interface ListOrganizationMembersRequest {
+  readonly organizationId: OrganizationId;
+  readonly actorUserId: UserId;
+}
+
+/** One active member, and the operator account behind it (null when absent). */
+export interface OrganizationMemberView {
+  readonly membership: OrganizationMembershipRecord;
+  readonly account: {
+    readonly email: EmailAddress;
+    /** `User.displayName`, or null; the team page renders it ahead of the address. */
+    readonly displayName: string | null;
+    readonly disabledAt: Date | null;
+  } | null;
+}
+
+/** An environment addressed by the three slugs of a dashboard URL. */
+export interface ResolveOperatorEnvironmentRequest {
+  readonly organizationSlug: string;
+  readonly projectSlug: string;
+  readonly environmentSlug: string;
+  readonly operator: OperatorPrincipal;
+  readonly access: EnvironmentAccess;
+}
+
+/** The scope resolver's answer: the minted authorization plus what a switcher lists. */
+export interface OperatorEnvironmentView {
+  readonly authorization: EnvironmentOperatorAuthorization;
+  readonly organization: OrganizationRecord;
+  readonly project: ProjectRecord;
+  readonly environment: EnvironmentRecord;
+  readonly environments: readonly EnvironmentRecord[];
+}
+
+/**
+ * The command `recordEntityConnection` takes.
+ *
+ * `authorization` IS `unknown` FOR THE REASON `verifyAuthorization` EXISTS. It
+ * reaches this method from a transport, where its type was erased, and the only
+ * thing that makes it proof is this context's own mint register.
+ *
+ * There is NO `projectId` and NO `environmentId` here, and that is the
+ * authorization decision. The project the entity is checked against is the one
+ * the grant re-derived from the environment's ancestry when it was minted, so a
+ * caller has nothing to substitute — the same property
+ * `authorizeEnvironmentOperator` gets from taking only the leaf.
+ */
+export interface RecordEntityConnectionCommand {
+  readonly authorization: unknown;
+  readonly entityId: EntityId;
+  /** `"connected"` or `"disconnected"`. Validated, not narrowed by the type. */
+  readonly status: EntityConnectionStatus | string;
+}
+
 export interface RevokeAccessKeyGenerationRequest {
   readonly environmentId: EnvironmentId;
   readonly expectedGeneration?: number;
@@ -234,8 +344,8 @@ export interface TenancyContract {
    * one: the only creator was a Prisma nested write in the Remix route. Both
    * rows commit together, because an organization with no owner has almost no
    * path back — `changeMembershipRole` and `addProjectMember` both refuse an
-   * actor who is not an active organization admin, and the one path that does
-   * not check a role, `issueInvitation`, is gated only by its caller. See
+   * actor who is not an active organization admin, and since D1 (2026-09-15)
+   * so does `issueInvitation`, which was the one path that did not. See
    * `application/create-organization.ts`.
    */
   createOrganization(request: CreateOrganizationRequest): Promise<Result<CreatedOrganization>>;
@@ -267,6 +377,38 @@ export interface TenancyContract {
   ): Promise<Result<OrganizationMembershipRecord>>;
 
   /**
+   * D1 (2026-09-15) — issue an invitation, refused `TENANCY_INVITATION_FORBIDDEN`
+   * unless the inviter is an ACTIVE OWNER/ADMIN of the organization.
+   *
+   * Published because the Remix invite route is one of the operations T8 deletes
+   * and a V1 route may only reach a contract method. The rule it carried moved
+   * INTO the use case first, so deleting the route deletes no authorization.
+   */
+  issueInvitation(request: IssueInvitationRequest): Promise<Result<IssuedInvitationView>>;
+
+  /** Spend an invitation token for the operator who proved the invited address. */
+  acceptInvitation(request: AcceptInvitationRequest): Promise<Result<AcceptedInvitationView>>;
+
+  /**
+   * The ACTIVE members of one organization with each one's sign-in address, oldest
+   * first — `settings.team`'s loader, ported. Refused
+   * `TENANCY_MEMBER_LIST_FORBIDDEN` unless the actor is an active OWNER/ADMIN.
+   */
+  listOrganizationMembers(
+    request: ListOrganizationMembersRequest,
+  ): Promise<Result<readonly OrganizationMemberView[]>>;
+
+  /**
+   * The environment a dashboard URL's three slugs name, authorized for the
+   * operator, with its live siblings — `requireEnvironmentScope`, ported.
+   * `TENANCY_NOT_FOUND` when no live environment has those slugs, and the four-gate
+   * refusal unchanged when one does and the operator may not see it.
+   */
+  resolveOperatorEnvironment(
+    request: ResolveOperatorEnvironmentRequest,
+  ): Promise<Result<OperatorEnvironmentView>>;
+
+  /**
    * "My organizations", in the order the dashboard lands an operator in them.
    *
    * Keyed by the operator alone. There is no organization id on this call, so a
@@ -296,6 +438,34 @@ export interface TenancyContract {
   listProjectEntities(projectId: ProjectId): Promise<Result<readonly EntityRecord[]>>;
 
   findEntity(entityId: EntityId): Promise<Result<EntityRecord>>;
+
+  /**
+   * Record that an entity's backend connected, or that its last connection
+   * closed.
+   *
+   * THE ONLY WRITER OF `Entity.connectionStatus` OUTSIDE THE ORACLE. That column
+   * is tenancy's — `Entity` is this context's fourth aggregate — and until this
+   * method the only thing in the product that wrote it was
+   * `apps/agent/src/tool-gateway/tool-sync-ws.service.ts`, reaching the row
+   * through Prisma directly.
+   * `docs/audits/win-269-tool-lifecycle-reach.json` records both of that file's
+   * `Entity.update` sites as `blockedOnContract` for exactly that reason.
+   *
+   * IT IS AUTHORIZED AND THE SOCKET'S WRITE IS NOT, which is the one thing this
+   * method adds rather than copies. The socket reaches its write only after its
+   * own handshake; a published method has no such guarantee, and a caller holding
+   * an entity id could otherwise flip any installation's entity to
+   * `disconnected` and take its tools out of every model's reach.
+   *
+   * WHO DECIDES `disconnected` STAYS WITH THE CALLER. The oracle marks an entity
+   * disconnected only when NO environment connection for it remains, and it
+   * answers that from its own in-memory connection map — a fact about one
+   * process that cannot be re-derived from the database. So this method records
+   * the transition it is told.
+   */
+  recordEntityConnection(
+    command: RecordEntityConnectionCommand,
+  ): Promise<Result<EntityRecord>>;
 
   /**
    * Advance `Environment.accessKeyRevocationVersion`.

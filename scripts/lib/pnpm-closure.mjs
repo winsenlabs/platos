@@ -213,11 +213,19 @@ export function computeClosure(roots, parsed, importerGroups = ['prod', 'opt']) 
   return snapVisited;
 }
 
-// The two shipping images, by seed importer set. Single source of truth so the
-// SBOM, advisory scan and licence index all agree on what "ships".
+// The shipping application images, by seed importer set, keyed by their
+// .github/workflows/build-images.yml candidate matrix name. Single source of
+// truth so the SBOM, advisory scan and licence index all agree on what "ships".
+// scripts/audit-sbom.test.mjs joins these keys to that matrix, so a candidate
+// row added there without an entry here fails rather than shipping unrecorded.
+// The matrix's `migrations` row is the one reviewed omission; that test says why.
 export const IMAGES = {
   agent: { roots: ['apps/agent'], displayName: 'platos-agent' },
   webapp: { roots: ['apps/webapp'], displayName: 'webapp' },
+  // `pnpm --filter @platos/core-api deploy --prod --legacy`, then pruned and
+  // checked against this closure inside the image build
+  // (scripts/deploy-bundle-closure.mjs).
+  'core-api': { roots: ['apps/core-api'], displayName: 'platos-core-api' },
 };
 
 // Reduce a set of snapshot keys to the sorted, de-duplicated list of
@@ -243,7 +251,7 @@ export function loadLockfile(lockPath) {
   return { text, parsed: parseLockfile(text) };
 }
 
-// Compute both image closures + the union in one pass. Returns component lists.
+// Compute every image closure + their union in one pass. Returns component lists.
 export function computeAllClosures(parsed) {
   const out = {};
   for (const [image, { roots }] of Object.entries(IMAGES)) {
@@ -253,7 +261,7 @@ export function computeAllClosures(parsed) {
       components: componentsFromSnapshots(snaps),
     };
   }
-  const unionKeys = new Set([...out.agent.snapshotKeys, ...out.webapp.snapshotKeys]);
+  const unionKeys = new Set(Object.keys(IMAGES).flatMap((image) => out[image].snapshotKeys));
   out.union = {
     snapshotKeys: [...unionKeys].sort(),
     components: componentsFromSnapshots(unionKeys),

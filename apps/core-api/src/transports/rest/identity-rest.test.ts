@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { domainError, err, type DomainError, type FieldViolation } from "@platos/kernel";
+import { domainError, err, ok, type DomainError, type FieldViolation } from "@platos/kernel";
 import {
   IDENTITY_ACCESS_ERROR_CODES,
   type IdentityAccessContract,
@@ -25,6 +25,7 @@ import {
   createIdentityAccessService,
   testPorts,
 } from "@platos/context-identity-access/application/index.js";
+import { createTenancyFixture, createTenancyService } from "@platos/context-tenancy/application/index.js";
 
 import type { AppModule } from "../../app.module.js";
 import { BffSessionController, serializeSetCookie } from "../bff/session.controller.js";
@@ -37,6 +38,7 @@ import {
   nextCursorFor,
   offsetInCursor,
 } from "./environment-end-users.controller.js";
+import { InvitationsController } from "./invitations.controller.js";
 import { createOrganizationValidator } from "./organizations.controller.js";
 import { presentedOperatorToken, readCookie } from "./operator.js";
 import { refuseUnpagedQuery } from "./page.js";
@@ -313,46 +315,32 @@ describe("WIN-267 W3 — a sign-out that could not end the session says so", () 
   });
 });
 
-describe("WIN-267 R1 — the finding: no V1 REST route can spend an authentication budget", () => {
-  it("publishes a limiter whose three actions have no published performer", () => {
+describe("WIN-267 R1 — the finding that no V1 REST route could spend an authentication budget, REVISITED", () => {
+  it("publishes exactly these methods, and the magic-link start is now the one that spends LOGIN", async () => {
     const identityAccess = createIdentityAccessService(testPorts());
     const methods = Object.keys(identityAccess)
       .filter((key) => typeof (identityAccess as unknown as Record<string, unknown>)[key] === "function")
       .sort();
 
-    // THE WHOLE PUBLISHED SURFACE, PINNED. Not a literal asserted against itself:
-    // the left side is read off a REAL service object, so this fails the day the
-    // contract gains or loses a method — which is the day somebody must revisit
-    // the finding below rather than inherit it.
+    // THE WHOLE PUBLISHED SURFACE, PINNED, read off a REAL service object so it
+    // fails the day the contract gains or loses a method — which is the day the
+    // finding below must be revisited rather than inherited. It went red for
+    // `revokeOperatorSession` (W3), for `mintBearerCredential` (M4.2 P1) and for
+    // `listBearerCredentials` + `revokeBearerCredential` (M4.2), and each time the
+    // answer was that the new method spends no pre-authentication budget.
     //
-    // IT WENT RED EXACTLY ONCE, AS DESIGNED. WIN-267 W3 published
-    // `revokeOperatorSession`, this assertion failed, and the finding below was
-    // revisited: the new method performs no rate-limited action either — a
-    // sign-out spends no authentication budget — so the finding stands and the
-    // name was added.
-    //
-    // AND A SECOND TIME, FOR WIN-268 (M4.2) P1's `mintBearerCredential`. Same
-    // question, same answer: minting an MCP token spends no AUTHENTICATION
-    // budget — its three actions are still LOGIN, INVITE_ACCEPT and MFA_VERIFY,
-    // all pre-authentication — so the finding below stands unchanged and the
-    // name is added. A mint is rate-limited, if at all, on a different axis
-    // (how many credentials one environment may hold), which no contract in
-    // this repository publishes.
-    //
-    // AND A THIRD TIME, FOR WIN-268 (M4.2)'s `listBearerCredentials` and
-    // `revokeBearerCredential`. REVISITED AND THE ANSWER IS AGAIN NO, for a reason
-    // worth stating rather than assuming: both are reached only AFTER
-    // `authenticateOperator` and `authorizeEnvironment` have already succeeded, so
-    // a caller who can spend anything on them has finished authenticating — and the
-    // limiter's three actions are, by name and by enum, the pre-authentication ones.
-    // A revocation is the operation an attacker would most like to guess ids
-    // against, and the defence against that is that guessing requires a live
-    // operator session in an authorized environment, not an authentication budget.
-    // So the finding below stands unchanged and the two names are added.
+    // IT WENT RED A FIFTH TIME FOR D20 (2026-09-15), AND THIS TIME THE ANSWER IS
+    // YES. `startMagicLinkLogin` and `completeMagicLinkLogin` are published, the
+    // start spends the LOGIN budget, and `POST /bff/magic-link` reaches it —
+    // so RATE_LIMITED, and under D3 RATE_LIMIT_FAILED_CLOSED, CAN now truthfully
+    // reach this surface. The finding is withdrawn for LOGIN. For INVITE_ACCEPT it
+    // is withdrawn by the next case, which measures the accept route spending it;
+    // for MFA_VERIFY it stands, because that performer is still unpublished.
     expect(methods).toEqual([
       "authenticateBearer",
       "authenticateOperator",
       "clearSessionCookie",
+      "completeMagicLinkLogin",
       "consumeRateLimit",
       "describeSessionCookie",
       "issueSessionCookie",
@@ -362,26 +350,150 @@ describe("WIN-267 R1 — the finding: no V1 REST route can spend an authenticati
       "revokeBearerCredential",
       "revokeOperatorSession",
       "rotateSessionCookie",
+      "startMagicLinkLogin",
       "verifySessionCookie",
     ]);
 
-    // `consumeRateLimit` IS published, so the limiter is reachable. What is not
-    // reachable is anything to spend it ON: its actions are LOGIN, INVITE_ACCEPT
-    // and MFA_VERIFY, and every use case that performs one of those lives in
-    // `application/` behind no contract method. A V1 route may only reach a
-    // contract method (`composition-root.mjs` C8 and ADR M0.3 §2), so RATE_LIMITED
-    // cannot truthfully reach this surface in R1.
-    expect(methods).toContain("consumeRateLimit");
-    for (const performer of [
-      "startMagicLinkLogin",
-      "completeMagicLinkLogin",
-      "verifyMfaForSession",
-      "beginTotpEnrolment",
-      "acceptInvitation",
-    ]) {
-      expect(methods, `${performer} is now published — revisit the R1 rate-limit finding`).not.toContain(
-        performer,
-      );
+    // LOGIN IS SPENT THROUGH THE PUBLISHED METHOD — measured, not asserted: the
+    // budget runs out and the refusal is the limiter's own code.
+    const ports = testPorts();
+    const published = createIdentityAccessService(ports);
+    let refusal: DomainError | null = null;
+    for (let request = 0; request < 20 && refusal === null; request += 1) {
+      const started = await published.startMagicLinkLogin({ email: "operator@example.com" });
+      if (!started.ok) refusal = started.error;
+    }
+    expect(refusal?.code).toBe("RATE_LIMITED");
+
+    // AND THE PERFORMERS THAT STILL HAVE NO PUBLISHED METHOD — ON EITHER CONTRACT.
+    // This guard once listed `acceptInvitation` against identity-access alone, and
+    // it went on passing after the method was published on TENANCY: a guard scoped
+    // to one contract cannot see a performer that moved to another. So both
+    // published surfaces are read off real service objects.
+    const tenancyMethods = publishedMethods(createTenancyService(createTenancyFixture().dependencies));
+    for (const performer of ["verifyMfaForSession", "beginTotpEnrolment"]) {
+      expect(methods, `${performer} is now published — revisit the MFA_VERIFY finding`).not.toContain(performer);
+      expect(tenancyMethods, `${performer} is now published — revisit the MFA_VERIFY finding`).not.toContain(performer);
     }
   });
+
+  it("INVITE_ACCEPT: `acceptInvitation` IS published, on tenancy, and its route spends the budget before tenancy sees a token", async () => {
+    // THE FINDING, WITHDRAWN FOR INVITE_ACCEPT BY MEASUREMENT. The method is
+    // tenancy's, not identity-access's — which is exactly where the guard above
+    // used not to look.
+    const tenancy = createTenancyService(createTenancyFixture().dependencies);
+    expect(publishedMethods(tenancy)).toContain("acceptInvitation");
+    expect(publishedMethods(createIdentityAccessService(testPorts()))).not.toContain("acceptInvitation");
+
+    // THE ROUTE, against the REAL limiter behind identity-access's published
+    // `consumeRateLimit` and the REAL tenancy use case. Only authentication is
+    // stood in for, because no session exists in memory to authenticate.
+    let reached = 0;
+    let actor = "operator-guessing-tokens";
+    const identityAccess: IdentityAccessContract = {
+      ...createIdentityAccessService(testPorts()),
+      authenticateOperator: () =>
+        Promise.resolve(
+          ok({
+            sessionId: "session-1",
+            actorUserId: actor,
+            effectiveUserId: actor,
+            email: "guesser@example.com",
+            expiresAt: new Date("2030-01-01T00:00:00.000Z"),
+            mfaVerifiedAt: null,
+            impersonating: null,
+          }),
+        ),
+    };
+    const controller = new InvitationsController({
+      app: {
+        contexts: {
+          identityAccess,
+          tenancy: {
+            ...tenancy,
+            acceptInvitation: (request: Parameters<typeof tenancy.acceptInvitation>[0]) => {
+              reached += 1;
+              return tenancy.acceptInvitation(request);
+            },
+          },
+        },
+      } as unknown as AppModule,
+    });
+    const present = async (): Promise<string> => {
+      const thrown = await controller.accept({ headers: {} }, { token: "plt_inv_a-guess" }).catch((error: unknown) => error);
+      return domainErrorOf(thrown)?.code ?? "(accepted)";
+    };
+
+    let admitted = 0;
+    let refusal: string | null = null;
+    for (let request = 0; request < 21 && refusal === null; request += 1) {
+      const code = await present();
+      if (code === "RATE_LIMITED") refusal = code;
+      else admitted += 1;
+    }
+    expect(refusal, "INVITE_ACCEPT must refuse a guesser within twenty-one requests").toBe("RATE_LIMITED");
+    expect(admitted).toBeGreaterThan(0);
+    // SPENT FIRST: every request tenancy saw was an admitted one, and the refused
+    // request never reached the token lookup.
+    expect(reached).toBe(admitted);
+
+    // THE BUCKET IS THE ACTOR: another human is not refused by this one's guesses.
+    actor = "a-different-operator";
+    expect(await present()).not.toBe("RATE_LIMITED");
+    expect(reached).toBe(admitted + 1);
+  });
+
+  it("INVITE_ACCEPT is keyed on the ACTOR, not the impersonated account: the impersonator's guesses exhaust the impersonator's bucket and nobody else's", async () => {
+    // A RULE THIS TRANSPORT CHOSE (see invitations.controller.ts's banner): the
+    // oracle took a caller-supplied `rateLimitIdentifier`. An impersonating session
+    // has two users, and exactly one of them is the human sending the guesses.
+    const tenancy = createTenancyService(createTenancyFixture().dependencies);
+    const session = { actor: "support-engineer", effective: "support-engineer" };
+    const identityAccess: IdentityAccessContract = {
+      ...createIdentityAccessService(testPorts()),
+      authenticateOperator: () =>
+        Promise.resolve(
+          ok({
+            sessionId: `session-${session.actor}-as-${session.effective}`,
+            actorUserId: session.actor,
+            effectiveUserId: session.effective,
+            email: "guesser@example.com",
+            expiresAt: new Date("2030-01-01T00:00:00.000Z"),
+            mfaVerifiedAt: null,
+            impersonating: null,
+          }),
+        ),
+    };
+    const controller = new InvitationsController({
+      app: { contexts: { identityAccess, tenancy } } as unknown as AppModule,
+    });
+    const present = async (actor: string, effective: string): Promise<string> => {
+      session.actor = actor;
+      session.effective = effective;
+      const thrown = await controller.accept({ headers: {} }, { token: "plt_inv_a-guess" }).catch((error: unknown) => error);
+      return domainErrorOf(thrown)?.code ?? "(accepted)";
+    };
+
+    // THE SUPPORT ENGINEER, IMPERSONATING A CUSTOMER, GUESSES UNTIL REFUSED.
+    let refused = false;
+    for (let request = 0; request < 21 && !refused; request += 1) {
+      refused = (await present("support-engineer", "customer")) === "RATE_LIMITED";
+    }
+    expect(refused, "the impersonating session must be refused within twenty-one requests").toBe(true);
+
+    // THE CUSTOMER'S OWN SESSION IS NOT REFUSED: their account was the effective
+    // user of every guess, and none of those guesses spent their budget.
+    expect(await present("customer", "customer")).not.toBe("RATE_LIMITED");
+    // THE ENGINEER IS STILL REFUSED impersonating somebody else, and signed in as
+    // themselves: the budget spent was theirs, whichever account they wore.
+    expect(await present("support-engineer", "another-customer")).toBe("RATE_LIMITED");
+    expect(await present("support-engineer", "support-engineer")).toBe("RATE_LIMITED");
+  });
 });
+
+/** The method names a real service object publishes, sorted. */
+function publishedMethods(service: object): readonly string[] {
+  return Object.keys(service)
+    .filter((key) => typeof (service as Record<string, unknown>)[key] === "function")
+    .sort();
+}

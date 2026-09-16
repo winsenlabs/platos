@@ -19,6 +19,7 @@ import { T0 } from "../domain/testing.js";
 import {
   DEFAULT_POLICIES,
   identityStoreUnavailable,
+  magicLinkDeliveryUnavailable,
   prefixOf,
   recordRequest,
   type RateLimitBucket,
@@ -32,6 +33,7 @@ import {
   type InMemoryIdentityAccessRepository,
   type InMemoryState,
 } from "./in-memory-repository.js";
+import type { MagicLinkDelivery, MagicLinkMessage } from "./ports/index.js";
 import type { RateLimitConsumption, RateLimiter, SecretHasher } from "./ports/index.js";
 import type { MfaSecretCipher, TokenMinter, TotpCodeVerifier } from "./ports/index.js";
 import {
@@ -166,6 +168,37 @@ export function fakeRateLimiter(): FakeRateLimiter {
   };
 }
 
+/**
+ * D20 — a delivery port that keeps every message it was handed.
+ *
+ * It is the ONLY place a test can read a magic-link token back, which is the
+ * point: the use case returns none. `refuse()` makes the next deliveries fail the
+ * way an unreachable relay does, with a code of its own.
+ */
+export interface RecordingMagicLinkDelivery extends MagicLinkDelivery {
+  readonly delivered: MagicLinkMessage[];
+  refuse(): void;
+}
+
+export function recordingMagicLinkDelivery(): RecordingMagicLinkDelivery {
+  const delivered: MagicLinkMessage[] = [];
+  let refusing = false;
+  return {
+    delivered,
+    refuse: () => {
+      refusing = true;
+    },
+    async deliverMagicLink(message) {
+      // A REAL code, not one minted for the double: `error-taxonomy.mjs` holds this
+      // file to the taxonomy, and a code only a fake answers with is a code
+      // nothing serves. The use case wraps whatever the port says as the `cause`.
+      if (refusing) return err(magicLinkDeliveryUnavailable());
+      delivered.push(message);
+      return ok(undefined);
+    },
+  };
+}
+
 export interface RecordingSafetySink extends SafetyEventSink {
   readonly observations: SafetyObservation[];
 }
@@ -193,6 +226,7 @@ export interface TestPorts extends IdentityAccessPorts {
   readonly rateLimiter: FakeRateLimiter;
   readonly clock: MutableClock;
   readonly safety: RecordingSafetySink;
+  readonly magicLinks: RecordingMagicLinkDelivery;
 }
 
 /** One line of arrangement for a use case: seed the state, get the ports. */
@@ -212,6 +246,7 @@ export function testPorts(seed: Partial<InMemoryState> = {}): TestPorts {
     ids: sequentialIdGenerator(),
     safety: recordingSafetySink(),
     logger: silentLogger(),
+    magicLinks: recordingMagicLinkDelivery(),
   };
 }
 

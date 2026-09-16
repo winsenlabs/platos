@@ -358,10 +358,19 @@ export class EntityMcpDiscoveryService {
           resolvedHeaders,
           transportKind: transport,
         });
-        const listed = await sdkClient.listTools(
-          {},
-          { timeout: env.MCP_DISCOVERY_TIMEOUT_MS ?? 15_000 },
-        );
+        let listed: Awaited<ReturnType<typeof sdkClient.listTools>>;
+        try {
+          listed = await sdkClient.listTools(
+            {},
+            { timeout: env.MCP_DISCOVERY_TIMEOUT_MS ?? 15_000 },
+          );
+        } catch (listError) {
+          // WIN-269 — same eviction as the executor's call path: a failed
+          // enumeration must not leave a dead session pooled for the next call,
+          // and a timed-out or refused one must not close a live session.
+          this.pool.evictAfterFailure(sdkClient, listError);
+          throw listError;
+        }
         const raw = listed?.tools ?? [];
         // CONTACTED, and `tools` may legitimately be empty: a server that
         // publishes nothing has ANSWERED, and the prune that follows is the

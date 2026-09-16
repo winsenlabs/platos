@@ -476,7 +476,18 @@ test("the census is not vacuous — it reads the real suites", () => {
   // The split is the tranche's own shape: the rules are provable with no database
   // and the claims about concurrency, a `@db.Uuid` column and a digest CHECK
   // constraint can only be made where the real client is. 562 + 2 = 564.
-  assert.equal(live.totalFiles, 564);
+  // 564 -> 574 ON THE INTEGRATED TREE, and the two lanes moved it by the same
+  // amount for different reasons: the identity/tenancy REST remainder's five
+  // (notifier-email's 2, identity-access's 1, tenancy's 2) and WIN-271 (M4.5),
+  // D10's five suites in the new `packages/adapters/channel-discord` directory.
+  // Each lane read 569 against a tree without the other. 564 + 5 + 5 = 574.
+  //
+  // AND 574 -> 575, the ONE file this integration round adds:
+  // `packages/contexts/tools/adapters/mcp-session-failure.integration.test.ts`.
+  // It is here because of the 500-line budget and not because of a new subject --
+  // the pool-eviction cases were written into `dispatch.integration.test.ts` and
+  // took it past the threshold.
+  assert.equal(live.totalFiles, 575);
   // The sum is written out beside the literal so a file that vanished while
   // governance's 31, the prerequisite's 4, the adapter's 17 and conversations'
   // 29 arrived cannot reach the same total. Each dimension appends its own
@@ -496,7 +507,7 @@ test("the census is not vacuous — it reads the real suites", () => {
   // TRAILING term here and not an in-place edit of the `tools` file term further in,
   // because the 88 at the head of this sum does not carry `packages/contexts/tools`
   // — that package is its own term, and the two suites are NEW FILES in it.
-  assert.equal(live.totalFiles, /* WIN-268 stage 3 lifecycle suites, one per term */ (1 + 1) + /* WIN-268 stage 2 tools/adapters */ 2 + /* WIN-268 P1 mint suite */ 1 + 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 + 3 + 6 + 3 + 1 + 1 + 2 + 1 + 2 + 6 + 2 + 1 + 3 + 1 + 3 + 1 + 2 + 1 + 1 + 1 + 2 + 7 + 3 + 2 + 3 + 1 + /* WIN-271 channel-slack adoption */ 5 + /* WIN-271 channels delivery rule */ 1 + /* WIN-272 redis-streams adoption */ 3 + /* WIN-272 kernel stream envelope */ 1);
+  assert.equal(live.totalFiles, /* WIN-268 stage 3 lifecycle suites, one per term */ (1 + 1) + /* WIN-268 stage 2 tools/adapters */ 2 + /* WIN-268 P1 mint suite */ 1 + 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 + 3 + 6 + 3 + 1 + 1 + 2 + 1 + 2 + 6 + 2 + 1 + 3 + 1 + 3 + 1 + 2 + 1 + 1 + 1 + 2 + 7 + 3 + 2 + 3 + 1 + /* WIN-271 channel-slack adoption */ 5 + /* WIN-271 D10 channel-discord adoption */ 5 + /* WIN-271 channels delivery rule */ 1 + /* WIN-272 redis-streams adoption */ 3 + /* WIN-272 kernel stream envelope */ 1 + /* 2026-09-15 notifier-email 2, identity-access 1, tenancy 2 */ 5 + /* the pool-eviction fix's own suite, out of dispatch.integration.test.ts because of the 500-line budget */ 1);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -697,8 +708,12 @@ test("the pinned rows sum to the pinned runtime total", () => {
   // CONTEXTS term.
   // WIN-268 (M4.2) stage 3 562 -> 564: the two lifecycle suites, one on the
   // ADAPTERS term and one on the CONTEXTS term.
-  assert.equal(files, 564);
-  assert.equal(files, /* WIN-268 stage 3 lifecycle suites, one per term */ (1 + 1) + /* WIN-268 P1 mint suite */ 1 + 503 + 6 + 12 + 5 + (2 + 1 + 1) + (1 + 2) + 7 + 3 + 2 + 3 + 1 + /* WIN-271 */ (5 + 1) + /* WIN-272 */ (3 + 1) + /* WIN-268 stage 2 tools/adapters */ 2);
+  // 574 -> 575: the pool-eviction fix's own suite, itemised on the case above.
+  // 564 -> 574 integrated, the same two fives: the REST remainder's on the CONTEXTS
+  // and ADAPTERS terms, and WIN-271 (M4.5), D10's on ADAPTERS alone (none on
+  // CONTEXTS, which is the clause that directory evidences).
+  assert.equal(files, 575);
+  assert.equal(files, /* WIN-268 stage 3 lifecycle suites, one per term */ (1 + 1) + /* WIN-268 P1 mint suite */ 1 + 503 + 6 + 12 + 5 + (2 + 1 + 1) + (1 + 2) + 7 + 3 + 2 + 3 + 1 + /* WIN-271 */ (5 + 1) + /* WIN-272 */ (3 + 1) + /* WIN-268 stage 2 tools/adapters */ 2 + /* 2026-09-15 notifier-email 2, identity-access 1, tenancy 2 */ 5 + /* WIN-271 D10 channel-discord */ 5 + /* the pool-eviction fix's own suite, out of dispatch.integration.test.ts because of the 500-line budget */ 1);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -734,13 +749,21 @@ test("the split the 2026-09-02 verification reproduced is pinned per package", (
   // refusal-code cases underneath it. The terms are kept rather than the total
   // adjusted, so a tranche that removed the session-cookie suite while this
   // landed could not reach the same number.
-  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 355, "231 at 3ed8f3ce, +25 contract suite, +28 end-user read, +34 session cookie, +6 server-side sign-out, +15 WIN-268 P1 bearer-credential mint, +16 WIN-268 stage 3 bearer-credential listing and revocation");
+  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 368, "231 at 3ed8f3ce, +25 contract suite, +28 end-user read, +34 session cookie, +6 server-side sign-out, +15 WIN-268 P1 bearer-credential mint, +16 WIN-268 stage 3 bearer-credential listing and revocation, +11 the 2026-09-15 magic-link facade and D3 re-recording, +2 D-COOKIE's configured base name and prefix-smuggling refusal");
   assert.equal(
     EXPECTED["packages/contexts/identity-access"].cases,
+    // 2026-09-15 appends `+ 11`: five in the new magic-link facade suite, the
+    // rest in suites that already existed (see the row in the census source).
     // WIN-268 (M4.2) stage 3 appends `+ 14`: the LISTING and REVOCATION rules,
     // a NEW suite beside the mint's, so it is a term of its own here rather than
     // a widening of any number above it.
-    231 + 25 + 28 + 34 + 6 + 15 + 16,
+    // D-COOKIE appends `+ 2`: a deployable's configured base name and SameSite mode
+    // carried onto the shape while the `__Host-` prefix is still decided by TLS
+    // alone, and a configured base name that already smuggles the prefix refused on
+    // a plain-HTTP shape. Both in `domain/session-cookie.test.ts`, the suite the
+    // `+ 34` term above already counts, so this is a term of its own rather than a
+    // widening of that one.
+    231 + 25 + 28 + 34 + 6 + 15 + 16 + 11 + 2,
   );
   // WIN-259 (M2.4) 162 -> 209. `secrets` was one of the five asserted UNMOVED
   // above and it moves now, so the reasons are stated rather than the number
@@ -780,7 +803,7 @@ test("the split the 2026-09-02 verification reproduced is pinned per package", (
     23,
     "16 before WIN-259, +3 lifecycle (sweep, legacy-envelope domain, migration use case), +4 projection (write-only, denied-read, and the reference's two)",
   );
-  assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 207, "146 at 3ed8f3ce, +29 creation suites, +31 read models, +1 the project-order fix");
+  assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 223, "146 at 3ed8f3ce, +29 creation suites, +31 read models, +1 the project-order fix, +16 the 2026-09-15 D1 gate and the two ported read models");
   assert.equal(EXPECTED["packages/contexts/files"].cases, 134);
   assert.equal(EXPECTED["packages/contexts/files"].files, 15, "the file count did NOT move; the case count did");
   // The WIN-256 `eventing` context. Pinned beside the five above so a suite
@@ -896,7 +919,7 @@ test("the providers context is pinned at what vitest prints", () => {
   // 362 -> 366 in a suite that already existed. All four are the `DispatchTarget`
   // transport gap, which only became visible when somebody tried to write the
   // adapter the port exists for.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + 4 + 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + 4 + 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-271 D10 channel-discord adoption, 106 + the 4 verifier round 2 forced */ 110 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34 + /* 2026-09-15 identity/tenancy REST remainder: notifier-email 14, identity-access 11, tenancy 16, postgres-tenancy 1 */ 42 + /* 2026-09-16 the same remainder, verifier round: notifier-email 4 (the deadline over connect and handshake, required TLS refused and turned off), postgres-tenancy 1 (the directory reads displayName) */ 5 + /* WIN-268 SDK 1.30.x candidate: nine dispatch cases asked of both SDK server builds, four sse cases, one lockfile join, one loaded-module identity join */ 15 + /* D-COOKIE: a configured base name and SameSite mode carried onto the shape while TLS alone decides the prefix, and a base name smuggling the prefix refused on a plain-HTTP shape */ 2 + /* WIN-269 (M4.3): the operator-gate pair for ToolsContract.recordToolHealth, in a file that already existed. The lane's twenty-seven real-database cases are in apps/core-api, which is outside PACKAGE_ROOTS. */ 2 + /* the pool-eviction fix: a sibling call surviving another tool's timeout, the absent second initialize, the transport that really died, and the classification itself */ 4);
 });
 
 test("the skills adoption is pinned, and moved nothing else", () => {
@@ -951,7 +974,9 @@ test("the skills adoption is pinned, and moved nothing else", () => {
     // REVOCATION suite, itemised on that package's row in the census source.
     // WIN-268 (M4.2) P1 324 -> 339: the bearer-credential mint suite, itemised
     // on the row in `test-case-census.mjs`.
-    "packages/contexts/identity-access": 355,
+    // 2026-09-15 355 -> 366: D3 and D20, itemised on the row in the census source.
+    // D-COOKIE 366 -> 368, in the same suite: itemised on that row too.
+    "packages/contexts/identity-access": 368,
     // WIN-259 (M2.4) 162 -> 215. `secrets` STOPS being untouched here too:
     // `sweep-root-key-reencryption.test.ts` adds sixteen cases for rotation as
     // a job, and the legacy-envelope migration adds thirty-seven more across its
@@ -959,7 +984,8 @@ test("the skills adoption is pinned, and moved nothing else", () => {
     // for the reason the `providers` row above is.
     // M2 INTEGRATION: 162 + 53 (lifecycle) + 78 (projection) = 293.
     "packages/contexts/secrets": 293,
-    "packages/contexts/tenancy": 207,
+    // 2026-09-15 207 -> 223: D1 and the two ported read models, itemised on the row.
+    "packages/contexts/tenancy": 223,
     "packages/contexts/files": 134,
     // WIN-259 (M2.4) 375 -> 383. `providers` STOPS being untouched here:
     // `probe-cache-eviction.test.ts` adds eight cases for the cached provider
@@ -1022,6 +1048,9 @@ test("the skills adoption is pinned, and moved nothing else", () => {
   // above now carries at 239, so they are already inside `sum` for the same
   // reason the first pass's were.
   assert.equal(
+    // The SDK 1.30.x candidate moves the same `tools` term 400 -> 415 IN PLACE: the
+    // fifteen cases are in `adapters/dispatch.integration.test.ts`, a file the
+    // package already had, so nothing is appended and no file count moves.
     // WIN-259 (M2.4) appends `+ 67 + 5`: the new keyring-envelope row and the
     // five postgres cases. Its EIGHT providers cases and its FORTY-SEVEN
     // `secrets` cases are NOT appended here — both are already inside `sum`,
@@ -1069,7 +1098,11 @@ test("the skills adoption is pinned, and moved nothing else", () => {
     // one: `untouched` carries CONTEXT rows, so `identity-access`'s own 14 is
     // already inside `sum` and only the ADAPTER's 10 belongs here. Adding either
     // twice is the exact mistake this re-derivation exists to make visible.
-    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 400 + 269 + 610 + 198 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 1 + 1 + 71 + 12 + 5 + 8 + 5 + 9 + 40 + 25 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 3 credential lifecycle over a real database, 10 written + 2 the mutation sweep forced */ 12,
+    // WIN-269 (M4.3) moves the `tools` term 415 -> 417 IN PLACE, and it is an
+    // in-place move for the reason the three before it were: the term is the whole
+    // package, the two cases went into a suite that already existed, and the one
+    // NEW file the lane adds to that package declares no case at all.
+    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 421 + 269 + 610 + 198 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 1 + 1 + 71 + 12 + 5 + 8 + 5 + 9 + 40 + 25 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-271 D10 channel-discord adoption, 106 + the 4 verifier round 2 forced */ 110 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 3 credential lifecycle over a real database, 10 written + 2 the mutation sweep forced */ 12 + /* 2026-09-15: notifier-email 14 and postgres-tenancy 1 are new trailing terms; identity-access +11 and tenancy +16 ride inside sum */ 15 + /* 2026-09-16: notifier-email +4 and postgres-tenancy +1, the same two trailing adapter terms grown */ 5,
     EXPECTED_RUNTIME_TOTAL,
   );
 });
@@ -1106,7 +1139,7 @@ test("the memory context is pinned at what vitest prints", () => {
   // alone; here the identity only closes with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/memory"].files, 28);
   assert.equal(EXPECTED["packages/contexts/memory"].cases, 605);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-271 D10 channel-discord adoption, 106 + the 4 verifier round 2 forced */ 110 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34 + /* 2026-09-15 identity/tenancy REST remainder: notifier-email 14, identity-access 11, tenancy 16, postgres-tenancy 1 */ 42 + /* 2026-09-16 the same remainder, verifier round: notifier-email 4 (the deadline over connect and handshake, required TLS refused and turned off), postgres-tenancy 1 (the directory reads displayName) */ 5 + /* WIN-268 SDK 1.30.x candidate: nine dispatch cases asked of both SDK server builds, four sse cases, one lockfile join, one loaded-module identity join */ 15 + /* D-COOKIE: a configured base name and SameSite mode carried onto the shape while TLS alone decides the prefix, and a base name smuggling the prefix refused on a plain-HTTP shape */ 2 + /* WIN-269 (M4.3): the operator-gate pair for ToolsContract.recordToolHealth, in a file that already existed. The lane's twenty-seven real-database cases are in apps/core-api, which is outside PACKAGE_ROOTS. */ 2 + /* the pool-eviction fix: a sibling call surviving another tool's timeout, the absent second initialize, the transport that really died, and the classification itself */ 4);
 });
 
 test("the cost-monitoring context is pinned at what vitest prints", () => {
@@ -1136,7 +1169,7 @@ test("the cost-monitoring context is pinned at what vitest prints", () => {
   // with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].files, 21);
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].cases, 352);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-271 D10 channel-discord adoption, 106 + the 4 verifier round 2 forced */ 110 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34 + /* 2026-09-15 identity/tenancy REST remainder: notifier-email 14, identity-access 11, tenancy 16, postgres-tenancy 1 */ 42 + /* 2026-09-16 the same remainder, verifier round: notifier-email 4 (the deadline over connect and handshake, required TLS refused and turned off), postgres-tenancy 1 (the directory reads displayName) */ 5 + /* WIN-268 SDK 1.30.x candidate: nine dispatch cases asked of both SDK server builds, four sse cases, one lockfile join, one loaded-module identity join */ 15 + /* D-COOKIE: a configured base name and SameSite mode carried onto the shape while TLS alone decides the prefix, and a base name smuggling the prefix refused on a plain-HTTP shape */ 2 + /* WIN-269 (M4.3): the operator-gate pair for ToolsContract.recordToolHealth, in a file that already existed. The lane's twenty-seven real-database cases are in apps/core-api, which is outside PACKAGE_ROOTS. */ 2 + /* the pool-eviction fix: a sibling call surviving another tool's timeout, the absent second initialize, the transport that really died, and the classification itself */ 4);
 });
 
 test("the privacy context is pinned at what vitest prints", () => {
@@ -1174,7 +1207,7 @@ test("the privacy context is pinned at what vitest prints", () => {
   // observability's 288 and agents' 515 included.
   assert.equal(EXPECTED["packages/contexts/privacy"].cases, 240 + 12 + 2);
   assert.equal(EXPECTED["packages/contexts/privacy"].files, 15, "the file count did NOT move; the case count did");
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-271 D10 channel-discord adoption, 106 + the 4 verifier round 2 forced */ 110 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34 + /* 2026-09-15 identity/tenancy REST remainder: notifier-email 14, identity-access 11, tenancy 16, postgres-tenancy 1 */ 42 + /* 2026-09-16 the same remainder, verifier round: notifier-email 4 (the deadline over connect and handshake, required TLS refused and turned off), postgres-tenancy 1 (the directory reads displayName) */ 5 + /* WIN-268 SDK 1.30.x candidate: nine dispatch cases asked of both SDK server builds, four sse cases, one lockfile join, one loaded-module identity join */ 15 + /* D-COOKIE: a configured base name and SameSite mode carried onto the shape while TLS alone decides the prefix, and a base name smuggling the prefix refused on a plain-HTTP shape */ 2 + /* WIN-269 (M4.3): the operator-gate pair for ToolsContract.recordToolHealth, in a file that already existed. The lane's twenty-seven real-database cases are in apps/core-api, which is outside PACKAGE_ROOTS. */ 2 + /* the pool-eviction fix: a sibling call surviving another tool's timeout, the absent second initialize, the transport that really died, and the classification itself */ 4);
 });
 
 test("the observability context is pinned at what vitest prints", () => {
@@ -1207,7 +1240,7 @@ test("the observability context is pinned at what vitest prints", () => {
   // agents' 515 included.
   assert.equal(EXPECTED["packages/contexts/observability"].files, 15);
   assert.equal(EXPECTED["packages/contexts/observability"].cases, 281 + 6 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-271 D10 channel-discord adoption, 106 + the 4 verifier round 2 forced */ 110 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34 + /* 2026-09-15 identity/tenancy REST remainder: notifier-email 14, identity-access 11, tenancy 16, postgres-tenancy 1 */ 42 + /* 2026-09-16 the same remainder, verifier round: notifier-email 4 (the deadline over connect and handshake, required TLS refused and turned off), postgres-tenancy 1 (the directory reads displayName) */ 5 + /* WIN-268 SDK 1.30.x candidate: nine dispatch cases asked of both SDK server builds, four sse cases, one lockfile join, one loaded-module identity join */ 15 + /* D-COOKIE: a configured base name and SameSite mode carried onto the shape while TLS alone decides the prefix, and a base name smuggling the prefix refused on a plain-HTTP shape */ 2 + /* WIN-269 (M4.3): the operator-gate pair for ToolsContract.recordToolHealth, in a file that already existed. The lane's twenty-seven real-database cases are in apps/core-api, which is outside PACKAGE_ROOTS. */ 2 + /* the pool-eviction fix: a sibling call surviving another tool's timeout, the absent second initialize, the transport that really died, and the classification itself */ 4);
 });
 
 test("the agents context is pinned at what vitest prints", () => {
@@ -1250,7 +1283,7 @@ test("the agents context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/agents"].files, 25);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 515);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 513 + 4 - 3 - 1 + 2);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-271 D10 channel-discord adoption, 106 + the 4 verifier round 2 forced */ 110 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34 + /* 2026-09-15 identity/tenancy REST remainder: notifier-email 14, identity-access 11, tenancy 16, postgres-tenancy 1 */ 42 + /* 2026-09-16 the same remainder, verifier round: notifier-email 4 (the deadline over connect and handshake, required TLS refused and turned off), postgres-tenancy 1 (the directory reads displayName) */ 5 + /* WIN-268 SDK 1.30.x candidate: nine dispatch cases asked of both SDK server builds, four sse cases, one lockfile join, one loaded-module identity join */ 15 + /* D-COOKIE: a configured base name and SameSite mode carried onto the shape while TLS alone decides the prefix, and a base name smuggling the prefix refused on a plain-HTTP shape */ 2 + /* WIN-269 (M4.3): the operator-gate pair for ToolsContract.recordToolHealth, in a file that already existed. The lane's twenty-seven real-database cases are in apps/core-api, which is outside PACKAGE_ROOTS. */ 2 + /* the pool-eviction fix: a sibling call surviving another tool's timeout, the absent second initialize, the transport that really died, and the classification itself */ 4);
 });
 
 test("the tools context is pinned at what vitest prints", () => {
@@ -1291,10 +1324,33 @@ test("the tools context is pinned at what vitest prints", () => {
   // against FIPS 180-4 and the sibling implementation's own vectors, and the
   // twenty-six dispatch cases against real sockets, the MCP SDK's own server on the
   // far side. 366 + 8 + 26 = 400.
-  assert.equal(EXPECTED["packages/contexts/tools"].files, 21);
-  assert.equal(EXPECTED["packages/contexts/tools"].cases, 400);
-  assert.equal(EXPECTED["packages/contexts/tools"].cases, 325 + 29 + 6 + 2 + 4 + 8 + 26);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
+  assert.equal(EXPECTED["packages/contexts/tools"].files, 22);
+  // A SIXTH WAVE, AND IT MOVES NO FILE AGAIN (M4.3, the `/tools/sync` reconnect
+  // transport). 415 -> 417: the two operator-gate cases for
+  // `ToolsContract.recordToolHealth`, written out one by one beside their siblings
+  // because that file's own note says a loop would declare the same assertions in
+  // four lines and this census could not count them.
+  // `application/record-tool-health.ts` is a NEW FILE that adds NO case here, and
+  // that is the honest reading rather than an omission: its behaviour — the fold
+  // that leaves the call counters alone, the forged grant, the genuine grant for
+  // another project, the unknown tool name it skips and reports — is proved against
+  // a REAL PostgreSQL in
+  // `apps/core-api/src/composition/tool-sync-writers.integration.test.ts`, and
+  // `apps/core-api` is outside `PACKAGE_ROOTS`. The file count is unmoved at 21
+  // because `EXPECTED.files` counts case-declaring files, and that one declares
+  // none.
+  // 325 + 29 + 6 + 2 + 4 + 8 + 26 + 9 + 4 + 2 + 2 = 417.
+  // WIN-268 (M4.2), the SDK 1.30.x candidate: 400 -> 415 in the SAME dispatch
+  // suite, files unmoved — nine cases that had the SDK's own server on the far side
+  // are asked of the adopted 1.26.0 server AND the aliased 1.30.0 candidate (+9),
+  // four new cases put both builds' legacy `SSEServerTransport` behind the `sse`
+  // client (+4), one joins the two installed versions to the lockfile (+1), and one
+  // — added after a verifier repointed the candidate imports at the adopted SDK and
+  // every version assertion stayed green — requires the two LOADED module graphs to
+  // be different objects, each resolved inside its own version's store (+1).
+  assert.equal(EXPECTED["packages/contexts/tools"].cases, 421);
+  assert.equal(EXPECTED["packages/contexts/tools"].cases, 325 + 29 + 6 + 2 + 4 + 8 + 26 + 9 + 4 + 2 + 2 + 4);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-271 D10 channel-discord adoption, 106 + the 4 verifier round 2 forced */ 110 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34 + /* 2026-09-15 identity/tenancy REST remainder: notifier-email 14, identity-access 11, tenancy 16, postgres-tenancy 1 */ 42 + /* 2026-09-16 the same remainder, verifier round: notifier-email 4 (the deadline over connect and handshake, required TLS refused and turned off), postgres-tenancy 1 (the directory reads displayName) */ 5 + /* WIN-268 SDK 1.30.x candidate: nine dispatch cases asked of both SDK server builds, four sse cases, one lockfile join, one loaded-module identity join */ 15 + /* D-COOKIE: a configured base name and SameSite mode carried onto the shape while TLS alone decides the prefix, and a base name smuggling the prefix refused on a plain-HTTP shape */ 2 + /* WIN-269 (M4.3): the operator-gate pair for ToolsContract.recordToolHealth, in a file that already existed. The lane's twenty-seven real-database cases are in apps/core-api, which is outside PACKAGE_ROOTS. */ 2 + /* the pool-eviction fix: a sibling call surviving another tool's timeout, the absent second initialize, the transport that really died, and the classification itself */ 4);
 });
 
 test("the channels context is pinned at what vitest prints", () => {
@@ -1342,7 +1398,7 @@ test("the channels context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/channels"].files, 16);
   assert.equal(EXPECTED["packages/contexts/channels"].cases, 274);
   assert.equal(EXPECTED["packages/contexts/channels"].cases, 263 + 4 + 1 + 1 + 5);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-271 D10 channel-discord adoption, 106 + the 4 verifier round 2 forced */ 110 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34 + /* 2026-09-15 identity/tenancy REST remainder: notifier-email 14, identity-access 11, tenancy 16, postgres-tenancy 1 */ 42 + /* 2026-09-16 the same remainder, verifier round: notifier-email 4 (the deadline over connect and handshake, required TLS refused and turned off), postgres-tenancy 1 (the directory reads displayName) */ 5 + /* WIN-268 SDK 1.30.x candidate: nine dispatch cases asked of both SDK server builds, four sse cases, one lockfile join, one loaded-module identity join */ 15 + /* D-COOKIE: a configured base name and SameSite mode carried onto the shape while TLS alone decides the prefix, and a base name smuggling the prefix refused on a plain-HTTP shape */ 2 + /* WIN-269 (M4.3): the operator-gate pair for ToolsContract.recordToolHealth, in a file that already existed. The lane's twenty-seven real-database cases are in apps/core-api, which is outside PACKAGE_ROOTS. */ 2 + /* the pool-eviction fix: a sibling call surviving another tool's timeout, the absent second initialize, the transport that really died, and the classification itself */ 4);
 });
 
 test("the governance context is pinned at what vitest prints", () => {
@@ -1373,7 +1429,7 @@ test("the governance context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/governance"].files, 31);
   assert.equal(EXPECTED["packages/contexts/governance"].cases, 610);
   assert.equal(EXPECTED["packages/contexts/governance"].cases, 586 + 1 + 22 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-271 D10 channel-discord adoption, 106 + the 4 verifier round 2 forced */ 110 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34 + /* 2026-09-15 identity/tenancy REST remainder: notifier-email 14, identity-access 11, tenancy 16, postgres-tenancy 1 */ 42 + /* 2026-09-16 the same remainder, verifier round: notifier-email 4 (the deadline over connect and handshake, required TLS refused and turned off), postgres-tenancy 1 (the directory reads displayName) */ 5 + /* WIN-268 SDK 1.30.x candidate: nine dispatch cases asked of both SDK server builds, four sse cases, one lockfile join, one loaded-module identity join */ 15 + /* D-COOKIE: a configured base name and SameSite mode carried onto the shape while TLS alone decides the prefix, and a base name smuggling the prefix refused on a plain-HTTP shape */ 2 + /* WIN-269 (M4.3): the operator-gate pair for ToolsContract.recordToolHealth, in a file that already existed. The lane's twenty-seven real-database cases are in apps/core-api, which is outside PACKAGE_ROOTS. */ 2 + /* the pool-eviction fix: a sibling call surviving another tool's timeout, the absent second initialize, the transport that really died, and the classification itself */ 4);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)
@@ -1399,7 +1455,7 @@ test("the model-router adapter is pinned at what vitest prints", () => {
   // caught it at 5525 against an actual 5875.
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].files, 15);
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].cases, 198);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-271 D10 channel-discord adoption, 106 + the 4 verifier round 2 forced */ 110 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34 + /* 2026-09-15 identity/tenancy REST remainder: notifier-email 14, identity-access 11, tenancy 16, postgres-tenancy 1 */ 42 + /* 2026-09-16 the same remainder, verifier round: notifier-email 4 (the deadline over connect and handshake, required TLS refused and turned off), postgres-tenancy 1 (the directory reads displayName) */ 5 + /* WIN-268 SDK 1.30.x candidate: nine dispatch cases asked of both SDK server builds, four sse cases, one lockfile join, one loaded-module identity join */ 15 + /* D-COOKIE: a configured base name and SameSite mode carried onto the shape while TLS alone decides the prefix, and a base name smuggling the prefix refused on a plain-HTTP shape */ 2 + /* WIN-269 (M4.3): the operator-gate pair for ToolsContract.recordToolHealth, in a file that already existed. The lane's twenty-seven real-database cases are in apps/core-api, which is outside PACKAGE_ROOTS. */ 2 + /* the pool-eviction fix: a sibling call surviving another tool's timeout, the absent second initialize, the transport that really died, and the classification itself */ 4);
 });
 
 test("the WIN-257 identity-access contract suite is pinned at what vitest prints", () => {
@@ -1407,12 +1463,13 @@ test("the WIN-257 identity-access contract suite is pinned at what vitest prints
   // 256 cases on v1; on this tree the same package is at 23 and 318, because the
   // later tranches land in it too. The +87 is what conserves.
   // WIN-268 (M4.2) P1 23 -> 24: `application/mint-bearer-credential.test.ts`.
-  assert.equal(EXPECTED["packages/contexts/identity-access"].files, 25);
+  // 2026-09-15 25 -> 26: `application/identity-access-service.magic-link.test.ts`.
+  assert.equal(EXPECTED["packages/contexts/identity-access"].files, 26);
   // WIN-267 W3 318 -> 324, and the FILE count deliberately does not move: both
   // suites the six cases land in already existed.
   // WIN-268 P1 324 -> 339, and the FILE count DOES move this time: the mint is
   // a new use case with a new suite, not more cases in an existing one.
-  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 355);
+  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 368);
   assert.ok(
     listTestFiles(undefined, "packages/contexts/identity-access").includes(
       "packages/contexts/identity-access/application/identity-access-service.test.ts",
@@ -1424,8 +1481,10 @@ test("the WIN-257 tenancy creation suites are pinned at what vitest prints", () 
   // The row T3 moves. `application/tenancy-service.test.ts` is EDITED and gains
   // cases, which is how an edited suite stays visible next to the two ADDED
   // ones. The whole tenancy delta over the five tranches is +4 files, +61 cases.
-  assert.equal(EXPECTED["packages/contexts/tenancy"].files, 20);
-  assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 207);
+  // 2026-09-15 20 -> 22 and 207 -> 223: `invitation-authorization.test.ts` and
+  // `team-and-scope-read-models.test.ts` ADDED, two suites EDITED.
+  assert.equal(EXPECTED["packages/contexts/tenancy"].files, 22);
+  assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 223);
   const files = listTestFiles(undefined, "packages/contexts/tenancy");
   assert.ok(files.includes("packages/contexts/tenancy/application/create-organization.test.ts"));
   assert.ok(files.includes("packages/contexts/tenancy/application/create-project.test.ts"));
@@ -1494,7 +1553,7 @@ test("the conversations context is pinned at what vitest prints", () => {
   // above do NOT move for any of them: all four implement ports that already
   // existed and all four had their port entry point widened in place, which is
   // what this census distinguishes from an addition.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 5525 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 5525 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-271 D10 channel-discord adoption, 106 + the 4 verifier round 2 forced */ 110 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34 + /* 2026-09-15 identity/tenancy REST remainder: notifier-email 14, identity-access 11, tenancy 16, postgres-tenancy 1 */ 42 + /* 2026-09-16 the same remainder, verifier round: notifier-email 4 (the deadline over connect and handshake, required TLS refused and turned off), postgres-tenancy 1 (the directory reads displayName) */ 5 + /* WIN-268 SDK 1.30.x candidate: nine dispatch cases asked of both SDK server builds, four sse cases, one lockfile join, one loaded-module identity join */ 15 + /* D-COOKIE: a configured base name and SameSite mode carried onto the shape while TLS alone decides the prefix, and a base name smuggling the prefix refused on a plain-HTTP shape */ 2 + /* WIN-269 (M4.3): the operator-gate pair for ToolsContract.recordToolHealth, in a file that already existed. The lane's twenty-seven real-database cases are in apps/core-api, which is outside PACKAGE_ROOTS. */ 2 + /* the pool-eviction fix: a sibling call surviving another tool's timeout, the absent second initialize, the transport that really died, and the classification itself */ 4);
 });
 
 test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
@@ -1859,7 +1918,12 @@ test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
       // SIBLING ENTITY excluded inside the SAME environment, the coherent-scope
       // case a two-tenant test passes either way. TWELVE and not ten: P02 and P15
       // SURVIVED the sweep and the two cases that kill them are the difference.
-      12,
+      12 +
+      // 2026-09-15: `listOrganizationMemberships` over a real PostgreSQL.
+      1 +
+      // 2026-09-16: the operator directory reads `User.displayName` off the row, in
+      // `ports-conformance.integration.test.ts`.
+      1,
   );
   // M2 INTEGRATION: 1483 + 14 (the two WIN-259 dimensions) + 9 (the correlation
   // suite) = 1506, of which 429 still run in `pnpm test:v1-packages` and
@@ -1880,7 +1944,11 @@ test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
   // credential lifecycle held to a REAL database: a revoked token refused by the
   // contract with the row read back, sixteen concurrent revocations with one
   // winner, and a sibling ENTITY excluded from a listing inside one environment.
-  assert.equal(EXPECTED["packages/adapters/postgres-tenancy"].cases, 1570);
+  // 2026-09-15: 1570 -> 1571, on the container side — `listOrganizationMemberships`
+  // in `repository.integration.test.ts`.
+  // 2026-09-16: 1571 -> 1572, on the container side again — the directory's
+  // `displayName` read in `ports-conformance.integration.test.ts`.
+  assert.equal(EXPECTED["packages/adapters/postgres-tenancy"].cases, 1572);
   // 429 of the 1506 run in `pnpm test:v1-packages`; the other 1077 need a Docker
   // daemon and run in the `postgres-tenancy-repository` CI job. A pin that
   // 429 of the 1495 run in `pnpm test:v1-packages`; the other 1066 need a Docker
@@ -1894,7 +1962,7 @@ test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
   // `24 + 17 + 3 + 4` is four cases added to `agents-rows.test.ts`, a file this
   // row already counted, which is why that dimension's file tail gains 3 while
   // its case tail gains 48.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 stage 3 identity-access lifecycle rules, 14 written + 2 the mutation sweep forced */ 16 + /* WIN-268 stage 3 postgres-tenancy lifecycle over a real database, 10 written + 2 the sweep forced */ 12 + /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-271 D10 channel-discord adoption, 106 + the 4 verifier round 2 forced */ 110 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34 + /* 2026-09-15 identity/tenancy REST remainder: notifier-email 14, identity-access 11, tenancy 16, postgres-tenancy 1 */ 42 + /* 2026-09-16 the same remainder, verifier round: notifier-email 4 (the deadline over connect and handshake, required TLS refused and turned off), postgres-tenancy 1 (the directory reads displayName) */ 5 + /* WIN-268 SDK 1.30.x candidate: nine dispatch cases asked of both SDK server builds, four sse cases, one lockfile join, one loaded-module identity join */ 15 + /* D-COOKIE: a configured base name and SameSite mode carried onto the shape while TLS alone decides the prefix, and a base name smuggling the prefix refused on a plain-HTTP shape */ 2 + /* WIN-269 (M4.3): the operator-gate pair for ToolsContract.recordToolHealth, in a file that already existed. The lane's twenty-seven real-database cases are in apps/core-api, which is outside PACKAGE_ROOTS. */ 2 + /* the pool-eviction fix: a sibling call surviving another tool's timeout, the absent second initialize, the transport that really died, and the classification itself */ 4);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)
@@ -1933,10 +2001,15 @@ test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
   // tranche. It is the THIRD directory ever to leave `UNIMPLEMENTED_ADAPTERS`,
   // which `apps/core-api/src/composition/installation.test.ts` moves 6 -> 5 in
   // the same commit and for the same fact.
+  // FIVE -> FOUR (2026-09-15, D20). `packages/adapters/notifier-email` stopped being
+  // zero: it holds cost-monitoring's `Notifier` and identity-access's
+  // `MagicLinkDelivery` over one SMTP client, and it is the FOURTH directory ever to
+  // leave `UNIMPLEMENTED_ADAPTERS` — `installation.test.ts` moves 5 -> 4 in the same
+  // commit and for the same fact.
   const zeroAdapters = Object.entries(EXPECTED).filter(
     ([name, row]) => name.startsWith("packages/adapters/") && row.cases === 0
   );
-  assert.equal(zeroAdapters.length, 5);
+  assert.equal(zeroAdapters.length, 4);
 });
 
 test("the kernel outbox adapter is pinned at what vitest prints", () => {
@@ -1994,7 +2067,12 @@ test("every V1 package has a pinned row, including the ones with no tests yet", 
   // census was written. A3 adds NO package -- it adopts `redis-ratelimit`, whose
   // row has existed since the census was written, and widens `redis-cache` --
   // which is why this figure and the CASE total move by different amounts.
-  assert.equal(live.length, 33);
+  // WIN-271 (M4.5), D10 33 -> 34: `packages/adapters/channel-discord`, the
+  // SIXTEENTH adapter directory and the fourth V1 package added since this census
+  // was written. The identity/tenancy REST remainder integrated beside it adds NO
+  // package -- `notifier-email` was already a directory and gained a second port --
+  // which is again why this figure and the CASE total move by different amounts.
+  assert.equal(live.length, 34);
 });
 
 test("the key-management adapter is pinned at what vitest prints", () => {

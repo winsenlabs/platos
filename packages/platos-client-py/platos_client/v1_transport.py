@@ -57,6 +57,7 @@ from platos_client.generated.v1 import (
     V1Api,
     V1Request,
 )
+from platos_client.v1_stream import StreamOpener, V1EventStream, _urllib_stream_opener
 
 #: M0.4 section 2's replay marker, as the middleware spells it.
 IDEMPOTENCY_REPLAYED_HEADER = "idempotency-replayed"
@@ -121,6 +122,7 @@ class V1HttpTransport:
         base_delay_s: float = 0.25,
         max_delay_s: float = 10.0,
         sleep: Callable[[float], None] | None = None,
+        stream_opener: StreamOpener | None = None,
     ) -> None:
         if not base_url:
             raise ValueError("V1HttpTransport: base_url is required")
@@ -132,6 +134,7 @@ class V1HttpTransport:
         self.base_delay_s = base_delay_s
         self.max_delay_s = max_delay_s
         self._sleep = sleep or time.sleep
+        self._stream_opener = stream_opener or _urllib_stream_opener
         #: The ``Idempotency-Replayed`` verdict of the most recent completed call.
         self.last_response_was_replay = False
 
@@ -165,6 +168,14 @@ class V1HttpTransport:
         return key
 
     def send(self, request: V1Request) -> Any:
+        # WIN-272 (M4.6). An event stream through this path is the defect this guard
+        # closes: `json.loads` raised on every valid stream, and the retry below would
+        # re-read a live stream from the start with no cursor.
+        if request["operation"]["responseKind"] == "event-stream":
+            raise ValueError(
+                f"V1: {request['operation']['operationId']} answers with an event stream; "
+                "read it through stream(), not send()"
+            )
         # MINTED ONCE, HERE, OUTSIDE THE LOOP. Moving this line inside the loop
         # is the two-credential bug; ``test_v1_contract.py`` asserts every try
         # of one call carries the same value, so the move fails a case.
@@ -204,6 +215,30 @@ class V1HttpTransport:
             raise refusal
 
         raise last if last is not None else PlatosServerError(0, "exhausted retries")
+
+    def stream(self, request: V1Request, **options: Any) -> V1EventStream:
+        """An event-stream operation: parsed, admitted by the kernel's rule, resumed with ``Last-Event-ID``.
+
+        ``options`` are :class:`V1EventStream`'s keywords: ``last_event_id`` with
+        ``last_seq``, ``max_reconnects``, ``idle_timeout_s``, ``on_admission`` and
+        ``on_connect``. No ``Idempotency-Key``: a read carries none.
+        """
+        if request["operation"]["responseKind"] != "event-stream":
+            raise ValueError(
+                f"V1: {request['operation']['operationId']} answers with JSON; call it through send(), not stream()"
+            )
+        headers = self.headers_for(request, None)
+        headers.pop("accept", None)
+        return V1EventStream(
+            url=self.url_for(request),
+            method=request["operation"]["method"],
+            headers=headers,
+            stream_opener=self._stream_opener,
+            sleep=self._sleep,
+            backoff_s=self._backoff_s,
+            refusal_from_answer=lambda status, body, headers: refusal_from(HttpAnswer(status, body, headers)),
+            **options,
+        )
 
     def _backoff_s(self, retry_count: int) -> float:
         return min(self.base_delay_s * (2**retry_count), self.max_delay_s)

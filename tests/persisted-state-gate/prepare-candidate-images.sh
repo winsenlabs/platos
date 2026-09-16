@@ -4,17 +4,60 @@ set -euo pipefail
 candidate_dir="${1:?candidate artifact directory is required}"
 layout_dir="${2:?OCI layout directory is required}"
 load_candidates="${3:-false}"
+# Optional: a space-separated subset of the candidate names below to verify (and
+# load). Omitted, every candidate is required. Given, each name must be one of
+# them, and an archive in the directory that is NOT selected is refused exactly
+# like an unknown one: it would sit next to the others, verified by nothing.
+selected_candidates="${4:-}"
 
 : "${PLATOS_CANDIDATE_SHA:?PLATOS_CANDIDATE_SHA is required to verify candidate revision labels}"
 : "${GITHUB_REPOSITORY_OWNER:?GITHUB_REPOSITORY_OWNER is required}"
 
 mkdir -p "$layout_dir"
 
-for candidate in \
-  "agent AGENT platos-agent" \
-  "webapp WEBAPP platos-webapp" \
-  "migrations MIGRATIONS platos-migrations"; do
+# EVERY candidate build-images.yml archives, and nothing else. The list below is
+# that workflow's matrix, row for row, and scripts/ci-policy.test.mjs joins the
+# two so they cannot drift. An archive in the directory that this list does not
+# name is a candidate nobody would verify, so it fails here rather than being
+# skipped.
+candidates=(
+  "agent AGENT platos-agent"
+  "webapp WEBAPP platos-webapp"
+  "migrations MIGRATIONS platos-migrations"
+  "core-api CORE_API platos-core-api"
+)
+expected_archives=""
+for candidate in "${candidates[@]}"; do
+  read -r name _ _ <<<"$candidate"
+  expected_archives="${expected_archives}${name}.oci.tar"$'\n'
+done
+selected_archives="$expected_archives"
+if [ -n "$selected_candidates" ]; then
+  selected_archives=""
+  for selected in $selected_candidates; do
+    if ! grep -Fxq -- "$selected.oci.tar" <<<"$expected_archives"; then
+      echo "selected candidate with no verification entry: $selected" >&2
+      exit 1
+    fi
+    selected_archives="${selected_archives}${selected}.oci.tar"$'\n'
+  done
+fi
+for archive_path in "$candidate_dir"/*.oci.tar; do
+  test -e "$archive_path" || continue
+  archive_name="${archive_path##*/}"
+  if ! grep -Fxq -- "$archive_name" <<<"$expected_archives"; then
+    echo "unexpected candidate archive with no verification entry: $archive_name" >&2
+    exit 1
+  fi
+  if ! grep -Fxq -- "$archive_name" <<<"$selected_archives"; then
+    echo "candidate archive present but not selected for verification: $archive_name" >&2
+    exit 1
+  fi
+done
+
+for candidate in "${candidates[@]}"; do
   read -r name env_name repository_name <<<"$candidate"
+  grep -Fxq -- "$name.oci.tar" <<<"$selected_archives" || continue
   env_file="$candidate_dir/$name.env"
   archive="$candidate_dir/$name.oci.tar"
   test -s "$env_file"

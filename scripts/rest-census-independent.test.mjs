@@ -312,10 +312,20 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // because `POST /api/v1/agent/providers/keys/:id/rotate-secret` sits under a base
   // path — `agent/providers` — that no controller in this tree had. A reader who
   // assumed "one route, no new class" would expect 9.
-  assert.equal(core.sourceControllers, 10);
-  assert.equal(core.sourceDecorators, 19);
-  assert.equal(core.expandedOperations, 19);
-  assert.equal(core.manifestOperations, 19);
+  //
+  // 2026-09-15: 10 -> 15 controllers and 19 -> 28 decorators — the identity/tenancy REST remainder's NINE routes (2026-09-15): the magic-link pair, the member listing and role change, the invitation issue and accept, the scope by slugs, and the variable listing and write.
+  // Five classes for nine routes, because each concern sits under its own base path
+  // (`bff/magic-link`, `organizations/:organizationId/members`, the pathless
+  // invitations controller carrying both of its routes, `environments` for the slug
+  // resolver, `environments/:environmentId/variables`).
+  // THE `/tools/sync` RECONNECT TRANSPORT (M4.3): 15 -> 16 controllers and 28 -> 29
+  // decorators, the SAME shape as the rotation above and for the same reason --
+  // `POST /api/v1/tools/sync` sits under a base path, `tools`, that no controller
+  // in this tree had, so one route costs one class.
+  assert.equal(core.sourceControllers, 16);
+  assert.equal(core.sourceDecorators, 29);
+  assert.equal(core.expandedOperations, 29);
+  assert.equal(core.manifestOperations, 29);
   // 301 + 14 = 315 BINDINGS, and the manifest's `summary.restOperations` is 313
   // UNIQUE operations: the two mints are served by both deployables, so each is
   // counted under both roots. The census publishes that surplus and the identity
@@ -335,10 +345,19 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // cleanest illustration of why the identity carries a surplus term: it adds one
   // binding and one shared operation in the same move, because `apps/agent` has
   // served this path since before V1. 320 - 7 = 313.
-  assert.equal(agent.manifestOperations + core.manifestOperations, 320);
+  //
+  // 2026-09-15: 320 -> 329 bindings, surplus unmoved at 7, unique 313 -> 322 — nine
+  // operations served by one deployable only. 329 - 7 = 322.
+  // THE `/tools/sync` RECONNECT TRANSPORT (M4.3): 329 -> 330 bindings, surplus
+  // unmoved at 7, unique 322 -> 323. The oracle's `/tools/sync` is a WebSocket
+  // upgrade in `apps/agent/src/tool-gateway/tool-sync-ws.service.ts`, a file that
+  // carries no `@Controller` and is therefore invisible to BOTH enumerations. So
+  // there is no agent binding for this operation to share, the surplus cannot move,
+  // and the surface genuinely grows by one. 330 - 7 = 323.
+  assert.equal(agent.manifestOperations + core.manifestOperations, 330);
   const totals = manifestCensus();
   assert.equal(totals.crossRootBindings, 7);
-  assert.equal(totals.totalOps - totals.crossRootBindings, 313);
+  assert.equal(totals.totalOps - totals.crossRootBindings, 323);
 });
 
 test("BASELINE: the process-edge exclusion still describes the file it excludes", () => {

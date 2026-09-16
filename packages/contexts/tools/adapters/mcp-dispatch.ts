@@ -155,6 +155,20 @@ export function createMcpSessionPool(): McpSessionPool {
     await entry.client.close().catch(() => undefined);
   }
 
+  /**
+   * Evict only if the pool still holds THIS session for that key, and only for a
+   * failure that actually ended the session.
+   *
+   * IDENTITY, NOT KEY, for the reason the agent-side pool states: a slow call
+   * that fails after a concurrent caller has already rebuilt the session must not
+   * tear down the healthy replacement.
+   */
+  async function evictAfterFailure(sessionKey: string, entry: PooledSession, cause: unknown): Promise<void> {
+    if (!failureEndsSession(cause)) return;
+    if (sessions.get(sessionKey) !== entry) return;
+    await evict(sessionKey);
+  }
+
   return {
     get size(): number {
       return sessions.size;
@@ -194,8 +208,12 @@ export function createMcpSessionPool(): McpSessionPool {
       } catch (cause) {
         const latencyMs = Date.now() - started;
         // The session may be dead. Drop it so the next call rebuilds rather than
-        // reusing a transport whose socket has gone.
-        await evict(request.target.sessionKey);
+        // reusing a transport whose socket has gone — but ONLY when the failure
+        // really ended it. `evict` closes the session under EVERY caller sharing
+        // this pool key, so an unconditional close here turned one tool's request
+        // timeout into "MCP error -32000: Connection closed" for every other call
+        // in flight on the same key.
+        await evictAfterFailure(request.target.sessionKey, entry, cause);
         if (isTimeout(cause)) return ok({ kind: "timeout", latencyMs });
         return ok({ kind: "failed", reason: callReason(cause), latencyMs });
       }
@@ -224,7 +242,11 @@ export function createMcpSessionPool(): McpSessionPool {
         });
         return ok({ tools: listed.tools.map(intakeOf) });
       } catch (cause) {
-        await evict(request.target.sessionKey);
+        // The same rule as `dispatch`'s catch arm, and for the same reason: a
+        // `tools/list` that timed out or that the server answered with a JSON-RPC
+        // error left the session alive, and closing it would fail every call
+        // another caller has in flight on this key.
+        await evictAfterFailure(request.target.sessionKey, entry, cause);
         return err(discoveryFailed(cause));
       }
     },
@@ -319,6 +341,47 @@ function intakeOf(tool: { name: string; description?: string; inputSchema?: unkn
 /** The SDK raises `McpError` with code -32001 on its own request timeout. */
 function isTimeout(cause: unknown): boolean {
   return (cause as { code?: unknown } | null)?.code === REQUEST_TIMEOUT_CODE;
+}
+
+/**
+ * Did this failure END the session, or is the session still alive?
+ *
+ * THE POOL KEY IS SHARED, WHICH IS WHY THIS QUESTION EXISTS. Sessions here are
+ * pooled by `target.sessionKey`, so closing one closes it under every caller
+ * holding that key — the entity's other tools, and every end user whose resolved
+ * URL and headers are the same. Before this, both catch arms closed the session
+ * for ANY thrown value, so a plain `McpError` `RequestTimeout` (-32001) on one
+ * slow tool killed every concurrent call on the key with
+ * `MCP error -32000: Connection closed`. The failure a caller then saw had
+ * nothing to do with the call it made.
+ *
+ * A PROTOCOL-LAYER ANSWER IS PROOF THE SESSION IS ALIVE. An `McpError` with a
+ * numeric `code` is the SDK surfacing something that came back over a working
+ * transport: the server's own JSON-RPC error, or the client's own timer firing
+ * on a request the server has not answered yet. Both leave the socket open, so
+ * neither is a reason to close it. Everything else — a socket that went away, a
+ * 404 on a session id a restarted server has forgotten, a fetch that threw — is
+ * taken as the end of the session, which is the old behaviour for exactly the
+ * cases it was right for.
+ *
+ * THIS IS THE SAME RULE `failureEndsSession` APPLIES IN
+ * `apps/agent/src/tool-gateway/mcp-transport/mcp-client-pool.service.ts`, whose
+ * own comment used to point AT THIS FILE as the copy that "already evicts on
+ * exactly this condition". It did not; it evicted on every condition. The two
+ * are now the same rule in both deployables, and `mcp-dispatch.test.ts`'s
+ * sibling-call cases are what hold this one to it.
+ *
+ * ONE DIFFERENCE FROM THE AGENT'S, AND IT IS NOT A DISAGREEMENT: that one also
+ * asks whether the client still has a transport attached, because it holds the
+ * `Client` and can. Here the equivalent state is the pool entry itself, and the
+ * caller checks it — `evictAfterFailure` evicts only while the map still holds
+ * the entry the failing call used.
+ */
+export function failureEndsSession(cause: unknown): boolean {
+  const candidate = cause as { name?: unknown; code?: unknown } | null;
+  const fromProtocolLayer =
+    typeof candidate === "object" && candidate !== null && candidate.name === "McpError" && typeof candidate.code === "number";
+  return !fromProtocolLayer;
 }
 
 /**

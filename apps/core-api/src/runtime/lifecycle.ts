@@ -61,11 +61,14 @@ import { composeApplication, type AppModule, type SuppliedContextPorts } from ".
 import type { SuppliedAdapters, UnwiredAdapter } from "../composition/adapter-bindings.js";
 import { describeAdapterSupply } from "../composition/registry.js";
 import type { CoreApiConfiguration } from "../config/schema.js";
+import type { SessionCookiePolicy } from "../config/security.js";
 import type { LifecycleState } from "../health/readiness.js";
 import { applyApiSurface } from "../http/api-surface.js";
 import { CoreApiHttpModule } from "../http/http.module.js";
+import { installMcpBodyLimits } from "../http/mcp-body-cap.js";
 import { createEdgeMiddleware } from "./edge-middleware.js";
 import { createInFlightRegister, type InFlightRegister } from "./in-flight.js";
+import { createTransportMiddleware } from "./trusted-proxy.js";
 import { createProcessLogger, systemClock, ulidGenerator } from "./process-ports.js";
 import { drainAll, type Drainable, type ShutdownDrainReport } from "./shutdown-drain.js";
 
@@ -88,6 +91,13 @@ export interface StartOptions {
   readonly ids?: IdGenerator;
   readonly logger?: Logger;
   readonly inFlight?: InFlightRegister;
+  /**
+   * D-COOKIE. How the operator session cookie is shaped, from the typed security
+   * section (`config/security.ts` `sessionCookiePolicy`). `main.ts` always passes
+   * it. Absent, the connection alone decides the shape, which is what a suite
+   * that composes without the process configuration has always had.
+   */
+  readonly sessionCookie?: SessionCookiePolicy;
   /**
    * Subsystems holding work that outlives a request — the outbox first among
    * them. Drained in the order given, AFTER in-flight requests, out of what is
@@ -187,6 +197,11 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
     rawBody: true,
   });
 
+  // NO FRAMEWORK BANNER. Express stamps `X-Powered-By: Express` on every
+  // response unless told otherwise. No client reads it; a scanner does.
+  const framework: { disable(setting: string): unknown } = nest.getHttpAdapter().getInstance();
+  framework.disable("x-powered-by");
+
   // WIN-267 R1. `/api/v1` — the ONE place this process decides its REST major.
   //
   // BEFORE `listen()`, because `enableVersioning` is read when the router is
@@ -208,6 +223,25 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
   nest.use(
     createEdgeMiddleware({ requestIdHeader: configuration.requestIdHeader, inFlight }),
   );
+  // D-COOKIE. Whether TLS reached this request — from the connection, or from
+  // the ONE proxy `PLATOS_CORE_API_TRUSTED_PROXY` names — stamped beside the
+  // cookie policy before anything routes. `runtime/trusted-proxy.ts` has the
+  // rules; the framework's own `trust proxy` is left at trust-nobody.
+  nest.use(
+    createTransportMiddleware({
+      trustedProxy: configuration.trustedProxy,
+      sessionCookie: options.sessionCookie ?? null,
+    }),
+  );
+
+  // D21 (founder decision, 2026-09-15). The MCP body cap, mirroring `apps/agent`:
+  // 2 MiB, `413 payload_too_large`, before authentication, and a 2 MiB parser for
+  // the MCP root so what the cap admits is parsed rather than refused as a fault.
+  // Both must precede Nest's own body parsers, which register inside `init()` —
+  // so they are installed here, before `listen()`, and after the edge so a refused
+  // request still carries its correlation id. `http/mcp-body-cap.ts` states the
+  // mirror clause by clause and `mcp-body-cap.test.ts` drives this process.
+  installMcpBodyLimits(nest);
 
   await nest.listen(configuration.port, configuration.host);
   const server = nest.getHttpServer() as ClosableServer;
@@ -260,12 +294,20 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
       // without spending real seconds. Handing the full timeout to each would
       // spend the budget twice and guarantee the outbox flush is killed
       // mid-page; shutdown-drain.ts states that failure and its arithmetic.
+      //
+      // A DEADLINE THAT FIRED IS A BUDGET THAT IS SPENT. The in-flight drain ends
+      // undrained only when its timer, armed with the WHOLE budget, fires. That
+      // timer is due on libuv's millisecond loop clock, while the leftover is
+      // measured on the injected wall clock, and the two truncate at different
+      // sub-millisecond phases: a 60ms deadline can fire while the wall clock
+      // reads 59ms. Subtracting would then hand the deferred drain a 1ms slice of
+      // a budget that has run out (hosted CI run 35008240485 did exactly that).
+      // So the subtraction is taken only when the drain finished early.
       const budgetStartedAt = clock.now().getTime();
       const outcome = await inFlight.drain(configuration.shutdownTimeoutMs, () => clock.now().getTime());
-      const leftOverMs = Math.max(
-        configuration.shutdownTimeoutMs - (clock.now().getTime() - budgetStartedAt),
-        0,
-      );
+      const leftOverMs = outcome.drained
+        ? Math.max(configuration.shutdownTimeoutMs - (clock.now().getTime() - budgetStartedAt), 0)
+        : 0;
       const deferred = await drainAll(drainables, leftOverMs, () => clock.now().getTime());
 
       // RELEASE EVERY REMAINING SOCKET BEFORE HANDING OVER TO THE FRAMEWORK.

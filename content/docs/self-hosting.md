@@ -17,7 +17,7 @@ related:
 
 # Self-hosting
 
-`docker-compose.platos.yml` is the installation contract. It runs six long-lived product/data services, four one-shot initialization services, and one optional integration sidecar.
+`docker-compose.platos.yml` is the installation contract. It runs six long-lived product/data services, four one-shot initialization services, and one optional integration sidecar. One more long-lived service, `core-api`, is opt-in behind the `core-api` Compose profile and starts only when that profile is named.
 
 ## Service names
 
@@ -29,6 +29,7 @@ related:
 | `minio` | long-running | S3-compatible attachment and Artifact bytes |
 | `webapp` | long-running | Dashboard on host port 3030 |
 | `agent` | long-running | Agent runtime on loopback host port 3100 |
+| `core-api` | long-running, opt-in `core-api` profile | V1 composition root on loopback host port 3200; no existing path is routed to it |
 | `migrations-init` | one-shot | Postgres Prisma migrations |
 | `clickhouse-migrate` | one-shot | ClickHouse Goose migrations |
 | `clickhouse-ttl-apply` | one-shot | ClickHouse system-log TTLs |
@@ -49,6 +50,7 @@ Default memory limits are:
 | `minio` | 256 MiB |
 | `agent` | 2 GiB |
 | `webapp` | 2 GiB |
+| `core-api` (opt-in profile, not in the total below) | 1 GiB |
 
 That is approximately **9.5 GiB** before Docker, build, filesystem cache, and migration overhead. Use **12 GiB RAM as the practical minimum** and **16 GiB or more for production**. Platos does not publish a supported reduced-memory profile; lowering limits requires installation-specific load testing. In particular, the 4 GiB ClickHouse limit addresses observed merge OOMs.
 
@@ -106,6 +108,38 @@ curl --fail http://127.0.0.1:3100/api/health
 ```
 
 Expect the six long-running services to be healthy, the four init/migration services to exit zero, and `docs-mcp-bridge` either to run with a valid entity secret or exit zero when disabled.
+
+To run the opt-in V1 composition root as well:
+
+```bash
+docker compose -f docker-compose.platos.yml --profile core-api up -d --build core-api
+curl --fail http://127.0.0.1:3200/livez
+curl http://127.0.0.1:3200/readyz
+```
+
+`/livez` answers 200 whenever the process is running, independent of any store. `/readyz` answers 503 until every declared adapter binding is satisfied, and some bindings are still generated interfaces that no configuration can satisfy, so a 503 there is the expected answer today rather than a failed install. The detailed body is returned only with `Authorization: Bearer $PLATOS_CORE_API_ADMIN_HEALTH_TOKEN`; the variables it reads are listed in `docs/env-vars.md`.
+
+`core-api` requires `PLATOS_ENVIRONMENT` (one of `development`, `test`, `staging`, `production`). Compose does not refuse to parse without it, so installs that never enable the profile are unaffected; the container itself exits 78 before binding a port when it is blank.
+
+What composes depends on the security variables, which `.env.example` leaves unset:
+
+| Set in `.env` | `/readyz` bindings | `composedContexts` |
+|---|---|---|
+| `PLATOS_ENVIRONMENT` only | 49 of 63 | `tenancy` |
+| plus `PLATOS_SECURITY_SESSION_SECRET`, `PLATOS_SECURITY_ENCRYPTION_KEY`, `PLATOS_SECURITY_ENCRYPTION_KEY_VERSION` | 53 of 63 | `identityAccess`, `tenancy`, `secrets`, `providers`, `tools` |
+| plus `PLATOS_CHANNELS_SLACK_SIGNING_SECRET` | 55 of 63 | the same five |
+| plus `PLATOS_CHANNELS_DISCORD_PUBLIC_KEY` | 57 of 63 | the same five |
+| plus `PLATOS_CHANNELS_EMAIL_SMTP_URL`, `PLATOS_CHANNELS_EMAIL_FROM`, `PLATOS_CHANNELS_EMAIL_LOGIN_URL` | 59 of 63 | the same five |
+
+Every row was read back off the built composition root rather than derived: each is a
+`/readyz` body from the same construction path `main.ts` runs, started with exactly the
+variables its row names, plus the two store URLs the Compose profile always passes. The
+four that remain unsatisfied at the last row are the bindings on directories that are
+still generated interfaces, which no `.env` can reach.
+
+Operator authentication, secrets, providers and tools are therefore not running until the credential root and its version are set; those two settings, and nothing else, compose the five contexts. `PLATOS_SECURITY_SESSION_SECRET` composes no context: it declares the operator session cookie group, which the three cookie settings (`PLATOS_SECURITY_SESSION_COOKIE_SECURE`, `_NAME`, `_SAME_SITE`) require. `apps/core-api/src/composition/compose-readiness.test.ts` reads this table and checks each row against the Compose service's own environment. Generate the session secret and the encryption key with `openssl rand -hex 32`, independently of every other key in `.env`.
+
+`core-api` is reachable at the edge only through its own host block in `deploy/Caddyfile`, which terminates TLS and proxies plain HTTP. With `PLATOS_SECURITY_SESSION_COOKIE_SECURE` at its default, core-api sets the operator session cookie only as a `Secure` `__Host-` cookie on a request TLS reached, and it believes the proxy's `X-Forwarded-Proto` only from the one peer `PLATOS_CORE_API_TRUSTED_PROXY` names. Set that to the address Caddy reaches the container from (the compose network's gateway) to allow browser sessions through the edge; until then a sign-in through it is refused with `TRANSPORT_SESSION_COOKIE_REQUIRES_TLS`, and bearer-token calls work either way. The header is never believed from any other peer.
 
 ## Network boundary
 

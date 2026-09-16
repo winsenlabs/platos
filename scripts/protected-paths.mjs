@@ -133,10 +133,43 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // reason its three predecessors were not: the selection protects the EVIDENCE a
 // gate reads, not the gate.
 //
+// THE CORE-API SBOM adds ONE, no removals and no content substitutions, taking the
+// set from 799 to 800:
+//   docs/audits/sbom/platos-core-api.cdx.json  (the fourth build candidate's
+//                                               CycloneDX SBOM, beside the agent
+//                                               and webapp SBOMs)
+// It falls inside the existing `docs/**` selection rather than widening it, and the
+// difference was verified SET-WISE against the committed 799-path manifest at
+// 55da5505: the 800 paths are exactly those 799 plus that one, with nothing
+// removed and nothing substituted.
+//
+// THE M2/M4 DELEGATED-DECISIONS ADR adds ONE, no removals and no content
+// substitutions, taking the set from 800 to 801:
+//   docs/adr/M2-M4-delegated-decisions-2026-09-15.md  (the accepted record of the
+//                                                      decisions the founder
+//                                                      delegated on 2026-09-15,
+//                                                      beside ADR M0.3 and M0.4)
+// It falls inside the existing `docs/**` selection rather than widening it, and the
+// difference was verified SET-WISE against the committed 800-path manifest at
+// 3f422333: the 801 paths are exactly those 800 plus that one, with nothing
+// removed and nothing substituted.
+//
+// THE MCP SDK 1.30.x CANDIDATE'S COMPATIBILITY RESULT adds ONE, no removals and no
+// content substitutions, taking the set from 801 to 802:
+//   docs/audits/win-268-mcp-sdk-candidate-compatibility.json  (the adopted SDK and
+//                                                             the candidate asked
+//                                                             the same questions,
+//                                                             re-derived by --check)
+// It falls inside the existing `docs/**` selection rather than widening it, and the
+// difference was verified SET-WISE against the committed 801-path manifest at
+// 35d3aec1: `comm -13` names that one addition and `comm -23` names none.
+// `scripts/mcp-sdk-candidate-compatibility.mjs` is NOT added to SCRIPT_PREFIXES:
+// the selection protects the EVIDENCE a gate reads, not the gate.
+//
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "df52e403740aba88a43f783dc415d344264681d0cf08d47e93de95000258dff1";
+export const EXPECTED_PATH_SET_SHA256 = "6843a714bebfc38b3ef704271a108a43412e432bbf8c99e32b57aa0d2ea2be72";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",

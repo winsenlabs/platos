@@ -52,14 +52,66 @@ export const HEALTH_OUTCOMES = ["success", "failed", "timeout"] as const;
 
 export type HealthOutcome = (typeof HEALTH_OUTCOMES)[number];
 
+/**
+ * THE OTHER VOCABULARY THE SAME COLUMN ALREADY HOLDS, AND IT IS NOT A WIDENING
+ * FOR CONVENIENCE — IT IS A ROW THE V1 STORE COULD NOT READ.
+ *
+ * `HEALTH_OUTCOMES` is what a CALL leaves behind: one dispatch happened and it
+ * succeeded, failed or timed out. It is the only vocabulary this file had, and
+ * the only one `packages/adapters/postgres-tenancy/src/tools-rows.ts` narrows
+ * `ToolHealth.lastStatus` against on the way IN — `readUnion` throws
+ * `UnreadableToolsRowError` for anything else.
+ *
+ * The running product writes a SECOND vocabulary into the same column, from a
+ * completely different writer. `apps/agent/src/tool-gateway/tool-sync-ws.service.ts`
+ * handles the platools `heartbeat` frame and upserts
+ * `lastStatus: healthEntry.status`, where `status` is fixed by BOTH SDKs to
+ * `"healthy" | "degraded" | "down"` (`packages/platools-js/src/transport/protocol.ts`
+ * `ToolHealthStatus`, and the same `Literal[...]` in
+ * `packages/platools-py/platools/transport/protocol.py`). No call is involved:
+ * the entity is REPORTING its own opinion of a tool between calls.
+ *
+ * SO EVERY `ToolHealth` ROW A LIVE INSTALLATION WROTE THROUGH A HEARTBEAT WAS
+ * UNREADABLE BY THE V1 STORES. `findHealth` on such a row throws rather than
+ * answering, which is the failure a reconnecting entity would have met first —
+ * before any refusal about its configuration. That is measured in
+ * `apps/core-api/src/composition/tool-sync-reconnect.integration.test.ts`
+ * against a row seeded by the legacy binary's own client, and reverting the
+ * widening in `tools-rows.ts` turns five of its cases red with
+ * `TOOLS_REPOSITORY_UNAVAILABLE { reason: "findHealth:tools.row.unknown_union_member" }`.
+ *
+ * THE TWO ARE KEPT APART RATHER THAN MERGED INTO ONE SIX-VALUED ENUM. They
+ * answer different questions and they are written by different frames, so a
+ * reader that saw `down` would be wrong to conclude a call had been DISPATCHED,
+ * and a reader that saw `timeout` would be wrong to conclude the entity had said
+ * anything. `lastCalledAt` is the field that tells them apart on a row, and it
+ * stays null for a report for exactly that reason.
+ */
+export const HEALTH_REPORTS = ["healthy", "degraded", "down"] as const;
+
+export type HealthReport = (typeof HEALTH_REPORTS)[number];
+
+/**
+ * Everything the column may hold. The order is outcomes first, so a narrowing
+ * built from this constant still reports the call vocabulary first in an error.
+ */
+export const HEALTH_STATUSES = [...HEALTH_OUTCOMES, ...HEALTH_REPORTS] as const;
+
+export type HealthStatus = HealthOutcome | HealthReport;
+
+export function isHealthReport(value: unknown): value is HealthReport {
+  return typeof value === "string" && (HEALTH_REPORTS as readonly string[]).includes(value);
+}
+
 export interface ToolHealth {
   readonly toolHealthId: ToolHealthId;
   readonly environmentId: EnvironmentId;
   readonly toolId: ToolId;
   /** Null for a tool no entity owns — a runtime or meta tool. */
   readonly entityExternalId: ExternalEntityId | null;
+  /** Null on a row only a heartbeat has ever touched. See `HEALTH_REPORTS`. */
   readonly lastCalledAt: Date | null;
-  readonly lastStatus: HealthOutcome | null;
+  readonly lastStatus: HealthStatus | null;
   /** Consecutive failures. Any success resets it. */
   readonly failCount: number;
   readonly totalCalls: number;
@@ -125,6 +177,43 @@ export function applyOutcome(
     totalCalls,
     totalFailures: health.totalFailures + (succeeded ? 0 : 1),
     avgLatencyMs: previous + (latency - previous) / totalCalls,
+    updatedAt: at,
+  };
+}
+
+/**
+ * Fold one HEARTBEAT report into a health row.
+ *
+ * NOT `applyOutcome` WITH A DIFFERENT WORD, AND THE DIFFERENCE IS THE COUNTERS.
+ * The oracle's heartbeat handler upserts exactly two mutable columns —
+ * `{ lastStatus, avgLatencyMs }` — and creates with
+ * `{ ..., failCount: 0, totalCalls: 0 }`, which is `freshHealth`. It touches
+ * `totalCalls`, `totalFailures`, `failCount` and `lastCalledAt` on NEITHER path.
+ *
+ * That is faithful and it is also right. A heartbeat is not a call: an entity
+ * saying "this tool is degraded" every thirty seconds while nothing calls it
+ * would, under `applyOutcome`, drive `totalCalls` and `failCount` up forever and
+ * make `isFailing` true for a tool that has never been dispatched to. The two
+ * folds are separate because the two frames are separate evidence.
+ *
+ * `avgLatencyMs` IS THE ENTITY'S OWN AVERAGE AND IS TAKEN VERBATIM, which is the
+ * one place this fold does NOT improve on the source the way `applyOutcome`
+ * does. The number arrives already averaged by the SDK over its own window
+ * (`ToolHealthEntry.avg_latency_ms`); folding it into the incremental mean here
+ * would average an average against a call count that did not produce it.
+ * Negative is clamped to zero for the reason `applyOutcome` gives, and an absent
+ * number becomes zero, which is what `healthEntry.avg_latency_ms ?? 0` writes.
+ */
+export function applyReport(
+  health: ToolHealth,
+  report: HealthReport,
+  avgLatencyMs: number | null,
+  at: Date,
+): ToolHealth {
+  return {
+    ...health,
+    lastStatus: report,
+    avgLatencyMs: Math.max(0, Math.round(avgLatencyMs ?? 0)),
     updatedAt: at,
   };
 }

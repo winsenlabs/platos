@@ -280,6 +280,46 @@ export const ALLOWED = Object.freeze([
     why: "Real-PostgreSQL and real-Redis integration suite for the V1 identity REST surface. It copies and freezes the ambient environment once, at module load, and reads values out of the copy: the supplied PostgreSQL and Redis urls that let it run where Docker may not, a psql binary override for the second reader, and the inherited environment it spawns the ORM's migration CLI with. Neither path skips.",
   }),
   Object.freeze({
+    // 2026-09-15 — the identity/tenancy REST remainder's suite (magic link over a
+    // real relay, members, invitations, scope by slugs, environment variables, the
+    // legacy Remix cookie, and D3's limiter stopped mid-run). The sibling above's
+    // shape, and ONE read for the same reason: `prisma migrate deploy` is a spawned
+    // process that needs PATH. It takes a supplied PostgreSQL url and a psql
+    // override out of the same frozen copy; its Redis is always a container it
+    // starts, because D3's case stops it.
+    path: "apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts",
+    role: "test-support",
+    reads: 1,
+    why: "Real-PostgreSQL, real-Redis and real-SMTP integration suite for the identity/tenancy REST remainder. It copies and freezes the ambient environment once, at module load, and reads the supplied PostgreSQL url, the psql binary override and the inherited environment the ORM's migration CLI is spawned with out of the copy. Nothing skips.",
+  }),
+  Object.freeze({
+    // WIN-269 (M4.3) — the tool-sync harness the two reconnect suites share.
+    //
+    // IT IS THE SHARED SUPPORT FILE AND NOT A SUITE, which is the one thing worth
+    // reading twice here: `tool-sync-reconnect.integration.test.ts` and
+    // `tool-sync-writers.integration.test.ts` both start a legacy installation and
+    // neither reads the environment itself. Two suites each holding their own
+    // `{ ...process.env }` would be two doors into the same room; this is one, and
+    // a suite that reached past it would appear here as a SECOND reader.
+    //
+    // FOUR VALUES COME OUT OF THE COPY, and each is a decision that belongs to the
+    // RUNNER rather than to a fixture: the supplied Redis url (absent, it points
+    // the process at a Redis it cannot reach, because nothing under test needs
+    // one and the idempotency gate's fail-closed refusal is itself measured), and
+    // the inherited environment handed to TWO spawned processes — the legacy
+    // installation seeder and, through it, the ORM's own migration CLI, which
+    // needs `PATH`.
+    //
+    // THE SIX CONFIGURATION VARIABLES IT SETS ARE NOT READS, for the reason the
+    // entry above gives: they are a plain object handed to
+    // `loadPlatformConfiguration`, so the process under test takes nothing from
+    // the machine it happens to run on.
+    path: "apps/core-api/src/composition/tool-sync-legacy.ts",
+    role: "test-support",
+    reads: 1,
+    why: "The shared harness behind the WIN-269 reconnect and writer suites. It copies and freezes the ambient environment once, at module load, and reads values out of the copy: the supplied Redis url, and the inherited environment it spawns the legacy-installation seeder with, which in turn spawns the ORM's migration CLI. It starts its own PostgreSQL and fails when Docker is absent rather than skipping.",
+  }),
+  Object.freeze({
     // WIN-272 (M4.6) — the stream-lane suite. The identity-REST entry above with
     // an SSE reader on the end, and it reads the environment in exactly the same
     // ONE place and for the same reason: `prisma migrate deploy` is a spawned
@@ -789,8 +829,85 @@ export const VIOLATION_CODES = Object.freeze({
  * own single frozen `{ ...process.env }` and hands the values in; a helper that read
  * `process.env` itself would be a door this gate could not attribute to the suite
  * that walked through it. Two files landed, thirty-two reads stayed thirty-two.
+ *
+ * WIN-302 FACTORY ENTRIES: 1701 + 18 = 1719, and NO DOOR OPENED. Seventeen are
+ * the one-line modules of `apps/core-api/src/composition/factory-entries/`, each
+ * re-exporting one context's contract factory from the entry point its manifest
+ * publishes (`.` for seven, `./application/index.js` for ten), and the
+ * eighteenth is `context-factories.test.ts`, which loads them one named case per
+ * context. The first ten landed alone (1712); the seven `.`-route modules
+ * followed once a removed `.` entry was measured failing that suite at load.
+ * None reads a variable: the suite reads the platform's own files through
+ * `import.meta.url`, the way `config/sections.test.ts` does.
+ *
+ * M4 GATES (founder decision D21): 1719 + 2 = 1721 on the integrated tree, and NO
+ * DOOR OPENED. The two are `apps/core-api/src/http/mcp-body-cap.ts` and its suite. The middleware is handed
+ * its cap as a value and reads nothing ambient; the suite builds its configuration
+ * from a literal source rather than `process.env`. Two files landed, thirty-two
+ * reads stayed thirty-two.
+ *
+ * IDENTITY/TENANCY REST REMAINDER (2026-09-15), integrated third: 1721 + 21 = 1742
+ * on the integrated tree, and ONE door, the suite declared above. The twenty-one:
+ * `notifier-email`'s six source files, seven in the two contexts (the delivery
+ * port, the administration gate, two read models and three suites), and eight in
+ * core-api (five controllers, the cookie codec, a unit suite and the integration
+ * suite). Thirty-two declared reads become thirty-three.
+ *
+ * WIN-271 (M4.5), D10, integrated fourth: 1742 + 18 = 1760, and NO DOOR OPENED.
+ * Eighteen files under `packages/adapters/channel-discord/src` — thirteen modules
+ * and five suites — and not one reads the environment. The public key arrives per
+ * delivery on the command and the bot token per send, exactly as `channel-slack`'s
+ * secret and token do; the REST base, the deadline and the `fetch` are construction
+ * options whose doc comments say why they must NOT be operator-settable (an
+ * outbound host from the environment is an exfiltration primitive); and the far
+ * side binds an ephemeral loopback port rather than reading one. Its two
+ * configuration variables are declared in `apps/core-api/src/config/channels.ts`,
+ * the one place this deployable is entitled to read a variable, and read through
+ * its loader.
+ *
+ * THE NUMBER BELOW IS RE-MEASURED ON THE INTEGRATED TREE, NOT SUMMED FROM THE
+ * LANE REPORTS: each lane measured its own delta against 1701, and only the merge
+ * can say what the four together produce. 1701 + 18 + 2 + 21 + 18 = 1760, and the
+ * audit run on this merge is the authority for it.
+ *
+ * CORE-API DEPLOYABILITY RESIDUE, integrated fifth: 1760 + 7 = 1767, and NO DOOR
+ * OPENED. D-COOKIE's trusted-proxy range (`config/trusted-proxy.ts`, its suite,
+ * and the per-request decision `runtime/trusted-proxy.ts`), the cookie-transport
+ * suite, the store-unavailable classifier and its suite (`http/store-faults.ts`),
+ * and the compose readiness suite. The proxy address and the three session cookie
+ * settings arrive through `config/`'s typed sections like every other variable;
+ * none of the seven reads the environment, and the compose suite reads the
+ * committed compose file and `.env.example` as FILES, not the ambient environment.
+ * The lane's eighth new file, `apps/core-api/scripts/dev.mjs`, is NOT in this
+ * census — this one reads `.ts` only — which is why this pin lands on 1767 while
+ * `arch-boundaries.test.mjs` lands on 1768.
  */
-export const EXPECTED_FILE_COUNT = 1701;
+/**
+ * THE `/tools/sync` RECONNECT TRANSPORT (M4.3), 1767 -> 1774. SEVEN files enter
+ * this scan: the two published writers in `packages/contexts`, the `/tools/sync`
+ * controller and its body reader, and the shared legacy harness and two
+ * integration suites in `apps/core-api`. The agent characterization suite and the
+ * seeding script are NOT here -- this scan's roots are the V1 source tree, and
+ * neither `apps/agent/src` nor `internal-packages/` is in it. ONE DOOR OPENED, the
+ * harness declared above.
+ *
+ * AND ONE FILE THE PREVIOUS MERGE OWED THIS SCAN, 1774 -> 1775. The MCP
+ * conformance lane added `packages/contexts/tools/adapters/sdk-builds.test-fixture.ts`
+ * and that merge moved `max-file-lines` for it without running this scan or
+ * `arch-boundaries.test.mjs`. It reads NO variable -- it resolves two SDK stores by
+ * manifest path -- so the scan grows and the declared read count does not.
+ *
+ * 1767 + 1 + 7 = 1775, three short of `arch-boundaries.test.mjs`'s 1776 for the
+ * standing reason: this scan reads `.ts` only, and `apps/core-api/scripts/dev.mjs`
+ * is in that census and not in this one.
+ *
+ * AND ONE FILE THIS ROUND'S OWN FIX ADDED, 1775 -> 1776:
+ * `packages/contexts/tools/adapters/mcp-session-failure.integration.test.ts`, the
+ * sibling-call cases for the pool-eviction defect. NO DOOR OPENED: it starts a
+ * loopback HTTP server and reads no variable, and the declared read count is
+ * unmoved at 34.
+ */
+export const EXPECTED_FILE_COUNT = 1776;
 
 function listSourceFiles(root) {
   const found = [];

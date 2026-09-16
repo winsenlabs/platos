@@ -152,7 +152,15 @@ test("the live corpora are enumerated with exact non-vacuous counts", () => {
     //      code spans naming source paths, context directories and contract
     //      methods, which this corpus does not treat as links, so relativeLinks
     //      and anchorReferences below are deliberately unchanged. 396 -> 397.
-    docsMarkdownFiles: 397,
+    //   +1 docs/adr/M2-M4-delegated-decisions-2026-09-15.md, the accepted record
+    //      of the decisions the founder delegated on 2026-09-15 for the M2/M4
+    //      completion branch, filed beside ADR M0.3 and ADR M0.4 so later work
+    //      cites it by path and D-number. It is AUTHORED, not generated. Its
+    //      cross-references are inline code spans naming paths and symbols, which
+    //      this corpus does not treat as links, and it carries no relative link
+    //      and no anchor reference, so relativeLinks and anchorReferences below
+    //      are deliberately unchanged. 397 -> 398.
+    docsMarkdownFiles: 398,
     contentMarkdownFiles: 81,
     navigationLeaves: 248,
     navigationUniqueLeaves: 247,

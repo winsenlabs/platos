@@ -56,7 +56,7 @@
 // `UNIMPORTABLE_CONTEXT_FACTORIES`, and it is not — its root barrel re-exports
 // `createConversationsContract`, so the factory was always nameable and the list
 // named it by mistake. What stops the context is its BUNDLE: eleven peers, of
-// which `files` and `jobs` are genuinely unimportable and `agents` and `skills`
+// which `files` and `jobs` are themselves uncomposed and `agents` and `skills`
 // are each short driven ports that have no adapter directory. This is the READ half of the lane: something else appends
 // frames through `StreamJournal` and seals when it reaches an outcome, and this
 // serves them in order, from a position, to a browser. The producer half is the

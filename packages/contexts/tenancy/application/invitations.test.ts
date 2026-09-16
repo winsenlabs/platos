@@ -7,7 +7,7 @@ import {
   userId,
 } from "../domain/index.js";
 import { createAcceptInvitation, createIssueInvitation } from "./invitations.js";
-import { createTenancyFixture, seedTree } from "./testing/tenant-fixture.js";
+import { createTenancyFixture, seedMember, seedTree } from "./testing/tenant-fixture.js";
 
 const ADA = userId("ada");
 const INVITER = userId("inviter");
@@ -16,9 +16,15 @@ const EMAIL = "Ada@Example.com";
 function scenario() {
   const fixture = createTenancyFixture();
   const tree = seedTree(fixture.store);
+  // D1 (2026-09-15): an invitation now needs an inviter who ADMINISTERS the
+  // organization. Every case in this file is about what an authorized issue and
+  // an acceptance do, so the inviter is seeded as the OWNER; the refusals live in
+  // `invitation-authorization.test.ts`.
+  seedMember(fixture.store, tree, "inviter", { organizationRole: OrganizationRole.OWNER });
   fixture.operators.add({
     userId: ADA,
     email: normalizeEmail(EMAIL),
+    displayName: null,
     disabledAt: null,
   });
   return {
@@ -137,12 +143,13 @@ describe("acceptInvitation", () => {
     if (!issued.ok) throw new Error("unreachable");
     await accept({ token: issued.value.token, userId: ADA, email: EMAIL });
 
-    // Remove them, then invite again.
-    const [membership] = fixture.store.organizationMemberships;
+    // Remove them, then invite again. The inviter's own membership (seeded for D1)
+    // is left exactly as it was.
+    const membership = fixture.store.organizationMemberships.find((row) => row.userId === ADA);
     if (membership === undefined) throw new Error("expected a membership");
-    fixture.store.organizationMemberships = [
-      { ...membership, deactivatedAt: new Date("2026-02-02T00:00:00.000Z") },
-    ];
+    fixture.store.organizationMemberships = fixture.store.organizationMemberships.map((row) =>
+      row.id === membership.id ? { ...row, deactivatedAt: new Date("2026-02-02T00:00:00.000Z") } : row,
+    );
     const reissued = await issue({
       organizationId: tree.organization.id,
       inviterId: INVITER,
@@ -152,10 +159,11 @@ describe("acceptInvitation", () => {
     if (!reissued.ok) throw new Error("unreachable");
     const result = await accept({ token: reissued.value.token, userId: ADA, email: EMAIL });
     expect(result.ok).toBe(true);
-    expect(fixture.store.organizationMemberships).toHaveLength(1);
-    expect(fixture.store.organizationMemberships[0]?.id).toBe(membership.id);
-    expect(fixture.store.organizationMemberships[0]?.deactivatedAt).toBeNull();
-    expect(fixture.store.organizationMemberships[0]?.role).toBe(OrganizationRole.ADMIN);
+    const adas = fixture.store.organizationMemberships.filter((row) => row.userId === ADA);
+    expect(adas).toHaveLength(1);
+    expect(adas[0]?.id).toBe(membership.id);
+    expect(adas[0]?.deactivatedAt).toBeNull();
+    expect(adas[0]?.role).toBe(OrganizationRole.ADMIN);
   });
 
   it("refuses a token that was superseded by a re-invite", async () => {
@@ -216,6 +224,7 @@ describe("acceptInvitation", () => {
     fixture.operators.add({
       userId: ADA,
       email: normalizeEmail(EMAIL),
+      displayName: null,
       disabledAt: new Date("2026-01-02T00:00:00.000Z"),
     });
     const issued = await issue({
@@ -227,7 +236,7 @@ describe("acceptInvitation", () => {
     if (!issued.ok) throw new Error("unreachable");
     const result = await accept({ token: issued.value.token, userId: ADA, email: EMAIL });
     expect(result.ok).toBe(false);
-    expect(fixture.store.organizationMemberships).toHaveLength(0);
+    expect(fixture.store.organizationMemberships.filter((row) => row.userId === ADA)).toHaveLength(0);
   });
 
   it("refuses an unknown token", async () => {

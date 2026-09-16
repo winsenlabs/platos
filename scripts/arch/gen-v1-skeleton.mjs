@@ -438,7 +438,19 @@ export const ADAPTERS = [
     additional: [{ port: "ChannelRuntime", owner: "channels" }],
     note: "one channel client, inbound and outbound",
   },
-  { dir: "notifier-email", port: "Notifier", owner: "cost-monitoring", note: "outbound email" },
+  {
+    dir: "notifier-email",
+    port: "Notifier",
+    owner: "cost-monitoring",
+    // D20 (2026-09-15) ADDS A SECOND, `identity-access:MagicLinkDelivery`, and the
+    // question it answers is §15's: does the directory that already holds the
+    // relay satisfy the port. YES — one SMTP relay, one client, one set of
+    // credentials; a sixteenth directory would have been a second SMTP client for
+    // one relay. Its owner is a context this directory did not have, so it moves
+    // `EXPECTED_EDGE_COUNT` by one and gives the directory a second owner edge.
+    additional: [{ port: "MagicLinkDelivery", owner: "identity-access" }],
+    note: "outbound email over one SMTP relay",
+  },
   { dir: "notifier-webhook", port: "Notifier", owner: "cost-monitoring", note: "outbound HTTP callbacks" },
   // WIN-259 (M2.4). THE THIRTEENTH DIRECTORY, and the first one added since the
   // §15 amendment. It is a directory rather than a row on `postgres-tenancy`
@@ -540,6 +552,26 @@ export const ADAPTERS = [
     owner: "identity-access",
     additional: [{ port: "TotpCodeVerifier", owner: "identity-access" }],
     note: "the credential randomness and the RFC 6238 keyed hash over one base32 alphabet",
+  },
+  // WIN-271 (M4.5), D10. THE SIXTEENTH DIRECTORY, and the first SECOND home for a
+  // port that was not designed as a multi-home port from the start. It is a
+  // directory and not a row on `channel-slack` because §15 is a rule about ONE
+  // VENDOR CLIENT, and Discord is a different vendor with a different client —
+  // here, no client library at all: `node:crypto` verifies its Ed25519
+  // signatures and `fetch` speaks its REST routes. A row on `channel-slack` would
+  // put Discord inside the one directory `chat-sdk-only` homes the chat SDK in.
+  //
+  // TWO BINDINGS FOR THE REASON `channel-slack` HAS TWO: `ChannelRuntime` extends
+  // `ChannelAdapter`, one object satisfies both, and `PORT_SATISFACTION` proves
+  // each so the compiler notices the day either changes shape. Its only owner is
+  // `channels`, so it brings exactly the two edges every adapter directory
+  // brings and no more.
+  {
+    dir: "channel-discord",
+    port: "ChannelAdapter",
+    owner: "channels",
+    additional: [{ port: "ChannelRuntime", owner: "channels" }],
+    note: "Discord interactions: Ed25519 inbound, REST outbound",
   },
 ];
 
@@ -847,8 +879,20 @@ export function adapterOwnerPackages(adapter) {
 // would have been a second chat SDK install for the same provider, which is
 // exactly the arrangement §15 exists to refuse. This run is SERIAL, so the pin
 // moves once, to the value this tree produces.
-export const EXPECTED_ADAPTER_COUNT = 15;
-export const EXPECTED_BINDING_COUNT = 60;
+//
+// D20 (2026-09-15): 60 -> 61 bindings and the DIRECTORY pin does not move.
+// `notifier-email:MagicLinkDelivery` is the second row on an EXISTING directory,
+// satisfied by the same object speaking to the same relay.
+//
+// WIN-271 (M4.5), D10: 15 -> 16 directories and +2 bindings.
+// `packages/adapters/channel-discord` is the SECOND `ChannelRuntime`, and it takes
+// both of `channels`' channel ports with it for the reason `channel-slack` holds
+// both. Both pins move, by one and by two.
+//
+// INTEGRATED AND RE-MEASURED, not summed from either lane's report: 15 + 1 = 16
+// directories and 60 + 1 + 2 = 63 bindings.
+export const EXPECTED_ADAPTER_COUNT = 16;
+export const EXPECTED_BINDING_COUNT = 63;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -858,7 +902,14 @@ export const EXPECTED_BINDING_COUNT = 60;
  * Every other port has exactly one home, and `selfCheck` fails both ways — an
  * unlisted port with two homes, and a listed port that has stopped having two.
  */
-export const MULTI_HOME_PORTS = ["cost-monitoring:Notifier"];
+//
+// WIN-271 (M4.5), D10: `channels:ChannelAdapter` and `channels:ChannelRuntime`
+// JOIN, and they are the case the context's own port header predicted —
+// "one provider, one directory, one object, both halves", with a REGISTRY
+// (`ChannelRuntimeRegistry`, `ChannelAdapterRegistry`) choosing among homes by
+// provider. `channel-slack` and `channel-discord` are two providers behind one
+// port pair, which is the design and not a collision.
+export const MULTI_HOME_PORTS = ["cost-monitoring:Notifier", "channels:ChannelAdapter", "channels:ChannelRuntime"];
 
 export const TRANSPORTS = ["rest", "mcp", "ws", "webhook", "channels-ingress", "bff"];
 
@@ -887,7 +938,10 @@ export const ROOT_SOLUTION_PATH = "tsconfig.json";
 // own tsconfig and its own package the composition root could not reference it
 // and `identity-access`'s `TokenMinter` and `TotpCodeVerifier` would have stayed
 // where `context-ports.ts` found them — "satisfied by no adapter directory".
-export const EXPECTED_PROJECT_COUNT = 35;
+// 35 -> 36 (WIN-271 (M4.5), D10). `packages/adapters/channel-discord`, the
+// sixteenth adapter directory, a PROJECT for the reason every adapter is one:
+// ADR M0.3 §2 lets only an adapter package implement a driven port.
+export const EXPECTED_PROJECT_COUNT = 36;
 // 94 -> 95 (WIN-297): apps/core-api -> packages/kernel. The composition root
 // binds twelve adapters to the ports they implement and three of those ports
 // (OutboxWriter, DurableRuntime, EventBus) are kernel-hosted, so without this
@@ -1097,7 +1151,16 @@ export const EXPECTED_PROJECT_COUNT = 35;
 //
 // READ BACK from `gen-v1-skeleton --check` rather than trusted from this
 // arithmetic, and carried independently in `scripts/arch/v1-project-graph.mjs`.
-export const EXPECTED_EDGE_COUNT = 122;
+//
+// D20 (2026-09-15): 122 + 1 = 123 -- `packages/adapters/notifier-email` ->
+// `packages/contexts/identity-access`, carrying `MagicLinkDelivery`. A second owner
+// edge on a directory that had one. No cycle: identity-access imports only the
+// kernel, and `adapters-only-from-core` makes the return edge unrepresentable.
+// WIN-271 (M4.5), D10: 123 + 2 = 125 -- `packages/adapters/channel-discord` ->
+// `packages/contexts/channels` (its one owner, carrying TWO ports in ONE
+// reference) and `apps/core-api` -> `packages/adapters/channel-discord` (the
+// composition-root edge every adapter gets). READ BACK, as above.
+export const EXPECTED_EDGE_COUNT = 125;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -1117,7 +1180,9 @@ export const SCAFFOLDING_BASENAMES = ["package.json", "tsconfig.json", "README.m
 // brings the same three, for the same reason.
 // 100 -> 103 (WIN-267 A2). The fourteenth directory brings the three files every
 // project brings: 34 projects x 3 files + 1 = 103.
-export const EXPECTED_SCAFFOLDING_FILE_COUNT = 106;
+// 106 -> 109 (WIN-271 (M4.5), D10). The sixteenth directory brings the three
+// files every project brings: 36 projects x 3 files + 1 = 109.
+export const EXPECTED_SCAFFOLDING_FILE_COUNT = 109;
 
 // Declaration-only source placeholders in a fully unadopted skeleton:
 // kernel 3 + contexts 17x4 + adapters 13x2 + core-api 8 + mcp-stdio 1.
@@ -1154,7 +1219,11 @@ export const EXPECTED_SCAFFOLDING_FILE_COUNT = 106;
 // the check refuses a placeholder count above this number, so removing the
 // adoption entry while the real source is on disk makes both files reappear as
 // MISSING.
-export const EXPECTED_PLACEHOLDER_FILE_COUNT = 110;
+// 110 -> 112 (WIN-271 (M4.5), D10). The sixteenth directory's `src/index.ts` and
+// `src/adapter.ts`, emitted for an unadopted project and released by the
+// adoption below in the same run; the CEILING rises so un-adoption still fails
+// closed.
+export const EXPECTED_PLACEHOLDER_FILE_COUNT = 112;
 
 // ---------------------------------------------------------------------------
 // ADOPTED PROJECTS (WIN-256). Append-only, one project path per entry, each with
@@ -1199,7 +1268,9 @@ export const ADOPTED_PROJECTS = [
   "packages/adapters/tokenmint-totp", // WIN-267 A2 — the per-kind token widths the extraction source mints at, the RFC 4648 base32 secret, and the RFC 6238 verifier that tests every candidate counter
   "packages/adapters/channel-slack", // WIN-271 (M4.5) — the channels ChannelRuntime: Slack's own published request-verification vector, three distinguishable refusals over the exact received octets, and the outbound deadline that separates "did not land" from "do not know"
   "packages/adapters/redis-ratelimit", // WIN-267 A3 — the identity-access RateLimiter over ONE Lua script: the last token of a window is unshareable, the clock is the caller's, and a dead Redis refuses rather than inventing a bucket
+  "packages/adapters/notifier-email", // D20 (2026-09-15) — outbound email for two owners over ONE SMTP submission client written here: STARTTLS whenever offered, credentials never sent in clear, base64 bodies dot-stuffing cannot alter, and a header value with a line break refused rather than cleaned
   "packages/adapters/redis-streams", // WIN-272 (M4.6) — the kernel EventBus and StreamJournal over ONE Redis Streams client: the producer's own sequence IS the server-enforced entry id, a trimmed resume position is REFUSED rather than answered with a gap, and a bus that reconnects joins the live end because it is a fan-out seam and not a queue
+  "packages/adapters/channel-discord", // WIN-271 (M4.5), D10 — the SECOND channels ChannelRuntime: Ed25519 over `timestamp + body` joined to RFC 8032 and to Discord's own helper library, the PING handshake, rate-limit windows that refuse before a socket opens, and a far side that records what it CREATED as well as what it received
 ];
 
 // ---------------------------------------------------------------------------
@@ -1214,12 +1285,22 @@ export const ADOPTED_PROJECTS = [
 // recorded that as a finding and deliberately did not fix it, on the grounds
 // that publishing an entry point nothing imports is dead surface.
 //
-// So the list is not "every adopted context": it is the contexts `apps/core-api`
-// ACTUALLY composes. An entry here without a matching import in the composition
-// root is exactly the dead surface WIN-297 declined to create, and every entry
-// must be an adopted project — `selfCheck` fails otherwise, because an
-// unadopted project's source tree is generated placeholders and its
-// `application/index.ts` would be one too.
+// So the list is not "every adopted context": it is the contexts whose
+// `application/index.js` a V1 project ACTUALLY IMPORTS. An entry here without a
+// matching import is exactly the dead surface WIN-297 declined to create —
+// `gen-v1-skeleton.test.mjs` reads every V1 source file and fails in both
+// directions — and every entry must be an adopted project: `selfCheck` fails
+// otherwise, because an unadopted project's source tree is generated
+// placeholders and its `application/index.ts` would be one too.
+//
+// WHO COUNTS AS THE IMPORTER HAS WIDENED TWICE, AND THE RULE HAS NOT. It was
+// the composition root alone (WIN-257); WIN-258 T5 added the canonical-store
+// adapter's conformance differentials; WIN-302 added the per-context modules
+// of `apps/core-api/src/composition/factory-entries/`, because that issue's
+// acceptance is "every context's contract factory resolves from
+// `apps/core-api`, proved by import", and a context whose factory is on no `.`
+// barrel can only meet it through this subpath. An entry is still earned by an
+// import, never by an intention to compose.
 // ---------------------------------------------------------------------------
 export const APPLICATION_ENTRY_PROJECTS = [
   "packages/contexts/identity-access", // WIN-257 — composed by apps/core-api as the identity/session owner
@@ -1278,96 +1359,96 @@ export const APPLICATION_ENTRY_PROJECTS = [
   // publishes is a factory for a KERNEL PORT, which is why the import is real
   // today rather than a placeholder for a composition that has not happened.
   "packages/contexts/governance",
+  // WIN-302 — THE LAST SIX, and the reason is the issue's acceptance rather than
+  // a composition. Each keeps its `create*Contract` in `application/` with no
+  // re-export from `.`, so until these lines the composition root could not
+  // name it at all. NONE OF THE SIX IS COMPOSED and the entries do not say so.
+  // Each is imported by ONE module of `apps/core-api/src/composition/factory-entries/`,
+  // and `context-factories.test.ts` loads each module in a named case of its
+  // own — so deleting any one line below turns exactly that context's case red
+  // rather than failing a whole file at load.
+  "packages/contexts/channels", // WIN-302 — createChannelsContract
+  "packages/contexts/eventing", // WIN-302 — createEventingContract
+  "packages/contexts/files", // WIN-302 — createFilesContract
+  "packages/contexts/jobs", // WIN-302 — createJobsContract
+  "packages/contexts/observability", // WIN-302 — createObservabilityContract
+  "packages/contexts/privacy", // WIN-302 — createPrivacyContract
 ];
 
 // ---------------------------------------------------------------------------
-// WIN-267 T3 (M4.1) ADDED NOTHING TO THAT LIST, AND THE REASON IS MEASURED.
+// WIN-267 T3 (M4.1) ADDED NOTHING TO THAT LIST, AND THE REASON WAS MEASURED.
 //
 // That tranche's brief expected entries here: the composition root began
 // CONSTRUCTING adapters, so contexts a route needs should have become
-// composable. They did not, and adding an entry anyway would have created
-// exactly the dead surface WIN-297 declined to create — the rule above is "the
-// contexts `apps/core-api` ACTUALLY composes", not "the contexts it might".
+// composable. They did not, and an entry without a matching import would have
+// been exactly the dead surface WIN-297 declined to create. The entries that
+// came later each came with their import — `governance` at WIN-267 for
+// `createGovernanceSafetyEventSink`, the last six at WIN-302 for the factory
+// modules named above.
 //
-// THE COUNT, AND WHERE IT FALLS AWAY. A context is composable only when three
-// things hold at once:
+// A context is COMPOSABLE only when three things hold at once:
 //
 //   1. it publishes a factory over its whole contract, AND `apps/core-api` can
-//      IMPORT that factory. SEVENTEEN publish one; NINE are importable.
+//      IMPORT that factory. SEVENTEEN publish one, SEVENTEEN are importable,
+//      and NONE is unimportable.
 //
 //   2. every driven port in its bundle has an implementation in this tree;
 //
 //   3. that implementation is reachable from a constructed adapter.
 //
-// CONDITION 1 USED TO BE ONE CLAUSE HERE AND IT WAS FALSE (WIN-267 G3). It read
-// "ELEVEN do ... SIX do not: `agents`, `tools`, `secrets`, `memory`,
-// `cost-monitoring` and `providers` publish their use cases one at a time and no
-// assembler". Every one of those six publishes an assembler, and publishes it
-// from `.`: `agentsContract`, `toolsContract`, `secretsContract`,
-// `memoryContract`, `costMonitoringContract` and `providersContract` are all in
-// their own packages' `contracts/index.ts`. `secrets` and `providers` were
-// corrected in `context-ports.ts` when they were composed; this copy of the
-// claim was not, and kept the other four wrong for a further tranche. There is
-// no context in this tree without an assembler, and there never was.
+// CONDITION 1 WAS WRONG IN PRINT FOUR TIMES BEFORE ANYBODY MEASURED IT, and the
+// withdrawn wordings are QUOTED here rather than paraphrased, so no figure in
+// them can be read as current. It read "ELEVEN do ... SIX do not: `agents`,
+// `tools`, `secrets`, `memory`, `cost-monitoring` and `providers` publish their
+// use cases one at a time and no assembler"; every one of those six publishes
+// an assembler from `.`, and there is no context in this tree without one. It
+// then read "NINE factories can be named from the composition root ... The
+// remaining EIGHT — `channels`, `conversations`, `eventing`, `files`,
+// `governance`, `jobs`, `observability` and `privacy`", and this file's own
+// copy of the clause read "SEVENTEEN publish one; NINE are importable". That was
+// wrong twice over: WIN-267 had already published `governance`'s subpath, and
+// `conversations/contracts/index.ts` re-exports `createConversationsContract`
+// as a VALUE. WIN-302 counted against Node's resolver and got "ELEVEN and SIX",
+// and then published the six instead of recording them.
 //
-// WHAT IS REAL IS THE OTHER HALF, and it is this list's own subject — but the
-// FIGURE that stood here was wrong twice, and WIN-302 measured it instead of
-// repeating it. It read: "NINE factories can be named from the composition root
-// ... The remaining EIGHT — `channels`, `conversations`, `eventing`, `files`,
-// `governance`, `jobs`, `observability` and `privacy`".
+// THE PARTITION NOW, which a suite derives rather than this paragraph asserting.
+// Route one is a factory on the `.` barrel — `agents`, `conversations`,
+// `cost-monitoring`, `memory`, `providers`, `secrets` and `tools`. Route two is
+// the `./application/index.js` this list publishes, and `agents` and `secrets`
+// are on both. Every context is on at least one route, so
+// `UNIMPORTABLE_CONTEXT_FACTORIES` in `apps/core-api/src/composition/context-ports.ts`
+// is EMPTY — kept as a constant, because it is what the readback below joins to.
 //
-// Counted against Node's own resolver and against the seventeen manifests, it is
-// ELEVEN and SIX:
+// AND IT IS A TEST IN THREE PARTS, all in
+// `apps/core-api/src/composition/context-factories.test.ts`: one named case per
+// context that IMPORTS its factory; a partition that derives both routes from
+// the seventeen manifests and barrels and joins them to that constant; and a
+// readback of every count of importable or unimportable factories stated in the
+// repository's comments and Markdown — this paragraph included — against the
+// constant. A figure outside
+// quotation marks that disagrees with it is a red case, which is the failure
+// this clause never had in any of its four wrong versions.
 //
-//   SEVEN from `.`         agents, conversations, cost-monitoring, memory,
-//                          providers, secrets, tools
-//   FOUR from the subpath  governance, identity-access, skills, tenancy
-//   SIX unimportable       channels, eventing, files, jobs, observability,
-//                          privacy
+// WHICH CONTEXTS CLEAR ALL THREE is `/readyz`'s `detail.composedContexts`, read
+// off a real socket by `apps/core-api/src/process.test.ts`, and not a figure this
+// paragraph keeps. `tenancy` was the first — its six driven ports and unit of
+// work are all properties of one `PostgresTenancyAdapter` (WIN-258 tranches 1
+// and 3). `identity-access` was the near miss this paragraph used to describe:
+// it said `rateLimiter` is "still this generator's own placeholder" and that
+// `hasher`, `minter`, `totp` and `cipher` are "satisfied by no adapter directory
+// at all", and WIN-267 A1, A2 and A3 closed all five, while the kernel
+// `SafetyEventSink` it lacked is now `governance`'s own
+// `createGovernanceSafetyEventSink`. `secrets`, `providers` and `tools` followed.
 //
-// `governance` IS IN THIS LIST, twenty lines above, added by WIN-267 — so the
-// sentence further down that reads "AND `governance` IS IN THE UNIMPORTABLE
-// EIGHT" contradicted the data in its own file and is corrected there too.
-// `conversations` was never unimportable at all: its `contracts/index.ts`
-// re-exports `createConversationsContract` as a VALUE from the `.` entry point.
-//
-// So WIN-297's finding is open for SIX contexts, each keeping a `create*Contract`
-// in `application/` behind a manifest publishing only `.`,
-// `./application/ports/index.js` and `./application/testing/index.js`. The fix is
-// one line here each — held back by this list's own rule until the context is
-// actually composed.
-//
-// AND IT IS A TEST NOW. `apps/core-api/src/composition/installation.test.ts`
-// derives the `.`-entry half from the seventeen packages' own barrels and joins it
-// to `UNIMPORTABLE_CONTEXT_FACTORIES`, so this count cannot go stale again without
-// a named case going red.
-//
-// ONE context clears all three: `tenancy`, whose six driven ports and unit of
-// work are all properties of a single `PostgresTenancyAdapter` (WIN-258 tranches
-// 1 and 3). It is already on the list, and what changed is that it is now
-// composed over REAL PostgreSQL rather than over a bundle an install handed in.
-//
-// `identity-access` WAS the near miss and its ports have since landed, so the
-// paragraph that stood here is withdrawn rather than carried: it said
-// `rateLimiter` is "still this generator's own placeholder" and that `hasher`,
-// `minter`, `totp` and `cipher` are "satisfied by no adapter directory at all".
-// WIN-267 A1, A2 and A3 closed all five — `redis-ratelimit`,
-// `node-crypto-digest`, `keyring-envelope` and `tokenmint-totp` — and all six of
-// its driven ports are now satisfied. What holds it is the kernel
-// `SafetyEventSink`, implemented only by `governance`.
-//
-// AND `governance` IS NOT IN THE UNIMPORTABLE SET, which is the correction WIN-302
-// makes to the fact a tranche planning that work needs first. This paragraph said
-// it was, and the entry twenty lines above — added by WIN-267, in the same tranche
-// that wrote this sentence — already made `createGovernanceContract` nameable from
-// the composition root. So landing adapters for its unbound ports is NOT blocked
-// on packaging; `GOVERNANCE_UNBOUND_PORTS` is empty and what remains is the peer
-// chain alone. Its
-// `AgentsContract` slot needs a composed `agents` too, and `agents` is short
+// `governance` ITSELF IS STILL NOT COMPOSED, AND PACKAGING IS NOT THE REASON. The
+// sentence that stood here said it was: "AND `governance` IS IN THE
+// UNIMPORTABLE EIGHT". Its subpath has been published since WIN-267, and
+// `GOVERNANCE_UNBOUND_PORTS` is empty. What remains is the peer chain: its
+// `AgentsContract` slot needs a composed `agents`, and `agents` is short
 // `AgentVersionLock` and `MacroRecorder` plus a `skills` peer.
 // `apps/core-api/src/composition/context-ports.ts` states this per context, and
-// its suite checks the identity-access, agents and importability halves against
-// `ADAPTER_BINDINGS` and against the resolver rather than asserting them.
+// `installation.test.ts` checks it against `ADAPTER_BINDINGS` rather than
+// asserting it.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -1377,8 +1458,8 @@ export const APPLICATION_ENTRY_PROJECTS = [
 // A SECOND LIST RATHER THAN A SECOND USE OF THE ONE ABOVE, because the two
 // publish different things for different readers and the honesty check that
 // keeps each list true is a different check. `APPLICATION_ENTRY_PROJECTS`
-// publishes the factory that BUILDS a context and is true when
-// `apps/core-api/src/app.module.ts` imports it. This list publishes
+// publishes the factory that BUILDS a context and is true when a V1 project
+// imports it, the composition root first among them. This list publishes
 // `application/testing/index.js` — the in-memory doubles a context already
 // writes for its own suites — and is true when a CANONICAL-STORE ADAPTER
 // imports it.
@@ -1538,6 +1619,33 @@ const CONTEXT_RUNTIME_DEPENDENCIES = {
   },
 };
 
+/**
+ * A context's TEST-ONLY external dependencies — the dev twin of the table above,
+ * and the context-shaped twin of `ADAPTER_DEV_DEPENDENCIES`.
+ *
+ * WIN-268 (M4.2). The MCP SDK 1.30.x CANDIDATE, under an alias, so the adopted
+ * 1.26.0 and the candidate can be asked the same questions in one process
+ * before any version bump — the shape `@chat-adapter/slack-audited` established
+ * for WIN-271. `adapters/dispatch.integration.test.ts` puts the candidate's OWN
+ * SERVER on the far side of the adopted Platos client, and
+ * `apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts`
+ * drives the Platos servers with the candidate's client. A DEV dependency for
+ * the reason every row of `ADAPTER_DEV_DEPENDENCIES` is: an SDK the adapter does
+ * not run must not reach a production image or its SBOM's runtime set, and
+ * adopting it is a separate, reviewed change to the runtime row above.
+ *
+ * AN EXACT PIN, and the latest 1.30.x the registry published when this row was
+ * written (`npm view @modelcontextprotocol/sdk dist-tags` answered
+ * `latest: 1.30.0` on 2026-09-16). The tarball was already in `pnpm-lock.yaml`
+ * through `@mintlify/cli`'s optional `@anthropic-ai/claude-agent-sdk`, so the
+ * lockfile gains a snapshot keyed on this package's `zod` and no new tarball.
+ */
+const CONTEXT_DEV_DEPENDENCIES = {
+  "packages/contexts/tools": {
+    "@modelcontextprotocol/sdk-candidate": "npm:@modelcontextprotocol/sdk@1.30.0",
+  },
+};
+
 // Every entry point below takes an optional `adopted` override so the adoption
 // path itself is exercisable. Production callers pass nothing and get
 // ADOPTED_PROJECTS. An untestable adoption seam would be an unproven gate.
@@ -1644,11 +1752,33 @@ const PROJECT_TEST_SCRIPTS = {
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
 };
 
+// Projects that get a `dev` script, and the script.
+//
+// ONE ENTRY, AND ITS SHAPE IS EXTRACTED RATHER THAN CHOSEN. No V1 project had a
+// `dev` script, so there was no V1 shape to copy. The repository's shape for a
+// package whose `build` is the TypeScript compiler is that same compiler with
+// `--watch` (`internal-packages/compute`, `run-engine` and `schedule-engine` all
+// spell `tsc --watch -p tsconfig.build.json`). Every V1 project builds with
+// `tsc -b`, so the translation is `tsc -b --watch` — and build mode watches the
+// whole project-reference graph, so this one watcher recompiles every context
+// and adapter the deployable composes, not just `apps/core-api/src`.
+//
+// IT COMPILES; IT DOES NOT SERVE. `start` still runs the built entry point, for
+// the reason given on `ADOPTED_APP_SCRIPTS` above. A serving `dev` would also
+// have to pick a port, and the configuration default (3030) is the port the
+// webapp's own `dev` binds, so `turbo run dev` would start two listeners on one
+// port. Choosing a different one is a decision this generator does not make.
+const PROJECT_DEV_SCRIPTS = {
+  "apps/core-api": "tsc -b --watch",
+};
+
 function scriptsFor(project, adopted) {
   if (!adoptedSet(adopted).has(project)) return BUILD_SCRIPTS;
   const base = APP_PROJECTS.has(project) ? ADOPTED_APP_SCRIPTS : ADOPTED_SCRIPTS;
   const override = PROJECT_TEST_SCRIPTS[project];
-  return override === undefined ? base : { ...base, test: override };
+  const scripts = override === undefined ? base : { ...base, test: override };
+  const dev = PROJECT_DEV_SCRIPTS[project];
+  return dev === undefined ? scripts : { ...scripts, dev };
 }
 
 function pascal(name) {
@@ -1748,6 +1878,11 @@ function contextManifest(
     types: "./dist/contracts/index.d.ts",
     exports,
     dependencies,
+    // Test-only, and only for a context whose `adapters/` the ADR sends an SDK
+    // to — the same gate the runtime row above is behind.
+    devDependencies: adapterEntries.includes(`packages/contexts/${name}`)
+      ? (CONTEXT_DEV_DEPENDENCIES[`packages/contexts/${name}`] ?? {})
+      : {},
   });
 }
 
@@ -1882,6 +2017,22 @@ const ADAPTER_DEV_DEPENDENCIES = {
   // answers, with a negative control proving the comparison can fail.
   "channel-slack": {
     "@chat-adapter/slack-audited": "npm:@chat-adapter/slack@4.34.0",
+  },
+  // WIN-271 (M4.5), D10. DISCORD'S OWN HELPER LIBRARY, as the ORACLE for its
+  // signature construction, and nothing the adapter runs. `developers/interactions/
+  // overview.mdx` states the construction in prose and three code samples;
+  // `discord-interactions` is the executable form Discord publishes
+  // (github.com/discord/discord-interactions-js), and `discord-signature.test.ts`
+  // requires it and this adapter to accept and refuse the same deliveries. The
+  // adapter verifies with `node:crypto` and imports none of it.
+  //
+  // EXACT, NOT A RANGE, AND ALREADY IN THE LOCKFILE. 4.4.0 is the version
+  // `@chat-adapter/discord@4.34.0` — which `apps/agent` ships — resolves, so this
+  // opens no new resolution; and an oracle that floats to whatever was published
+  // last is not an oracle. A DEV dependency for the reason the rows above are: it
+  // must not reach the production image or its SBOM.
+  "channel-discord": {
+    "discord-interactions": "4.4.0",
   },
   // WIN-272 (M4.6). The Redis container the journal's conservation and the bus's
   // at-least-once redelivery are proved against. A DEV dependency for the reason
@@ -2052,9 +2203,16 @@ const CORE_API_RUNTIME_DEPENDENCIES = {
 // hashes nothing and would pass against a `SecretHasher` that returned a
 // constant. Byte-identical to the specifier `postgres-tenancy` already uses, so
 // it resolves to the entry already in the lockfile.
+//
+// D20 (2026-09-15) ADDS `testcontainers` ITSELF, for the one container the two
+// scoped packages do not wrap: the SMTP relay the magic-link email is delivered
+// to and read back from. Byte-identical to the specifier
+// `internal-packages/testcontainers` already uses, so it resolves to the
+// testcontainers@10.28.0 entry already in the lockfile.
 const CORE_API_DEV_DEPENDENCIES = {
   "@testcontainers/postgresql": "^10.28.0",
   "@testcontainers/redis": "^10.28.0",
+  testcontainers: "^10.28.0",
 };
 
 function appManifest({

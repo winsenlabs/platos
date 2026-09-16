@@ -12,10 +12,11 @@
 // `schema.prisma` carries that name and it is deliberately not repeated in
 // context source. Nothing about the arithmetic depends on the physical name.
 //
-// FAIL-OPEN IS A DECISION, NOT AN ACCIDENT. See `LIMITER_UNAVAILABLE_POLICY`.
+// FAILING CLOSED IS A DECISION, NOT AN ACCIDENT. See `LIMITER_UNAVAILABLE_POLICY`
+// (D3, 2026-09-15: it used to be fail-open, and the reason it moved is there).
 
 import { secondsUntil } from "./credential.js";
-import { rateLimited } from "./errors.js";
+import { rateLimitFailedClosed, rateLimited } from "./errors.js";
 import type { TokenHash } from "./principal.js";
 import { err, ok, type Result } from "@platos/kernel";
 
@@ -57,7 +58,15 @@ export interface RateLimitBucket {
 export type RateLimitDecision =
   | { readonly outcome: "allowed"; readonly remaining: number }
   | { readonly outcome: "limited"; readonly retryAfterSeconds: number; readonly resetAt: Date }
-  | { readonly outcome: "degraded" };
+  | { readonly outcome: "degraded" }
+  /**
+   * D3 (2026-09-15). The limiter could not be consulted and the policy is
+   * `deny`. A REFUSAL like `limited`, and a DIFFERENT one: `limited` says the
+   * caller spent their budget and should wait `retryAfterSeconds`; this says the
+   * service could not count at all. `cause` is the code the limiter port
+   * returned, kept so Redis and PostgreSQL outages stay distinguishable.
+   */
+  | { readonly outcome: "failed-closed"; readonly cause: string };
 
 /**
  * A decision that let the request through.
@@ -67,23 +76,34 @@ export type RateLimitDecision =
  * what keeps every caller from carrying an impossible-but-uncheckable case: a
  * branch no input can reach is a branch no test can turn red.
  */
-export type PermittedRateLimitDecision = Exclude<RateLimitDecision, { outcome: "limited" }>;
+export type PermittedRateLimitDecision = Exclude<
+  RateLimitDecision,
+  { outcome: "limited" } | { outcome: "failed-closed" }
+>;
 
 /**
  * WHAT HAPPENS WHEN THE LIMITER ITSELF IS DOWN.
  *
- * `"allow"` — availability over limiting. This is the behaviour the running
- * system has: the Redis-backed guard swallows a connection failure and lets the
- * request through, and the budget services do the same. It is recorded here as a
- * named constant so it is a policy a reviewer can see and argue with, rather
- * than a `catch {}` a reader has to notice.
+ * `"deny"` — FAIL CLOSED. Decision D3 (founder-delegated, 2026-09-15) chose it,
+ * and the reason is in who consumes this budget: `verify-mfa` and `enrol-totp`
+ * spend `MFA_VERIFY`, so `"allow"` meant UNLIMITED guesses at a six-digit TOTP
+ * code for as long as Redis was unreachable — and an attacker who can knock the
+ * cache over chooses how long that is. A MISSING limiter adapter already failed
+ * closed (identity-access does not compose without `redis-ratelimit`); this makes
+ * a constructed-but-unreachable one agree with it.
  *
- * The trade is explicit: a limiter outage becomes an unlimited window. That is
- * accepted because the alternative — refusing every login while the cache is
- * down — converts a cache outage into a total authentication outage. Flip this
- * to `"deny"` and every use case below closes instead, with no other edit.
+ * WHAT IT COSTS, ACCEPTED IN D3: sign-in, invitation acceptance and MFA stop while
+ * the limiter is unreachable. The refusal is `RATE_LIMIT_FAILED_CLOSED`
+ * (`unavailable`, 503) and NOT `RATE_LIMITED` (429): a client told it spent its
+ * budget waits and retries the same request, a client told the service cannot
+ * count is looking at an outage, and two guards under one code cannot be told
+ * apart.
+ *
+ * The running system (the oracle) is fail-open: its Redis-backed guard swallows
+ * a connection failure. That behaviour is deliberately NOT ported, and every
+ * expectation that encoded it was re-recorded under D3.
  */
-export const LIMITER_UNAVAILABLE_POLICY: "allow" | "deny" = "allow";
+export const LIMITER_UNAVAILABLE_POLICY: "allow" | "deny" = "deny";
 
 /** The fixed window containing `now`. */
 export function windowFor(now: Date, policy: RateLimitPolicy): RateLimitWindow {
@@ -139,18 +159,25 @@ export function decide(bucket: RateLimitBucket, policy: RateLimitPolicy, now: Da
   return { outcome: "allowed", remaining: policy.requests - bucket.requestCount };
 }
 
-/** The decision when the limiter could not be consulted at all. */
-export function decideOnLimiterFailure(): RateLimitDecision {
-  return LIMITER_UNAVAILABLE_POLICY === "allow"
-    ? { outcome: "degraded" }
-    : { outcome: "limited", retryAfterSeconds: 1, resetAt: new Date(0) };
+/**
+ * The decision when the limiter could not be consulted at all.
+ *
+ * `policy` defaults to the published constant and is a parameter only so both
+ * branches stay exercisable; no production caller passes it.
+ */
+export function decideOnLimiterFailure(
+  cause: string,
+  policy: "allow" | "deny" = LIMITER_UNAVAILABLE_POLICY,
+): RateLimitDecision {
+  return policy === "allow" ? { outcome: "degraded" } : { outcome: "failed-closed", cause };
 }
 
 export function isPermitted(decision: RateLimitDecision): boolean {
-  return decision.outcome !== "limited";
+  return decision.outcome !== "limited" && decision.outcome !== "failed-closed";
 }
 
 export function asResult(decision: RateLimitDecision): Result<PermittedRateLimitDecision> {
   if (decision.outcome === "limited") return err(rateLimited(decision.retryAfterSeconds));
+  if (decision.outcome === "failed-closed") return err(rateLimitFailedClosed(decision.cause));
   return ok(decision);
 }

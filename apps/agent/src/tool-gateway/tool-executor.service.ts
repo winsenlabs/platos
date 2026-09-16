@@ -1535,14 +1535,25 @@ export class ToolExecutorService {
         resolvedHeaders,
         transportKind: transport,
       });
-      const callRes: any = await sdkClient.callTool(
-        {
-          name: call.tool,
-          arguments: (call.params ?? {}) as Record<string, unknown>,
-        },
-        undefined,
-        { timeout: env.MCP_CALL_TIMEOUT_MS ?? 30_000 },
-      );
+      let callRes: any;
+      try {
+        callRes = await sdkClient.callTool(
+          {
+            name: call.tool,
+            arguments: (call.params ?? {}) as Record<string, unknown>,
+          },
+          undefined,
+          { timeout: env.MCP_CALL_TIMEOUT_MS ?? 30_000 },
+        );
+      } catch (callError) {
+        // WIN-269 — the session may be dead (a restarted server answers a stale
+        // `Mcp-Session-Id` with 404 forever). Evict exactly this client so the
+        // next call rebuilds it, then report the failure below as before. A
+        // timeout or a JSON-RPC error answer leaves the session to the other
+        // calls sharing it (`failureEndsSession`).
+        this.mcpPool.evictAfterFailure(sdkClient, callError);
+        throw callError;
+      }
 
       // The SDK returns `{ content, isError? }` for a tool-level error rather
       // than throwing; a transport/protocol error throws (caught below). Pass

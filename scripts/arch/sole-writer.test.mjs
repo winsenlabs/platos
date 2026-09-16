@@ -2042,7 +2042,22 @@ test("an element-access member that is not a delegate is still not a write", () 
 // well as the id — that is what makes a second revoke a no-op instead of a rewrite
 // of the first one's instant, and `update` cannot express it. The violation list
 // stays empty and it is again the COUNT that moved. 318 + 2 = 320.
-const LIVE_TREE_WRITE_COUNT = 320;
+//
+// 2026-09-16 (the identity/tenancy REST remainder, verifier round) 320 -> 321. ONE
+// write, in `packages/adapters/postgres-tenancy/src/ports-conformance.integration.test.ts`:
+//
+//   the raw `UPDATE "User" SET "displayName"`  the team page renders
+//                               `displayName ?? email`, V1 has no port that writes
+//                               the column, and a migrated install's rows carry the
+//                               oracle's — so the suite writes the ROW around the
+//                               port and reads it back through `OperatorDirectory`.
+//                               A statement the port cannot express is what this
+//                               scan counts rather than forbids.                 1
+//
+// `User` is `identity-access`'s row and this directory is its canonical store, so
+// the violation list stays empty and it is again the COUNT that moved. Measured,
+// not assumed: removing that one statement reads 320 again. 320 + 1 = 321.
+const LIVE_TREE_WRITE_COUNT = 321;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();

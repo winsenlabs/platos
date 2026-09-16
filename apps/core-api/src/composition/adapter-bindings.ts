@@ -35,6 +35,7 @@ import type {
 
 import type {
   IdentityAccessRepository,
+  MagicLinkDelivery,
   MfaSecretCipher,
   RateLimiter,
   SecretHasher,
@@ -154,7 +155,16 @@ import type { ModelRouterProvidersAdapter } from "@platos/adapter-model-router-p
 import { createModelRouterProvidersAdapter } from "@platos/adapter-model-router-providers";
 import type { ChannelSlackAdapter } from "@platos/adapter-channel-slack";
 import { createChannelSlackAdapter } from "@platos/adapter-channel-slack";
+// WIN-271 (M4.5), D10 — the SECOND channel runtime, constructed from its own
+// configuration group and satisfying the same two `channels` ports as the Slack
+// one. It is here and nowhere else under `apps/core-api` for rule (C1)'s reason.
+import type { ChannelDiscordAdapter } from "@platos/adapter-channel-discord";
+import { createChannelDiscordAdapter } from "@platos/adapter-channel-discord";
 import type { NotifierEmailAdapter } from "@platos/adapter-notifier-email";
+// D20 (2026-09-15) — a value import, and the directory it names left
+// `UNIMPLEMENTED_ADAPTERS` in the same commit, which rule (C7) checks against the
+// directory's own source in both directions.
+import { createNotifierEmailAdapter } from "@platos/adapter-notifier-email";
 import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
 import type { KeyringEnvelopeAdapter } from "@platos/adapter-keyring-envelope";
 import { buildKeyringEnvelope } from "@platos/adapter-keyring-envelope";
@@ -204,6 +214,10 @@ export interface AdapterInstances {
   readonly "redis-streams": RedisStreamsAdapter;
   readonly "model-router-providers": ModelRouterProvidersAdapter;
   readonly "channel-slack": ChannelSlackAdapter;
+  // WIN-271 (M4.5), D10 — the SIXTEENTH slot: a second provider behind the same
+  // port pair as `channel-slack`, and a slot rather than a row on it because §15
+  // consolidates ONE vendor client and Discord is a different vendor.
+  readonly "channel-discord": ChannelDiscordAdapter;
   readonly "notifier-email": NotifierEmailAdapter;
   readonly "notifier-webhook": NotifierWebhookAdapter;
   // WIN-259 M2.4 — the THIRTEENTH slot, and the first one added since this table
@@ -578,7 +592,16 @@ interface PortSatisfaction {
   // through a property, because `send`, `describePrincipal`, `verifyCredential`
   // and `verifyInbound` are four names with no collision.
   readonly "channel-slack:ChannelRuntime": Satisfies<ChannelSlackAdapter, ChannelRuntime>;
+  // WIN-271 (M4.5), D10. The two obligations of the second runtime, stated as two
+  // for the reason `channel-slack`'s are. Proven against the ADAPTER: its extra
+  // `sendFollowup` collides with no port member, so no property indirection.
+  readonly "channel-discord:ChannelAdapter": Satisfies<ChannelDiscordAdapter, ChannelAdapter>;
+  readonly "channel-discord:ChannelRuntime": Satisfies<ChannelDiscordAdapter, ChannelRuntime>;
   readonly "notifier-email:Notifier": Satisfies<NotifierEmailAdapter, Notifier>;
+  // D20 (2026-09-15). The SECOND port on this directory, owned by identity-access.
+  // Proven against the ADAPTER: `deliverMagicLink` collides with neither
+  // `deliver` nor `probe`, which is why the port's method is not called `deliver`.
+  readonly "notifier-email:MagicLinkDelivery": Satisfies<NotifierEmailAdapter, MagicLinkDelivery>;
   readonly "notifier-webhook:Notifier": Satisfies<NotifierWebhookAdapter, Notifier>;
   // WIN-259 M2.4. `secrets`' THREE cryptography ports, every one proven against
   // the ADAPTER rather than through a property: `state`/`handle`, `seal`/`open`
@@ -675,7 +698,10 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "model-router-providers:ModelRouter": true,
   "channel-slack:ChannelAdapter": true,
   "channel-slack:ChannelRuntime": true,
+  "channel-discord:ChannelAdapter": true,
+  "channel-discord:ChannelRuntime": true,
   "notifier-email:Notifier": true,
+  "notifier-email:MagicLinkDelivery": true,
   "notifier-webhook:Notifier": true,
   "keyring-envelope:KeyRing": true,
   "keyring-envelope:AeadCipher": true,
@@ -1171,6 +1197,25 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // holds. Its owner is `kernel`, which this directory already had, so
   // `EXPECTED_EDGE_COUNT` does not move.
   Object.freeze({ adapter: "redis-streams", port: "StreamJournal", owner: "kernel" }),
+  // D20 (2026-09-15). The SECOND binding on `notifier-email`, appended at the END
+  // for the reason every row above it was. The directory stops being a generated
+  // interface in the same tranche: "core-api sends [the magic-link email] through
+  // the notifier-email adapter". It is a row here and not a new directory because
+  // §15's amendment is exactly this case — one relay, one client, one directory —
+  // and its owner, identity-access, is a context this directory did not have, so
+  // it moves the project graph's edge count by one.
+  Object.freeze({ adapter: "notifier-email", port: "MagicLinkDelivery", owner: "identity-access" }),
+  // WIN-271 (M4.5), D10. The LAST TWO rows, appended at the END for the reason
+  // every row above was: every ordinal already written stays true. They were the
+  // fifty-second and fifty-third on their own lane, which had no D20 row above
+  // them; INTEGRATED they are the fifty-third and fifty-fourth, and that is the
+  // number `composition-root.test.mjs` re-measures on the merged tree rather than
+  // sums from either branch. `channels:ChannelAdapter` and `channels:ChannelRuntime`
+  // now have TWO homes each, which is the registry shape the port header designed
+  // for; `MULTI_HOME_PORTS` in the generator says so, and `selfCheck` fails if
+  // either stops having two.
+  Object.freeze({ adapter: "channel-discord", port: "ChannelAdapter", owner: "channels" }),
+  Object.freeze({ adapter: "channel-discord", port: "ChannelRuntime", owner: "channels" }),
 ] as const satisfies readonly AdapterBinding[]);
 
 /**
@@ -1264,7 +1309,8 @@ export const UNIMPLEMENTED_ADAPTERS: readonly AdapterName[] = Object.freeze([
   // back and joins it to `packages/adapters/channel-slack/src/index.ts`, so a
   // directory dropped from here without gaining a `create*Adapter` fails, and
   // one that gained a factory and stayed here fails too.
-  "notifier-email",
+  // D20 (2026-09-15) — `notifier-email` LEFT THIS LIST: it gained
+  // `createNotifierEmailAdapter`, an SMTP submission client for both of its owners.
   "notifier-webhook",
 ]);
 
@@ -1339,6 +1385,22 @@ export interface AdapterConstruction {
 }
 
 /**
+ * The client-side deadline on one PostgreSQL query, DERIVED from the server-side
+ * one rather than configured beside it.
+ *
+ * `statementTimeoutMs` is enforced by PostgreSQL, so it bounds nothing once the
+ * server stops answering; a request would then hold its HTTP connection open
+ * indefinitely. Five seconds past the statement timeout the server has had every
+ * chance to cancel the statement and say so, so abandoning the socket then can
+ * only cut off a server that is not responding. A URL that already names
+ * `socket_timeout` is overridden, which is the adapter's rule for every pool
+ * setting it is handed.
+ */
+export function postgresSocketTimeoutSeconds(statementTimeoutMs: number): number {
+  return Math.ceil(statementTimeoutMs / 1000) + 5;
+}
+
+/**
  * Build every adapter this configuration declares, and say why for the rest.
  *
  * PURE OVER ITS INPUT in the sense that matters: it reads no environment, takes
@@ -1377,6 +1439,7 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
         databaseUrl: postgres.url,
         connectionLimit: postgres.poolMax,
         statementTimeoutMs: postgres.statementTimeoutMs,
+        socketTimeoutSeconds: postgresSocketTimeoutSeconds(postgres.statementTimeoutMs),
       });
       const adapter = buildPostgresTenancyAdapter(client, {}, input.correlation);
       adapters["postgres-tenancy"] = adapter;
@@ -1545,6 +1608,47 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
     // bounded to 1..3600 seconds.
     adapters["channel-slack"] = createChannelSlackAdapter({
       requestMaxAgeSeconds: input.channels.slack.requestMaxAgeSeconds,
+    });
+  }
+
+  // D20 (2026-09-15). Anchored on the relay URL, and built only when the whole
+  // group — relay, sender and sign-in page — was declared, which `config/channels.ts`
+  // enforces before this runs. A group that is present and still cannot make a
+  // client (a URL the adapter refuses) is a FAULT, not a decline: the operator set
+  // it, and no amount of serving fixes it.
+  if (input.channels.emailNotifier === null) {
+    decline(
+      "notifier-email",
+      "configuration",
+      "PLATOS_CHANNELS_EMAIL_SMTP_URL is not set, so the channels.emailNotifier group is undeclared",
+    );
+  } else {
+    const notifier = createNotifierEmailAdapter({
+      smtpUrl: input.channels.emailNotifier.smtpUrl,
+      from: input.channels.emailNotifier.from,
+      loginUrl: input.channels.emailNotifier.loginUrl,
+      requireTls: input.channels.emailNotifier.requireTls,
+      clock: input.clock,
+    });
+    if (notifier.ok) adapters["notifier-email"] = notifier.value;
+    else faults.push(`notifier-email could not be constructed: ${notifier.error.code}`);
+  }
+
+  // WIN-271 (M4.5), D10. THE SAME SHAPE AS SLACK'S ARM, ANCHORED THE SAME WAY: on
+  // the verification material (a public key) and never on a bot token, so "the
+  // channel is wired" and "the channel can refuse a forged interaction" are one
+  // statement. Total over its options — the key travels per delivery on the
+  // command, the bot token per send — so no `faults` row is possible, which is the
+  // one way this arm differs from the `notifier-email` arm directly above it.
+  if (input.channels.discord === null) {
+    decline(
+      "channel-discord",
+      "configuration",
+      "PLATOS_CHANNELS_DISCORD_PUBLIC_KEY is not set, so the channels.discord group is undeclared",
+    );
+  } else {
+    adapters["channel-discord"] = createChannelDiscordAdapter({
+      requestMaxAgeSeconds: input.channels.discord.requestMaxAgeSeconds,
     });
   }
 

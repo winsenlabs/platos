@@ -241,6 +241,9 @@ importers:
       '@internal/testcontainers':
         specifier: workspace:*
         version: link:../../internal-packages/testcontainers
+      '@modelcontextprotocol/sdk-candidate':
+        specifier: npm:@modelcontextprotocol/sdk@1.30.0
+        version: '@modelcontextprotocol/sdk@1.30.0(zod@3.25.76)'
       '@nestjs/cli':
         specifier: ^11.0.0
         version: 11.0.19(@swc/core@1.3.101(@swc/helpers@0.5.15))(@types/node@20.14.14)
@@ -277,6 +280,9 @@ importers:
       '@nestjs/platform-express':
         specifier: ^11.0.0
         version: 11.1.18(@nestjs/common@11.1.18(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.18)
+      '@platos/adapter-channel-discord':
+        specifier: workspace:*
+        version: link:../../packages/adapters/channel-discord
       '@platos/adapter-channel-slack':
         specifier: workspace:*
         version: link:../../packages/adapters/channel-slack
@@ -387,6 +393,9 @@ importers:
         specifier: ^10.28.0
         version: 10.28.0
       '@testcontainers/redis':
+        specifier: ^10.28.0
+        version: 10.28.0
+      testcontainers:
         specifier: ^10.28.0
         version: 10.28.0
 
@@ -1013,6 +1022,16 @@ importers:
         specifier: 8.6.6
         version: 8.6.6
 
+  packages/adapters/channel-discord:
+    dependencies:
+      '@platos/context-channels':
+        specifier: workspace:*
+        version: link:../../contexts/channels
+    devDependencies:
+      discord-interactions:
+        specifier: 4.4.0
+        version: 4.4.0
+
   packages/adapters/channel-slack:
     dependencies:
       '@chat-adapter/slack':
@@ -1085,6 +1104,9 @@ importers:
       '@platos/context-cost-monitoring':
         specifier: workspace:*
         version: link:../../contexts/cost-monitoring
+      '@platos/context-identity-access':
+        specifier: workspace:*
+        version: link:../../contexts/identity-access
 
   packages/adapters/notifier-webhook:
     dependencies:
@@ -1434,6 +1456,10 @@ importers:
       zod:
         specifier: 3.25.76
         version: 3.25.76
+    devDependencies:
+      '@modelcontextprotocol/sdk-candidate':
+        specifier: npm:@modelcontextprotocol/sdk@1.30.0
+        version: '@modelcontextprotocol/sdk@1.30.0(zod@3.25.76)'
 
   packages/core:
     dependencies:
@@ -17966,6 +17992,28 @@ snapshots:
       - typescript
 
   '@modelcontextprotocol/sdk@1.26.0(zod@3.25.76)':
+    dependencies:
+      '@hono/node-server': 1.19.9(hono@4.11.8)
+      ajv: 8.18.0
+      ajv-formats: 3.0.1(ajv@8.18.0)
+      content-type: 1.0.5
+      cors: 2.8.6
+      cross-spawn: 7.0.6
+      eventsource: 3.0.5
+      eventsource-parser: 3.0.8
+      express: 5.2.1
+      express-rate-limit: 8.2.1(express@5.2.1)
+      hono: 4.11.8
+      jose: 6.2.3
+      json-schema-typed: 8.0.2
+      pkce-challenge: 5.0.0
+      raw-body: 3.0.2
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.1(zod@3.25.76)
+    transitivePeerDependencies:
+      - supports-color
+
+  '@modelcontextprotocol/sdk@1.30.0(zod@3.25.76)':
     dependencies:
       '@hono/node-server': 1.19.9(hono@4.11.8)
       ajv: 8.18.0

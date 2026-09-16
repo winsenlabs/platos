@@ -34,8 +34,8 @@ export interface RateLimitConnectionOptions {
    *
    * There is no unbounded wait. This limiter sits in front of sign-in, so a
    * command that hangs holds the login that asked for it: the refusal the
-   * caller's fail-open policy is written to handle only arrives if the command
-   * gives up.
+   * caller's fail-closed policy (D3) turns into `RATE_LIMIT_FAILED_CLOSED` only
+   * arrives if the command gives up.
    */
   readonly commandTimeoutMs?: number;
 }

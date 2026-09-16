@@ -49,6 +49,15 @@
 // decision the contract's banner says core owns outright: "CORE OWNS THE SHAPE; A
 // BFF MAY ONLY SET THE BYTES." Asking is one call and cannot drift.
 //
+// WHAT THIS SEAM TELLS THE CONTRACT (D-COOKIE). The three documented settings —
+// `PLATOS_SECURITY_SESSION_COOKIE_SECURE`, `_NAME` and `_SAME_SITE` — arrive as
+// the typed `SessionCookiePolicy`, stamped on the request by
+// `runtime/trusted-proxy.ts` beside the one fact only the connection knows:
+// whether TLS reached this process. `sessionCookieTransport` below combines them.
+// On a Secure install the contract is always asked for the `__Host-` shape, so the
+// name a request is read under is the operator's decision and never a header's;
+// and a cookie is SET only on a request TLS actually reached.
+//
 // The `Authorization: Bearer` form is accepted as well, and the contract's own
 // wording is the reason: `AuthenticateOperatorInput.presentedToken` is documented
 // as "the raw cookie OR HEADER value". A dashboard sends the cookie; a script and
@@ -57,6 +66,12 @@
 import type { DomainError } from "@platos/kernel";
 import type { IdentityAccessContract, OperatorAuthorizationView } from "@platos/context-identity-access";
 import type { ProvidersContract } from "@platos/context-providers";
+import {
+  authorizeEnvironmentOperator as mintVaultOperatorGrant,
+  type ActorId,
+  type EnvironmentOperatorAuthorization as VaultOperatorGrant,
+  type SecretsContract,
+} from "@platos/context-secrets";
 import type {
   EnvironmentAccess,
   EnvironmentOperatorAuthorization,
@@ -66,7 +81,9 @@ import type {
 import { asIdentifier, type EnvironmentId } from "@platos/kernel";
 
 import type { AppModule } from "../../app.module.js";
+import { SESSION_TRANSPORT_PROPERTY, type SessionTransportDecision } from "../../runtime/trusted-proxy.js";
 import { raise } from "./fault.js";
+import { sessionTokenFromCookieValue } from "./session-cookie-value.js";
 import { contextUnavailable } from "./transport-errors.js";
 
 /** Only what this module reads off an inbound request. Structural, so the seam
@@ -74,23 +91,58 @@ import { contextUnavailable } from "./transport-errors.js";
  * for the response it writes. */
 export interface InboundOperatorRequest {
   readonly headers: Readonly<Record<string, string | readonly string[] | undefined>>;
-  /** Express sets this from the connection, and from `X-Forwarded-Proto` only
-   * when a trust proxy is configured. Absent on a bare Node request. */
+  /** Express sets this from the connection; the framework trusts no proxy. Read
+   * only when no transport decision was stamped (a request no edge handled). */
   readonly secure?: boolean;
+  /** Stamped by `runtime/trusted-proxy.ts` on every request the process serves. */
+  readonly [SESSION_TRANSPORT_PROPERTY]?: SessionTransportDecision;
 }
 
 /**
  * Whether the browser reached this install over TLS.
  *
- * IT READS THE CONNECTION AND NOT A HEADER. `X-Forwarded-Proto` is caller-supplied
- * unless a proxy is trusted, and treating it as authority would let a caller
- * choose which cookie name this process looks for — an attacker-selected branch
- * in an authentication path. Express already owns that decision (`req.secure`
- * consults the header only when `trust proxy` is set), so this defers to it and
- * adds nothing.
+ * IT NEVER READS A HEADER ITSELF. `X-Forwarded-Proto` is caller-supplied unless
+ * it came from the one proxy the operator named, and treating it as authority
+ * anywhere else would let a caller choose the cookie shape — an attacker-selected
+ * branch in an authentication path. `runtime/trusted-proxy.ts` makes that decision
+ * once per request and this reads it; a request no edge stamped falls back to the
+ * framework's own connection-only answer.
  */
 export function isSecureTransport(request: InboundOperatorRequest): boolean {
-  return request.secure === true;
+  const decided = request[SESSION_TRANSPORT_PROPERTY];
+  return decided === undefined ? request.secure === true : decided.tls;
+}
+
+/** What `identity-access` is asked for on this request, and whether a cookie may be SET on it. */
+export interface SessionCookieTransport {
+  readonly transport: {
+    readonly secure: boolean;
+    readonly cookieName?: string;
+    readonly sameSite?: "lax" | "strict";
+  };
+  /**
+   * False only on a Secure install when TLS did not reach this request. Reading a
+   * cookie is still allowed there — the name is the operator's, not the
+   * caller's — but a credential is never written into a cookie on that request.
+   */
+  readonly mayIssue: boolean;
+}
+
+/**
+ * The typed cookie policy and the TLS decision, combined.
+ *
+ *   no policy (composed without configuration)  the connection decides, as before
+ *   COOKIE_SECURE=false                         the plain shape, whatever TLS did
+ *   COOKIE_SECURE=true                          the `__Host-` Secure shape, always;
+ *                                               issuing needs TLS to have arrived
+ */
+export function sessionCookieTransport(request: InboundOperatorRequest): SessionCookieTransport {
+  const tls = isSecureTransport(request);
+  const policy = request[SESSION_TRANSPORT_PROPERTY]?.policy ?? null;
+  if (policy === null) return { transport: { secure: tls }, mayIssue: true };
+  const named = { cookieName: policy.cookieName, sameSite: policy.sameSite };
+  if (!policy.secure) return { transport: { secure: false, ...named }, mayIssue: true };
+  return { transport: { secure: true, ...named }, mayIssue: tls };
 }
 
 /** The `Bearer` token on a request, or null. */
@@ -150,13 +202,19 @@ export function presentedOperatorToken(
   identityAccess: IdentityAccessContract,
   request: InboundOperatorRequest,
 ): string | null {
-  const shape = identityAccess.describeSessionCookie({ secure: isSecureTransport(request) });
+  const shape = identityAccess.describeSessionCookie(sessionCookieTransport(request).transport);
   // A refused shape means the install's own cookie policy is unsatisfiable, which
   // is a configuration fault and not this caller's. It is reported as the
   // contract's own `INVALID_SESSION_COOKIE` rather than swallowed into a 401,
   // because a 401 would send an operator looking at their session.
   if (!shape.ok) raise(shape.error);
-  return readCookie(request, shape.value.name) ?? bearerToken(request);
+  // D19 (2026-09-15). A COOKIE's value may be in Remix's encoding — every session
+  // the legacy webapp minted is — and is read in either dialect; see
+  // `session-cookie-value.ts`. The `Authorization` header is never decoded: a
+  // bearer header was never written by Remix, and giving it a second reading would
+  // be a second opinion nobody asked for.
+  const cookie = readCookie(request, shape.value.name);
+  return cookie === null ? bearerToken(request) : sessionTokenFromCookieValue(cookie);
 }
 
 /**
@@ -264,4 +322,44 @@ export function requireProviders(app: AppModule): ProvidersContract {
   const providers = app.contexts.providers;
   if (providers === undefined) raise(contextUnavailable("providers"));
   return providers;
+}
+
+/** The composed `secrets`, or a 503 that says which context is missing. */
+export function requireSecrets(app: AppModule): SecretsContract {
+  const secrets = app.contexts.secrets;
+  if (secrets === undefined) raise(contextUnavailable("secrets"));
+  return secrets;
+}
+
+/**
+ * The vault's grant for one environment, DERIVED from tenancy's four-gate
+ * decision and from nothing a caller sent.
+ *
+ * `secrets` may not import tenancy or identity-access (ADR M0.3 §1 row 3), so its
+ * contract says "the composition root authenticates first and mints the grant
+ * here" — and this is that mint, in the one seam every V1 route authenticates
+ * through. It is the SAME derivation `providers/application/authorization.ts`
+ * (`vaultGrantFor`) makes: the ancestry is tenancy's re-derived `scope`, the
+ * access level maps one-to-one, and both user ids travel. A route that built the
+ * ancestry from its own path parameter would hold a genuine vault grant for
+ * whatever environment the URL named, which is the cross-tenant write this seam
+ * exists to make unrepresentable.
+ */
+export async function authorizeVault(
+  app: AppModule,
+  operator: OperatorAuthorizationView,
+  environmentId: string,
+  access: EnvironmentAccess,
+): Promise<VaultOperatorGrant> {
+  const authorization = await authorizeEnvironment(app, operator, environmentId, access);
+  return mintVaultOperatorGrant({
+    ancestry: {
+      organizationId: authorization.scope.organizationId,
+      projectId: authorization.scope.projectId,
+      environmentId: authorization.scope.environmentId,
+    },
+    access: authorization.access,
+    actorUserId: asIdentifier<ActorId>(authorization.actorUserId),
+    effectiveUserId: asIdentifier<ActorId>(authorization.effectiveUserId),
+  });
 }

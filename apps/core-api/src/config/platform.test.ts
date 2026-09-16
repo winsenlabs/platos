@@ -66,6 +66,7 @@ describe("a process with nothing wired", () => {
     });
     expect(outcome.value.providers.modelRouter).toBeNull();
     expect(outcome.value.channels.slack).toBeNull();
+    expect(outcome.value.channels.discord).toBeNull();
     expect(outcome.value.durable.durableRuntime).toBeNull();
     expect(outcome.value.security.session).toBeNull();
     expect(outcome.value.declaredGroups).toEqual([]);
@@ -165,6 +166,56 @@ describe("INCOMPLETE — an anchor with a required member missing", () => {
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
     expect(outcome.diagnostics.map((entry) => entry.field)).toEqual(["PLATOS_SECURITY_ENCRYPTION_KEY_VERSION"]);
+  });
+});
+
+describe("INCOMPLETE — D20's email relay with no sign-in page", () => {
+  // D20 (2026-09-15) made the relay the way an operator signs in, so a relay with
+  // no page for the link to open is an install that mails dead links. Refused at
+  // boot, naming the missing field rather than the relay.
+  it("refuses an SMTP relay and sender with no login URL, naming the login URL", () => {
+    const outcome = loadPlatformConfiguration({
+      ...MINIMAL,
+      PLATOS_CHANNELS_EMAIL_SMTP_URL: "smtps://relay.internal:465",
+      PLATOS_CHANNELS_EMAIL_FROM: "login@platos.example",
+    });
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.diagnostics.map((entry) => entry.field)).toEqual(["PLATOS_CHANNELS_EMAIL_LOGIN_URL"]);
+  });
+
+  it("accepts the three together and hands the page to the notifier's configuration", () => {
+    const outcome = loadPlatformConfiguration({
+      ...MINIMAL,
+      PLATOS_CHANNELS_EMAIL_SMTP_URL: "smtps://relay.internal:465",
+      PLATOS_CHANNELS_EMAIL_FROM: "login@platos.example",
+      PLATOS_CHANNELS_EMAIL_LOGIN_URL: "https://app.platos.example/magic",
+    });
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.value.channels.emailNotifier?.loginUrl).toBe("https://app.platos.example/magic");
+    // TLS IS REQUIRED BY DEFAULT: an install that says nothing gets a relay that
+    // will not carry a sign-in link over a connection without TLS.
+    expect(outcome.value.channels.emailNotifier?.requireTls).toBe(true);
+  });
+
+  it("turns required TLS off only for exactly `false`, and refuses any other spelling by name", () => {
+    const declared = {
+      ...MINIMAL,
+      PLATOS_CHANNELS_EMAIL_SMTP_URL: "smtp://mailpit.local:1025",
+      PLATOS_CHANNELS_EMAIL_FROM: "login@platos.example",
+      PLATOS_CHANNELS_EMAIL_LOGIN_URL: "https://app.platos.example/magic",
+    };
+    const off = loadPlatformConfiguration({ ...declared, PLATOS_CHANNELS_EMAIL_REQUIRE_TLS: "false" });
+    expect(off.ok).toBe(true);
+    if (!off.ok) return;
+    expect(off.value.channels.emailNotifier?.requireTls).toBe(false);
+    const on = loadPlatformConfiguration({ ...declared, PLATOS_CHANNELS_EMAIL_REQUIRE_TLS: "true" });
+    expect(on.ok && on.value.channels.emailNotifier?.requireTls).toBe(true);
+    const misspelt = loadPlatformConfiguration({ ...declared, PLATOS_CHANNELS_EMAIL_REQUIRE_TLS: "no" });
+    expect(misspelt.ok).toBe(false);
+    if (misspelt.ok) return;
+    expect(misspelt.diagnostics.map((entry) => entry.field)).toEqual(["PLATOS_CHANNELS_EMAIL_REQUIRE_TLS"]);
   });
 });
 
@@ -367,8 +418,10 @@ describe("a fully wired install", () => {
     PLATOS_STORE_OBJECT_SECRET_ACCESS_KEY: "platos-minio-password",
     PLATOS_PROVIDERS_DEFAULT_MODEL: "anthropic:claude-haiku-4-5-20251001",
     PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(32),
+    PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
     PLATOS_CHANNELS_EMAIL_SMTP_URL: "smtps://relay.internal:465",
     PLATOS_CHANNELS_EMAIL_FROM: "alerts@platos.example",
+    PLATOS_CHANNELS_EMAIL_LOGIN_URL: "https://app.platos.example/magic",
     PLATOS_CHANNELS_WEBHOOK_SIGNING_KEY: "w".repeat(32),
     PLATOS_DURABLE_RUNTIME_API_URL: "https://durable.internal",
     PLATOS_DURABLE_RUNTIME_SECRET_KEY: "d".repeat(24),
@@ -388,6 +441,7 @@ describe("a fully wired install", () => {
       "stores.objectstore",
       "providers.modelRouter",
       "channels.slack",
+      "channels.discord",
       "channels.emailNotifier",
       "channels.webhookNotifier",
       "durableRuntime.durableRuntime",

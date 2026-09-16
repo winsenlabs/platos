@@ -30,6 +30,7 @@ import {
   mcpServerInfo,
   mcpToolMeta,
 } from "../http/mcp-surface";
+import { isJsonRpcNotification, loggingSetLevelResponse } from "../mcp-platform/mcp-router";
 
 interface JsonRpcReq {
   jsonrpc: "2.0";
@@ -145,7 +146,13 @@ export class DocsMcpController {
     }
 
     this.applyCors(res);
-    res.status(200).json(await this.dispatch(body));
+    const response = await this.dispatch(body);
+    // WIN-268 (M4.2) conformance — a notification is answered 202 with no body.
+    if (isJsonRpcNotification(body)) {
+      res.status(202).end();
+      return;
+    }
+    res.status(200).json(response);
   }
 
   /**
@@ -154,6 +161,23 @@ export class DocsMcpController {
    */
   @Get()
   async getInfo(@Req() req: Request, @Res() res: Response): Promise<void> {
+    // WIN-268 (M4.2) conformance — the Streamable HTTP transport lets a client
+    // GET this URL with `Accept: text/event-stream` to open a server-to-client
+    // stream, and a server that offers none "MUST return HTTP 405". The probe
+    // below answered that GET with a 200 JSON body, which the official SDK
+    // client reads AS an event stream, finds empty, and reconnects to on a
+    // backoff for as long as the session lives — against a per-IP limit of 60
+    // requests a minute. It could not happen while `notifications/initialized`
+    // was wrongly answered 200 (the client only opens the stream after a 202),
+    // so the two fixes land together. A request that does not ask for an event
+    // stream — `curl`, a browser — still gets the probe.
+    const accept = String(req.headers["accept"] ?? "");
+    if (accept.split(",").some((part) => part.trim().split(";")[0]?.trim().toLowerCase() === "text/event-stream")) {
+      this.applyCors(res);
+      res.setHeader("Allow", "POST");
+      res.status(405).end();
+      return;
+    }
     // Convenience: GET returns a one-shot capabilities probe so curl users
     // can sanity-check the endpoint without crafting a JSON-RPC envelope.
     this.applyCors(res);
@@ -258,8 +282,11 @@ export class DocsMcpController {
 
     try {
       const response = await this.dispatch(body);
+      // A notification has no answer; see `isJsonRpcNotification`.
+      if (isJsonRpcNotification(body)) return;
       session.res.write(`event: message\ndata: ${JSON.stringify(response)}\n\n`);
     } catch (err) {
+      if (isJsonRpcNotification(body)) return;
       session.res.write(
         `event: message\ndata: ${JSON.stringify(
           rpcError(body.id ?? null, RPC.INTERNAL_ERROR, err instanceof Error ? err.message : "internal error"),
@@ -306,6 +333,9 @@ export class DocsMcpController {
         case "notifications/ping":
         case "ping":
           return { jsonrpc: "2.0", id, result: {} };
+        case "logging/setLevel":
+          // The capability is advertised above; see `loggingSetLevelResponse`.
+          return loggingSetLevelResponse(id, req.params);
         case "tools/list":
           return {
             jsonrpc: "2.0",

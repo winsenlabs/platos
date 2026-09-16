@@ -112,6 +112,17 @@ function buildInvocations(bound: ToolsContract) {
         tools: [{ name: "files.upload" }],
         callbackUrl: null,
       }),
+    // WIN-269 (M4.3). It sits beside `registerTools` because it is the same
+    // transport's other write and asks for the same access level; a method that
+    // arrived here unclassified would fail the last case in this file, which is
+    // what that case is for.
+    recordToolHealth: (authorization: unknown) =>
+      bound.recordToolHealth({
+        authorization,
+        entityId: ENTITY,
+        externalEntityId: EXTERNAL,
+        reports: [{ toolName: "files.upload", status: "healthy", avgLatencyMs: 5 }],
+      }),
     listTools: (authorization: unknown) => bound.listTools({ authorization }),
     pageTools: (authorization: unknown) => bound.pageTools({ authorization, limit: 10, offset: 0 }),
     setToolEnabled: (authorization: unknown) =>
@@ -179,6 +190,14 @@ describe("the operator gate, on every method that has one", () => {
 
   it("registerTools admits a grant tenancy did mint", async () => {
     await expectAdmitted(invocations.registerTools);
+  });
+
+  it("recordToolHealth refuses a grant tenancy did not mint", async () => {
+    await expectRefused(invocations.recordToolHealth);
+  });
+
+  it("recordToolHealth admits a grant tenancy did mint", async () => {
+    await expectAdmitted(invocations.recordToolHealth);
   });
 
   it("listTools refuses a grant tenancy did not mint", async () => {

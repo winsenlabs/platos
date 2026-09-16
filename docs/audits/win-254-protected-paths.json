@@ -7,13 +7,13 @@
     "docs/audits/win-254-protected-paths.json",
     "docs/audits/win-254-evidence-lifecycle.json"
   ],
-  "pathCount": 799,
-  "pathSetSha256": "df52e403740aba88a43f783dc415d344264681d0cf08d47e93de95000258dff1",
+  "pathCount": 802,
+  "pathSetSha256": "6843a714bebfc38b3ef704271a108a43412e432bbf8c99e32b57aa0d2ea2be72",
   "entries": [
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "430837018a0efe2575620fec453b42029eee3c75f8c7e4a676ade3214595265b"
+      "sha256": "c02119a7d03b5dd1b4737ff02f9da0bf500267ed56da5f7cb8a997114879e203"
     },
     {
       "path": "LICENSE",
@@ -283,7 +283,7 @@
     {
       "path": "content/docs/self-hosting.md",
       "mode": "100644",
-      "sha256": "9f747e8270fcec5d9ca3f00348b07306c841fc44371fa5ce40daa661c9973da7"
+      "sha256": "7f63dc2af7f9101820a6644dc69669ab4b6ac409bbf980f15a6b6b7f9b447e15"
     },
     {
       "path": "content/docs/skills.md",
@@ -413,7 +413,7 @@
     {
       "path": "content/guides/quickstart.md",
       "mode": "100644",
-      "sha256": "520163da23402692ab1692710a1c6d7b92f9b86a4bf8720c2c911b583567d039"
+      "sha256": "ce7c92bd38f015e5de8536d4ab7531a19cd63d24022f79706118e1275a05cb8d"
     },
     {
       "path": "content/guides/recover-stuck-job.md",
@@ -776,6 +776,11 @@
       "sha256": "0516203edc42766de013725b7583f7eab6e0ede4dc902682d38d616a3bfc7681"
     },
     {
+      "path": "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
+      "mode": "100644",
+      "sha256": "1101ac1ea0b4089b5ba7349fd829ca085c9d3f7760b833f38b1a36b8c5897fdb"
+    },
+    {
       "path": "docs/agent-worktrees.md",
       "mode": "100644",
       "sha256": "188415794963f6148a998c00d9cc20b1f34cd6e038381a88a956a749ead89012"
@@ -808,12 +813,12 @@
     {
       "path": "docs/audits/M0.2-capability-matrix.json",
       "mode": "100644",
-      "sha256": "8e088eceb906234df4b1a137cc7fe16dccda28817c8e25a83bc21254b5a771ff"
+      "sha256": "4d54f1f14feb6fb5dd07f69abb207eab825c42330327426f92ff1bc39a8b4b5c"
     },
     {
       "path": "docs/audits/M0.2-capability-matrix.md",
       "mode": "100644",
-      "sha256": "459da9b40b616576fc9baebdbe095cae090fd96b15f389f7e86d601aa8b05a55"
+      "sha256": "1fd1d46e9f34dec3c3832ba95c0e2d79a815be2f5fce00542561d8acedb6ca20"
     },
     {
       "path": "docs/audits/M0.4-design-contract-map.json",
@@ -843,12 +848,12 @@
     {
       "path": "docs/audits/M0.8-operator-operations.md",
       "mode": "100644",
-      "sha256": "219a3596d04f3636232cd899915c4de6f11b5aa5c9f08fd8a78fb4c6671fa39b"
+      "sha256": "b59a7c757bf790de5cd08f4e6de5e0345e69457674004b049a6b85af2c83a157"
     },
     {
       "path": "docs/audits/M0.9-rest-census-independent.json",
       "mode": "100644",
-      "sha256": "a70a4d38bba25238f4d3060a8261e0cd70d4c40785b7ed879bb17d7505d899f2"
+      "sha256": "9fbfdea6ce75248ddf24354847d985b4d746e7438b9e6ecd32befd6a7be91ba3"
     },
     {
       "path": "docs/audits/M0.9-webapp-bff-matrix.json",
@@ -938,7 +943,7 @@
     {
       "path": "docs/audits/sbom/README.md",
       "mode": "100644",
-      "sha256": "649a7e7cb30ad34b4eadc95d7e64d6d4446f8a5fccef03519a96632605d0dcf0"
+      "sha256": "f8342870308a723defc786e8b5924627788afd632d894013d802c1266e6ddeb6"
     },
     {
       "path": "docs/audits/sbom/advisory/README.md",
@@ -948,27 +953,27 @@
     {
       "path": "docs/audits/sbom/advisory/advisory-policy.json",
       "mode": "100644",
-      "sha256": "f3bcc57896293d617ff2fe1d5174fdf6f442b5f392fdf12c84ca876c893b6055"
+      "sha256": "94a6cbdf8a1f208e5c6b1eab62474c5cd327730c99fdd1196ae48f843479edd1"
     },
     {
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "mode": "100644",
-      "sha256": "bf013d6de0cb7c6b42b92423a4be6c1007a927894e92f3369d38974935bf0517"
+      "sha256": "642c2c6ae200d67eac96b80c84f1e3a2a57d5d3f97abb11fc79e490aeae326a7"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
       "mode": "100644",
-      "sha256": "35a0df95105a16991a789b52aa9237f19d2ffe49b24550c686bd616c8e5a91a5"
+      "sha256": "c04890093f5ea31fbd82cf9507bac25bed0e33972cc459e94999f8d975ee7128"
     },
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "f50c01378e34a3c705d68098aceed380c46bbc643df68a8bea28dba68088b2a5"
+      "sha256": "d04e2925b593450948a0fea7003f345da6995fd268a17dae8ef2a21b8ede1973"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
       "mode": "100644",
-      "sha256": "4aab9409a4c498935f10d95315eb8710185ae8ff8b6241ad0314f7650ff4f27f"
+      "sha256": "97ceea6b33df6279bc08b363db637792aa42e8952bcc1d2a3cbc3a12c7a60da3"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.md",
@@ -978,7 +983,7 @@
     {
       "path": "docs/audits/sbom/license-index.json",
       "mode": "100644",
-      "sha256": "6ddfd92742189cdb4a603a7799387fc49beb90c3cc1e126264538b0cf78ed8c1"
+      "sha256": "18de97c7a7efe4e13511bd9297f888f4ab1efb7f9e2c2ff1a76afe54d8f7d580"
     },
     {
       "path": "docs/audits/sbom/license-overlay.json",
@@ -993,12 +998,17 @@
     {
       "path": "docs/audits/sbom/platos-agent.cdx.json",
       "mode": "100644",
-      "sha256": "8b880df3301024028e23517dc24088f987baaf62005d800f6da8dad70bb485c8"
+      "sha256": "0d8dfddaab11cc4f3bbca893baa2fa1a9407adaf305aaa75e2548c7d04ff876e"
+    },
+    {
+      "path": "docs/audits/sbom/platos-core-api.cdx.json",
+      "mode": "100644",
+      "sha256": "a178d363b5651af932583aa5359c344cd3793432e48ce857eb10bbfc4bc90c9c"
     },
     {
       "path": "docs/audits/sbom/platos-webapp.cdx.json",
       "mode": "100644",
-      "sha256": "89c8d9d5d6948ea37eb32134b5f8aa648dc13740bb25e04c745ab53519344511"
+      "sha256": "4c00515664dc823f6eac34b98d044cc4470a61cc0bcd7f53706913e174251225"
     },
     {
       "path": "docs/audits/sbom/platos-webapp.image-inventory.json",
@@ -1043,52 +1053,57 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "9a98bb4369de77f7280cf0d02aedaf6911fa0d10d0df5e6fd1acc5d40e8e4573"
+      "sha256": "a032ab614f5dce2a5e32ca926b8b7c76850782653c327382d13fcd2b870f59bd"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "da792947489300f37247035eebaf92f291aef7d141e541f75bf7df053b3f2434"
+      "sha256": "57d757937ef29f3aa11d7dd9229cae1822fbc189aaa65f73f5477ad21fbff463"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
       "mode": "100644",
-      "sha256": "67cf289eaf34e8c60fc808e2b3e58ffd0c96e7ea4507c97e9506723730ac91d5"
+      "sha256": "2892763410210c9cf08d6718b044ff686fd3cfe038421439d0f74b644425970c"
+    },
+    {
+      "path": "docs/audits/win-268-mcp-sdk-candidate-compatibility.json",
+      "mode": "100644",
+      "sha256": "6608575641b77dc43ec7642ee8e1afde5024e80b76106cde25bd047f27389e32"
     },
     {
       "path": "docs/audits/win-268-mcp-store-ownership.json",
       "mode": "100644",
-      "sha256": "a7824526f2804a842969d335c8f3d703321d9399a742b3949ace2f8acb1c8b0d"
+      "sha256": "c3006e459d52fc3d2085658ce5247a5ff67a4ebb9b06a558c96a083a3bc498e2"
     },
     {
       "path": "docs/audits/win-268-mcp-store-ownership.md",
       "mode": "100644",
-      "sha256": "32a5563b7b6a5c35044856bc97174f95cfdd2b01cbdb493c1b453194cab75ca2"
+      "sha256": "7031e8d6afe93b3c45dfa9e5336880e384bc6b9c9745056a316a8b3048aee66f"
     },
     {
       "path": "docs/audits/win-269-tool-lifecycle-reach.json",
       "mode": "100644",
-      "sha256": "135253bbc01d16941faae0cc1d761757253277453876a9334da609ba98cb4566"
+      "sha256": "40f625ead1d676e4cd8a32260ac963eb02dd9e306645bc202b2b03f7c25f5e93"
     },
     {
       "path": "docs/audits/win-269-tool-lifecycle-reach.md",
       "mode": "100644",
-      "sha256": "c6c71642ff3d6d63cd56cf032d3d9392294e3a645fc4943690d31b695da94dda"
+      "sha256": "4c1f64448928f6838334b19b4db6bec5b03aaf8ee4a4374d1aea449e884da110"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
       "mode": "100644",
-      "sha256": "27f29fcee91ece71954ccad2dcb213f2c46327e30cfc92a196f4dff730470f53"
+      "sha256": "200f8f11225b184f18627e729ed65c12feee65705ed87f82cb3a7466a4f78e62"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.md",
       "mode": "100644",
-      "sha256": "265a39664f0282c1ee5d1edcf90d0a9c6ea2cfb68b63534409a3bd907e285cb7"
+      "sha256": "256e00f93c63b46cede0feef69e2032010eed2929b469311557d046edb1864e8"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "510fc9b93e1555071f7de7bffe3db514436e894d397fb7d3e729dcef0ee3beb7"
+      "sha256": "fbb41ae884d0af4e7125924a2a161f5c8bb769b810e26d3c2621a7d34ceb63ad"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1098,12 +1113,12 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "5217e2e50a2a28a40f81c83bef62b7b6720f52aefdeffcc272067adbc1d33031"
+      "sha256": "7b70c51ecdb758280151bad0a7e2eb07ec6809c06bb9c6452db7d0f2c8ae6ca4"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
       "mode": "100644",
-      "sha256": "5497dc2db453828f74037cc90d3fc5254b5737858547b026da31f9982f336f31"
+      "sha256": "ccf6d8c074f7195ea7cc26c148156f556dc315aa28e02c5e842c39c0b833b39e"
     },
     {
       "path": "docs/authentication.md",
@@ -1308,7 +1323,7 @@
     {
       "path": "docs/control-plane-parity.generated.md",
       "mode": "100644",
-      "sha256": "ae70638a30bafab415f1620d8ed6af7c4fe5e6e06136bd30ef8aaa25cd343074"
+      "sha256": "74809d9dfd94fbf5faec6322aee098160f7b09ae06fcbd383fac230183d5b0a7"
     },
     {
       "path": "docs/deploy-environment-variables.mdx",
@@ -1353,7 +1368,7 @@
     {
       "path": "docs/deployment/off-box-build.md",
       "mode": "100644",
-      "sha256": "65a8f2a8aa32904a5f47acc88b3887f894536ef7a20664c5a56f1f15772f66f0"
+      "sha256": "25348219f9fd57a8d5f6285386a4e9901da8f0842abf51e2333107c9ce5c3749"
     },
     {
       "path": "docs/deployment/overview.mdx",
@@ -1363,7 +1378,7 @@
     {
       "path": "docs/deployment/persisted-state-release-gate.md",
       "mode": "100644",
-      "sha256": "dcbffb0d00993d44dc6ae7342eca5986041a4b21ac56410f02a8090a36f4e53b"
+      "sha256": "4e12a4005a24ba5521cf4b4e62eda95a2df49da91ee50c27507ae43f2f3faf36"
     },
     {
       "path": "docs/deployment/preview-branches-archive.png",
@@ -1433,12 +1448,12 @@
     {
       "path": "docs/env-vars.md",
       "mode": "100644",
-      "sha256": "8f820057f7b34fbeeec7326b92ebd6eaf807286fdb274ab5e74d3a181c19bd6c"
+      "sha256": "7aa234c8e04adc003ce3306110da2de6d90463bada0eee4ddc587f42f4ea4987"
     },
     {
       "path": "docs/error-taxonomy.json",
       "mode": "100644",
-      "sha256": "15e5c4eee3ddf9fd816ce14e70433876bffc0b5757477073fa7dae57090a5063"
+      "sha256": "2253290113adf87ef4f1510d02782e0cb79a9d3d7271e4a03d1c973fa3686785"
     },
     {
       "path": "docs/errors-retrying.mdx",
@@ -2908,7 +2923,7 @@
     {
       "path": "docs/openapi-v1-baseline.json",
       "mode": "100644",
-      "sha256": "bdd0863a1528fbe56d838dea06986f969bda1c8bf6aea59b162e29af25ed130c"
+      "sha256": "8ea709c9c8c0341d577b4e35e41f555fea0d11815a773c2e85bc97d5cf1c16d0"
     },
     {
       "path": "docs/openapi.yml",
@@ -3088,7 +3103,7 @@
     {
       "path": "docs/sdk-v1-migration.md",
       "mode": "100644",
-      "sha256": "2850437e85f511e8d5e1de864e784af8e0874c86ea9cc3e9bd1cbd37f10b3948"
+      "sha256": "0267582abaf0a4cc5610f8c3fd37d0808a6cd2d1841291687ddedf6210e7712c"
     },
     {
       "path": "docs/security-audit-2026-07-16.md",
@@ -3518,7 +3533,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "246ac5b9f055b4f1da0017fb3c8e827212876ffa4e5666328babe0d1d60ade3a"
+      "sha256": "62d424728356da1e23c6911c08e123fa0c972c6093e372c147d1cb133e4b4b69"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3543,7 +3558,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "90bc1d716b424fafb6cf70feb84be9749470e4a23d0425a88188c0b6ff368ff7"
+      "sha256": "83e76b188c1fab73f22d87aad443fb778e85b5038e50ee05fc10c0532270e958"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3693,12 +3708,12 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "89ec870f9b230c23e79355d7a082bd561bc75508b88188548b90357680883e1b"
+      "sha256": "3d2f170523efc6a7466e9dd85c03b945f22a219e4382af71779ca44626fcc638"
     },
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "79d41ad4b0a27d19e41cff3b38d3a239673b69ccae76574a316aa40508823bb4"
+      "sha256": "d4e733727913177bf6be76609a5f2a8783796d1728ffbe6a6406e93326c93a39"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",
@@ -3858,7 +3873,7 @@
     {
       "path": "scripts/audit-advisory.mjs",
       "mode": "100644",
-      "sha256": "c8d3965ada89626d3ea3ebfd806c7286bb735e949545178ac8da222a6c2dacb3"
+      "sha256": "0e38f59595332e1274035e5ba2804f173425c2018ff30f6da681d3bfe2d59d90"
     },
     {
       "path": "scripts/audit-advisory.test.mjs",
@@ -3873,17 +3888,17 @@
     {
       "path": "scripts/audit-licenses.test.mjs",
       "mode": "100644",
-      "sha256": "bf632e8a94f4c94c3107bf79db2719c90cf397c250b91517feeb12a398680cbd"
+      "sha256": "79f754f024ff485fa52f53aa6a8b9ca4a5fb893c17d0dc34041fd0c059c61fa7"
     },
     {
       "path": "scripts/audit-sbom.mjs",
       "mode": "100644",
-      "sha256": "45d9b65dd09a5bb78d3312d560515f41b2167570d74a859c3fbebfed81a428eb"
+      "sha256": "a3163588977695dababf28092ad906b9477b3136d9c3676f7e642226a86b1e21"
     },
     {
       "path": "scripts/audit-sbom.test.mjs",
       "mode": "100644",
-      "sha256": "271e7ec20f24701f35b8ca47d402d97d649c41935cfa211458abc490b5c9e23c"
+      "sha256": "530c6635ad5b2fd445284111d7a5113250398b5c24c96de7796e572c71d3cf2d"
     },
     {
       "path": "scripts/design-provenance.mjs",
@@ -3903,17 +3918,17 @@
     {
       "path": "scripts/docs-link-integrity.test.mjs",
       "mode": "100644",
-      "sha256": "22991033928e92c481eef040731eb38b84995758de3fc6a3f0fb3bbdf2e478be"
+      "sha256": "a09f5e9133e42940f86422fd8916d35e0b1e0dd926baecdeac75bdb710371246"
     },
     {
       "path": "scripts/evidence-lifecycle.mjs",
       "mode": "100644",
-      "sha256": "bbd797e0629b9ac1a7aa69b7a54b1ad5d3919c720194ee2b3ddeb5d8df5c06e7"
+      "sha256": "347b0fa92bc205dbd840f0a98219b31ef377a8aad94848d6c195acfdfe0c13b6"
     },
     {
       "path": "scripts/evidence-lifecycle.test.mjs",
       "mode": "100644",
-      "sha256": "92768549390c57c1bdc0c9d8b194f4509639bfd9de9b506db9c16e588309acd5"
+      "sha256": "07f926ea18ffcfeb87b74ade96b29ff67cdf4bfbc38489e69b11dc61efb65dcb"
     },
     {
       "path": "scripts/lib/advisory-dispositions.mjs",
@@ -3923,7 +3938,7 @@
     {
       "path": "scripts/lib/pnpm-closure.mjs",
       "mode": "100644",
-      "sha256": "a5a4ba88d6aeb00d2a62c7fa1ff0a80c1433190bd22cf92dee32fd184c89ecf1"
+      "sha256": "52bf3b878d5af936604097f4e1974a30840bae034d9d7204b729fae36254d56c"
     },
     {
       "path": "scripts/lib/webapp-inventory-contract.mjs",
@@ -3933,7 +3948,7 @@
     {
       "path": "scripts/protected-paths.mjs",
       "mode": "100644",
-      "sha256": "d4308756d4c721e60dcee0107e316f4c159d4277e101bcf162082fdd7a077d1b"
+      "sha256": "6886dae029ac4f5859e0f1a71c32b1a967890a0a12e7516eb7e70c427a8964a8"
     },
     {
       "path": "scripts/protected-paths.test.mjs",
@@ -3958,7 +3973,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "acbcfd936f2803f8378e12d95792ef71cd8752f7f6c11226b1b3f26cbc963963"
+      "sha256": "792c01b480b7553c5b7b5942909f4362b78b012ee792a0b8123dc6e7232bc149"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
@@ -3993,7 +4008,7 @@
     {
       "path": "scripts/vocabulary-boundary.test.mjs",
       "mode": "100644",
-      "sha256": "d848169b64e813ff863d1c61f09c840e4c645372f188486a8cccd8bdb6cf30a6"
+      "sha256": "eb82c1e18e2dc35f5e14af26d116d9d3ad5cd4bedbbf4c18f600360159e53e51"
     },
     {
       "path": "scripts/workspace-reachability.mjs",
@@ -4003,7 +4018,7 @@
     {
       "path": "scripts/workspace-reachability.test.mjs",
       "mode": "100644",
-      "sha256": "ee6ffd670728ae0fbb41c3aec19e8cb837ae2a9803dd7c9397bca012d3bca65d"
+      "sha256": "39de595126a1ed8a328369178097df252b5cdb8c9ed6bf10546ecd39042f9a25"
     }
   ]
 }

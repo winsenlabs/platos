@@ -25,12 +25,29 @@
 // a new directory satisfying this interface and a row in the registry, and not
 // one line inside `channels`.
 //
-// WHAT A SECOND RUNTIME WOULD ACTUALLY TAKE — MEASURED, BECAUSE "future adapters
-// require no Core modification" IS STILL ASSERTED AND NOT EXERCISED.
+// THE SECOND RUNTIME EXISTS, AND "future adapters require no Core modification"
+// IS NOW EXERCISED RATHER THAN ASSERTED (2026-09-16).
 //
-// `channel-slack` is the only implementation. Until a second one exists the
-// sentence above is a design intention, so this is what the second one needs,
-// measured against this tree rather than estimated.
+// `packages/adapters/channel-discord` satisfies this port and `ChannelAdapter`,
+// is registered in `apps/core-api/src/composition/adapter-bindings.ts` as
+// `channels:ChannelAdapter` and `channels:ChannelRuntime`, and is read back as
+// satisfied from a spawned core-api. THE DIFF OF THIS DIRECTORY IS THE EVIDENCE:
+// `git diff <its base>..<its head> -- packages/contexts/channels` is ZERO BYTES.
+// That empty diff is why the paragraphs below are kept as WRITTEN rather than
+// rewritten — they are the prediction the second runtime tested, and the
+// measurements in them still hold. What is corrected is only the tense.
+//
+// WHAT IS STILL NOT CLOSED, AND IT IS NOT THIS PORT. PRODUCTION INBOUND for
+// Discord: `admitSignedDelivery` keys on `ChannelApp`, `APP_PROVIDERS` is
+// `["slack"]`, and postgres-tenancy's `requireAppProvider` refuses a non-Slack
+// app row. Admitting `discord` as an app provider (Discord apps install into
+// guilds through OAuth2) or adding a connection-keyed inbox is a change INSIDE
+// this context plus its store, and `channel-discord/src/signed-admission.test.ts`
+// pins the gap and fails the day it closes. So the clause is ADVANCED by the
+// second directory, not closed by it.
+//
+// WHAT A SECOND RUNTIME TOOK — MEASURED BEFORE IT WAS WRITTEN, and left standing
+// because the prediction is worth more than a tidy-up.
 //
 // WHAT IS ALREADY REACHABLE, AND CHEAPLY. `CONNECTION_PROVIDERS` in
 // `../../domain/provider.ts` already admits `telegram`, `whatsapp` and `discord`,
@@ -42,11 +59,15 @@
 // or answer slowly, and the adapter is pointed at it by base url. Nothing about
 // that pattern is Slack-specific.
 //
-// WHAT NEEDS A DECISION, AND IT IS NOT A CODE ONE. WHICH PROVIDER IS SECOND is
-// unchosen: four are admitted, nothing in the tree selects one, and the answer is
-// a product decision about who Winsen's users are on. A PRODUCTION credential —
-// a bot token, an app secret — follows from that choice and from a supplier, not
-// from this file.
+// WHAT NEEDED A DECISION, AND IT WAS NOT A CODE ONE. WHICH PROVIDER IS SECOND was
+// unchosen when this was written: four are admitted, nothing in the tree selected
+// one, and the answer was a product decision about who Winsen's users are on.
+// FOUNDER DECISION D10 ANSWERED IT — Discord, then WhatsApp, then Telegram — and
+// the paragraphs below are the measurement that recommended it, kept because they
+// are the reason and not a record of it. A PRODUCTION credential — a bot token,
+// an app secret — still follows from a supplier and not from this file: the
+// Discord adapter reads a connection's bot token per send through
+// `ChannelCredentialReader` and holds none.
 //
 // AND ONE MEASURED TECHNICAL REASON THE OBVIOUS CANDIDATE IS THE WRONG ONE. The
 // header above names Telegram as the example, and Telegram is the cheapest to
@@ -61,15 +82,17 @@
 // central assertion compares two values it controls cannot fail, and that is a
 // worse outcome than no second adapter.
 //
-// DISCORD IS THE STRONGEST CANDIDATE ON THAT TEST. Its inbound half is an Ed25519
+// DISCORD WAS THE STRONGEST CANDIDATE ON THAT TEST, AND IS THE ONE THAT WAS
+// WRITTEN. Its suite transcribes RFC 8032 section 7.1's vectors. Its inbound half is an Ed25519
 // signature over `timestamp + body` verified against the application's PUBLIC key
 // — an IETF standard with published test vectors (RFC 8032), supported natively by
 // `node:crypto`, so it adds no dependency and its verification joins to something
 // outside this repository. WhatsApp is an HMAC-SHA256 over the raw body
 // (`X-Hub-Signature-256`), the same shape as Slack's.
 //
-// WHAT A SECOND RUNTIME STILL COULD NOT BE EXERCISED THROUGH. `channels` IS NOT
-// COMPOSED on this branch, and the reason is recorded and still current:
+// WHAT THE SECOND RUNTIME STILL CANNOT BE EXERCISED THROUGH, and this paragraph is
+// unchanged because it is still true. `channels` IS NOT COMPOSED on this branch,
+// and the reason is recorded and still current:
 // `CHANNELS_UNCOMPOSABLE` in `apps/core-api/src/composition/context-ports.ts`
 // names `DurableRuntime` as the missing half, and `durable-runtime` is the first
 // entry of `UNIMPLEMENTED_ADAPTERS` in `adapter-bindings.ts`. So a second runtime

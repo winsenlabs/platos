@@ -78,6 +78,7 @@ function publicationProvenanceFixture() {
     WIN235_AGENT_IMAGE: `ghcr.io/example/platos-agent@sha256:${"2".repeat(64)}`,
     WIN235_WEBAPP_IMAGE: `ghcr.io/example/platos-webapp@${digest}`,
     WIN235_MIGRATIONS_IMAGE: `ghcr.io/example/platos-migrations@sha256:${"3".repeat(64)}`,
+    WIN235_CORE_API_IMAGE: `ghcr.io/example/platos-core-api@sha256:${"4".repeat(64)}`,
     WIN235_WEBAPP_ARCHIVE_SHA256: sha256(readFileSync(candidateArchivePath)),
     SOURCE_RUN_ID: "123456",
     SOURCE_RUN_ATTEMPT: "2",
@@ -87,6 +88,7 @@ function publicationProvenanceFixture() {
     agent: env.WIN235_AGENT_IMAGE,
     webapp: env.WIN235_WEBAPP_IMAGE,
     migrations: env.WIN235_MIGRATIONS_IMAGE,
+    coreApi: env.WIN235_CORE_API_IMAGE,
   };
   const evidence = (stage, imageId) => ({
     $schema: "platos.audit.webapp-image-inventory-evidence/v3",
@@ -302,6 +304,10 @@ test("webapp publication validator rejects every mutated provenance binding", as
     ["candidate agent identity", ({ identities }) => (identities.agent = identities.webapp)],
     ["candidate webapp identity", ({ identities }) => (identities.webapp = identities.agent)],
     ["candidate migrations identity", ({ identities }) => (identities.migrations = identities.agent)],
+    ["candidate core-api identity", ({ identities }) => (identities.coreApi = identities.agent)],
+    // D-PUBLISH-CORE: a run whose gate recorded no tested core-api identity
+    // cannot publish the core-api archive.
+    ["candidate core-api identity untested", ({ identities }) => delete identities.coreApi],
     ["evidence schema", ({ production }) => (production.$schema = "disabled")],
     ["evidence stage", ({ production }) => (production.stage = "final")],
     ["source run ID", ({ production }) => (production.sourceRunId = "999999")],

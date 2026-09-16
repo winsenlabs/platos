@@ -69,6 +69,25 @@ describe("describeSessionCookie", () => {
     expect(insecure.domain).toBeNull();
     expect(Object.isFrozen(secure)).toBe(true);
   });
+
+  it("takes a deployable's base name and SameSite mode, and still decides the prefix from TLS alone", () => {
+    // D-COOKIE. The fronting deployable configures the base name and the mode;
+    // the prefix is never supplied, so a configured name cannot claim `__Host-`
+    // without `Secure`.
+    const configuredSecure = describeSessionCookie({ secure: true, cookieName: "acme_ops", sameSite: "strict" });
+    expect(configuredSecure.name).toBe("__Host-acme_ops");
+    expect(configuredSecure.sameSite).toBe("strict");
+    expect(checkSessionCookieShape(configuredSecure).ok).toBe(true);
+    const configuredPlain = describeSessionCookie({ secure: false, cookieName: "acme_ops" });
+    expect(configuredPlain.name).toBe("acme_ops");
+    expect(configuredPlain.sameSite).toBe("lax");
+    expect(checkSessionCookieShape(configuredPlain).ok).toBe(true);
+  });
+
+  it("refuses a configured base name that smuggles the prefix onto a plain-HTTP shape", () => {
+    const smuggled = describeSessionCookie({ secure: false, cookieName: "__Host-acme_ops" });
+    expect(checkSessionCookieShape(smuggled).ok).toBe(false);
+  });
 });
 
 describe("checkSessionCookieShape — the RFC 6265bis §4.1.3.2 rules", () => {

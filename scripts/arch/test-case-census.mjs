@@ -2468,11 +2468,48 @@ export const EXPECTED = Object.freeze({
   // job is to be correct when the far side misbehaves, so an emptied body would
   // drop a refusal that a real socket or a published digest produced, not a
   // repetition of a happy path.
+  // WIN-271 (M4.5), D10. 0 -> 5 files, 0 -> 106 cases: the SECOND channel runtime,
+  // a new directory. discord-transport 33 (a real `node:http` far side keeping
+  // `received` and `created` apart: silent, slow, refused, reset AFTER the read,
+  // 429 with both wait headers, a bucket exhausted before a socket opens, the
+  // global limit and the routes it does not bind), rfc8032 26 (all five RFC 8032
+  // section 7.1 vectors, each re-derived from its secret key), normalize 20,
+  // discord-signature 16 (the construction joined to Discord's own helper library,
+  // then one thing changed per refusal), signed-admission 11 (the context's own use
+  // case with this runtime behind the port, and one case pinning the Core gap that
+  // keeps it from production). Counted statically: the vector and fixture tables
+  // are spelled as literals or walked inside one case, because a generated table
+  // has no row count this census can see. (The per-file figures first written here
+  // were 35/24/21/16/10 — the right total over the wrong split; re-counted with
+  // `countFile` at the round-2 fix.)
+  // WIN-271 (M4.5), D10, verifier round 2: 106 -> 110, the SAME 5 files. Three
+  // mutations against behaviour this directory's own comments describe survived
+  // the full suite, and each now has a case that kills it: discord-transport
+  // 33 -> 36 (a 429 naming NO bucket still holds its route on that channel; the
+  // rate-limit sweep keeps a live window and a live global block while dropping
+  // reset ones; and it drops a followup route nothing live stands behind, which
+  // before the fix grew by one entry per interaction token and was never swept),
+  // normalize 20 -> 21 (a thread-typed channel with no `parent_id` is keyed on
+  // itself).
+  "packages/adapters/channel-discord": { files: 5, cases: 110 },
   "packages/adapters/channel-slack": { files: 5, cases: 61 },
   "packages/adapters/clickhouse-observability": { files: 0, cases: 0 },
   "packages/adapters/durable-runtime": { files: 0, cases: 0 },
   "packages/adapters/model-router-providers": { files: 15, cases: 198 },
-  "packages/adapters/notifier-email": { files: 0, cases: 0 },
+  // 0 -> 2 files, 0 -> 14 cases (2026-09-15, D20). The directory stopped being a
+  // generated interface: `message.test.ts` (10 — the RFC 5322 bytes, base64 bodies
+  // dot-stuffing cannot alter, header injection refused, the relay URL and the
+  // login page admitted or refused) and `smtp-session.test.ts` (4 — a scripted
+  // relay on a real socket for the refusals a real sink will not give on demand:
+  // no STARTTLS with credentials, a 550 at RCPT, a silent greeting, a closed
+  // port). The accepting path is proven against a real relay in core-api.
+  // 14 -> 18 (2026-09-16, the verifier's round on the same remainder), no file
+  // added: `smtp-session.test.ts` gains the deadline over an smtps:// handshake
+  // that never finishes (and the socket it abandons, closed), the deadline over a
+  // STARTTLS handshake that never finishes, the whole message refused before the
+  // envelope when TLS is required and none is offered, and the one opt-out that
+  // sends in clear.
+  "packages/adapters/notifier-email": { files: 2, cases: 18 },
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   // M2 INTEGRATION: outbox 4 + 0 + 1 = 5 files, 41 + 5 (the replay codes) + 22
@@ -2610,7 +2647,11 @@ export const EXPECTED = Object.freeze({
   // one — and P15 normalised a junk `McpToken.tier` instead of refusing it, which
   // nothing noticed because nothing wrote one. Both are recorded in
   // `scripts/mutations-win268-lifecycle.json`.
-  "packages/adapters/postgres-tenancy": { files: 141, cases: 1570 },
+  // 1570 -> 1571 (2026-09-15): `listOrganizationMemberships` against a real
+  // PostgreSQL — one organization's rows, deactivated included, never another's.
+  // 1571 -> 1572 (2026-09-16): the operator directory reads `User.displayName`
+  // off the row, and null where the row holds none — the team page renders it.
+  "packages/adapters/postgres-tenancy": { files: 141, cases: 1572 },
   // WIN-260 adopts this project and gives it its first suites.
   //
   // WIN-267 A3 4 -> 6 files, 65 -> 84 cases: `providers`' `ProviderProbeCache`
@@ -2746,7 +2787,25 @@ export const EXPECTED = Object.freeze({
   // every case stayed green, because nothing listed more than one credential in an
   // order-sensitive way — so the fake could have contradicted the SQL it exists to
   // stand in for. Both are recorded in `scripts/mutations-win268-lifecycle.json`.
-  "packages/contexts/identity-access": { files: 25, cases: 355 },
+  //
+  // 25 -> 26 files, 355 -> 366 cases (2026-09-15, D3 and D20). +5 in
+  // `identity-access-service.magic-link.test.ts` (the published start answers no
+  // token and derives the oracle's bucket; the completion's token exists only in a
+  // registered directive; D3 refuses a start with nothing delivered); +4 net in
+  // `magic-link-login.test.ts` (no token returned, an unmailable address refused
+  // before anything is spent, delivery absent and delivery refused as two codes);
+  // +2 net in the rate-limit suites, whose fail-open pins were RE-RECORDED under D3
+  // rather than deleted (fails closed with its own code; an unspent budget is
+  // refused during an outage; a scope-less action still refuses).
+  //
+  // 366 -> 368 cases, files UNMOVED at 26 (D-COOKIE, the core-api deployability
+  // residue). Both land in the existing `domain/session-cookie.test.ts`: a
+  // deployable's configured base name and SameSite mode are carried onto the shape
+  // while the `__Host-` prefix is still decided by TLS alone, and a configured base
+  // name that already smuggles the prefix is refused on a plain-HTTP shape. The
+  // lane that wrote them did not move this pin, so it moves here, on the merge that
+  // first runs this census over both trees.
+  "packages/contexts/identity-access": { files: 26, cases: 368 },
   "packages/contexts/jobs": { files: 16, cases: 386 },
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
@@ -2758,7 +2817,15 @@ export const EXPECTED = Object.freeze({
   // same package, so the counts add.
   "packages/contexts/secrets": { files: 23, cases: 293 },
   "packages/contexts/skills": { files: 20, cases: 306 },
-  "packages/contexts/tenancy": { files: 20, cases: 207 },
+  // 20 -> 22 files, 207 -> 223 cases (2026-09-15, D1). +9 in
+  // `invitation-authorization.test.ts` (OWNER and ADMIN admitted; MEMBER,
+  // deactivated ADMIN, archived organization and the FORGED-scope ADMIN of another
+  // organization refused under one code with named gates; an ADMIN may not invite
+  // an OWNER; nothing written on refusal; bad role and address refused), +5 in
+  // `team-and-scope-read-models.test.ts` (settings.team and requireEnvironmentScope
+  // ported) and +1 each in the invitation and role-change suites for a role that
+  // arrives from a wire.
+  "packages/contexts/tenancy": { files: 22, cases: 223 },
   // WIN-269 (M4.3): tools 362 -> 366 cases, files UNCHANGED at 19. All four land
   // in `application/execution.test.ts` and all four are the `DispatchTarget`
   // transport gap, which only became visible when somebody tried to write the
@@ -2791,7 +2858,51 @@ export const EXPECTED = Object.freeze({
   //   transport this deployable has no client for and refuses under its own code.
   //
   // 366 + 8 + 26 = 400; 19 + 2 = 21.
-  "packages/contexts/tools": { files: 21, cases: 400 },
+  //
+  // WIN-268 (M4.2) SDK 1.30.x CANDIDATE: 400 -> 415, files UNCHANGED, all fifteen
+  // in `adapters/dispatch.integration.test.ts` (26 -> 41). NINE existing cases that
+  // put the SDK'S OWN SERVER on the far side of the adopted client become
+  // `it.each([ADOPTED, CANDIDATE])` — the handshake-and-call, the credential on
+  // `initialize`, enumeration, `isError`, the slow-tool timeout and the four pool
+  // cases — so each is asked of the 1.26.0 server and of the 1.30.0 candidate
+  // aliased as `@modelcontextprotocol/sdk-candidate`: +9. FOUR are new, the `sse`
+  // transport against both builds' `SSEServerTransport` (call and enumeration),
+  // which no case had put a server behind: +4. TWO hold the table to two builds:
+  // one joins the installed versions to `pnpm-lock.yaml` and requires them to
+  // differ, and one — added after a verifier repointed the candidate imports at
+  // the adopted SDK and every version assertion stayed green — requires the three
+  // LOADED classes to be different objects, each the export of the specifier it
+  // claims, each resolved inside its own version's pnpm store directory: +2. Only
+  // the second can fail when the table collapses into one build asked twice. The
+  // table is an array literal so this census counts its rows rather than refusing it.
+  //
+  // 400 + 9 + 4 + 2 = 415; 21 files.
+  //
+  // THE `/tools/sync` RECONNECT TRANSPORT (M4.3) 415 -> 417: two cases in the
+  // package's own suites. `tenancy/application/record-entity-connection.ts` and
+  // `tools/application/record-tool-health.ts` therefore add FILES to their
+  // packages and almost no case to this census, which is correct: their behaviour
+  // is proved against a REAL PostgreSQL in
+  // `apps/core-api/src/composition/tool-sync-writers.integration.test.ts`, and
+  // `apps/core-api` is outside `PACKAGE_ROOTS`. A reader taking this number as the
+  // measure of what that lane proved would be reading a small part of it.
+  //
+  // 400 + 9 + 4 + 2 + 2 = 417; 21 files.
+  //
+  // AND 417 -> 421 ACROSS 21 -> 22 FILES, the pool-eviction fix this integration
+  // round carried in. `adapters/mcp-session-failure.integration.test.ts` is the
+  // FIRST file on this row in several tranches to move the FILE count as well as
+  // the case count, and the reason is the 500-line budget rather than a new
+  // subject: the four cases were written into `dispatch.integration.test.ts`, took
+  // it to 571 effective lines, and moved out. THREE drive real SDK servers over
+  // loopback sockets -- a sibling call surviving another tool's request timeout,
+  // the absence of a second `initialize` after that timeout (counted on the
+  // server), and a transport that really died STILL being evicted -- and the
+  // fourth asks `failureEndsSession` the classification directly, so the rule has
+  // a gate of its own and not only its consequences.
+  //
+  // 400 + 9 + 4 + 2 + 2 + 4 = 421; 22 files.
+  "packages/contexts/tools": { files: 22, cases: 421 },
   // M2 INTEGRATION: kernel 3 + 1 + 2 = 6 files, 44 + 16 (the redactor's
   // two-sided suite) + 69 (retry and the transaction-outcome behaviour) = 129.
   //
@@ -3723,7 +3834,55 @@ export const EXPECTED = Object.freeze({
 // `fields[]` path points — and `apps/core-api` is outside `PACKAGE_ROOTS`, so this
 // census moves not one number for them. A reader taking this file as the measure of
 // what stage 3 proved would be reading two thirds of it.
-export const EXPECTED_RUNTIME_TOTAL = 8359;
+//
+// 8359 -> 8401 (2026-09-15, the identity/tenancy REST remainder): +14
+// notifier-email, +11 identity-access, +16 tenancy, +1 postgres-tenancy, each
+// accounted for on its row. The same asymmetry a FOURTH time: the 12 new
+// `apps/core-api` unit cases and the 22-case integration suite that proves these
+// routes over HTTP move no number here.
+//
+// 8401 -> 8406 (2026-09-16, the verifier's round on the same remainder): +4
+// notifier-email, +1 postgres-tenancy, each on its row. The two new
+// `apps/core-api` unit cases and the two new integration cases move nothing.
+//
+// WIN-271 (M4.5), D10: +110 over 5 NEW files. ONE row moves,
+// `packages/adapters/channel-discord` 0 -> 110 (106 in the lane's own round,
+// 4 more in its verifier round), itemised on its own row above.
+// `packages/contexts/channels` is UNMOVED at 274 — the clause the directory
+// evidences AT THE PORT is that the context needed no change, and a case added
+// there would have been one. (Production inbound for Discord still needs a
+// decision inside `channels` — `APP_PROVIDERS` is `["slack"]` — so the clause is
+// advanced by this directory, not closed.)
+//
+// INTEGRATED AND RE-MEASURED: 8359 + 47 + 110 = 8516 over 564 + 5 = 569 files.
+//
+// WIN-268 (M4.2) SDK 1.30.x CANDIDATE: +15 over the SAME 569 files. All fifteen
+// land in `packages/contexts/tools`, itemised on its row above; the contexts term
+// alone moves. The candidate is ALSO asked of Platos' own MCP servers — by
+// `apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts` and
+// the two-process SSE suite beside it — and `apps/agent` is outside
+// `PACKAGE_ROOTS`, so this census moves not one number for that half.
+//
+// AND D-COOKIE'S TWO SESSION-COOKIE CASES: +2 on `packages/contexts/identity-access`
+// (366 -> 368), files unmoved — itemised on that row above. The core-residue lane
+// added the cases and left this census alone, which is why the number moves on the
+// merge rather than on the lane.
+//
+// INTEGRATED AND RE-MEASURED: 8359 + 47 + 110 + 15 + 2 = 8533 over 564 + 5 = 569 files.
+//
+// AND THE `/tools/sync` RECONNECT TRANSPORT (M4.3): +2 on
+// `packages/contexts/tools`, files unmoved. The lane's fourteen real-database
+// cases and its thirteen reconnect cases move NOT ONE NUMBER here: they live in
+// `apps/core-api`, which is outside `PACKAGE_ROOTS`. The asymmetry the paragraphs
+// above record applies once more.
+//
+// AND THE POOL-EVICTION FIX THIS ROUND CARRIED IN: +4 on
+// `packages/contexts/tools`, and the one file count this round moves -- itemised
+// on that row above.
+//
+// INTEGRATED AND RE-MEASURED: 8359 + 47 + 110 + 15 + 2 + 2 + 4 = 8539 over
+// 569 + 1 = 570 files.
+export const EXPECTED_RUNTIME_TOTAL = 8539;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

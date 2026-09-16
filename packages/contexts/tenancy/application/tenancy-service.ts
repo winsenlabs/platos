@@ -11,6 +11,7 @@ import type { EntityId, EnvironmentId, OrganizationId, ProjectId, Result } from 
 import { contains, err, ok, type TenantScope } from "@platos/kernel";
 
 import {
+  OrganizationRole,
   ancestryScope,
   archivedAncestor,
   requireAuthorization,
@@ -20,12 +21,17 @@ import {
   type UserId,
 } from "../domain/index.js";
 import type {
+  AcceptInvitationRequest,
   AddProjectMemberRequest,
   AuthorizeEnvironmentOperatorRequest,
+  IssueInvitationRequest,
+  ListOrganizationMembersRequest,
+  ResolveOperatorEnvironmentRequest,
   ChangeMembershipRoleRequest,
   CreateOrganizationRequest,
   CreateProjectRequest,
   MembershipMutationResult,
+  RecordEntityConnectionCommand,
   ResolvedEnvironmentScope,
   RevokeAccessKeyGenerationRequest,
   TenancyContract,
@@ -37,11 +43,15 @@ import { createAuthorizeEnvironmentOperator } from "./authorize-environment-oper
 import { createChangeMembershipRole, createDeactivateMembership } from "./change-membership-role.js";
 import { createCreateOrganization } from "./create-organization.js";
 import { createCreateProject } from "./create-project.js";
+import { createAcceptInvitation, createIssueInvitation } from "./invitations.js";
+import { createListOrganizationMembers } from "./organization-members.js";
+import { createResolveOperatorEnvironment } from "./resolve-operator-environment.js";
 import {
   createListOperatorOrganizations,
   createListVisibleProjects,
 } from "./operator-read-models.js";
 import type { TenancyDependencies } from "./dependencies.js";
+import { createRecordEntityConnection } from "./record-entity-connection.js";
 import { createRevokeAccessKeyGeneration } from "./revoke-access-key-generation.js";
 
 export function createTenancyService(dependencies: TenancyDependencies): TenancyContract {
@@ -55,6 +65,16 @@ export function createTenancyService(dependencies: TenancyDependencies): Tenancy
   const listOperatorOrganizations = createListOperatorOrganizations(dependencies);
   const listVisibleProjects = createListVisibleProjects(dependencies);
   const revokeAccessKeyGeneration = createRevokeAccessKeyGeneration(dependencies);
+  const issueInvitation = createIssueInvitation(dependencies);
+  const acceptInvitation = createAcceptInvitation(dependencies);
+  const listOrganizationMembers = createListOrganizationMembers(dependencies);
+  // The SAME authorize closure every other caller gets, so the slug resolver and
+  // the id-keyed route cannot disagree about the four gates.
+  const resolveOperatorEnvironment = createResolveOperatorEnvironment(
+    dependencies,
+    authorizeEnvironmentOperator,
+  );
+  const recordEntityConnection = createRecordEntityConnection(dependencies);
 
   return {
     name: "tenancy",
@@ -105,6 +125,35 @@ export function createTenancyService(dependencies: TenancyDependencies): Tenancy
       return ok(membership);
     },
 
+    issueInvitation: async (request: IssueInvitationRequest) => {
+      const issued = await issueInvitation({
+        organizationId: request.organizationId,
+        inviterId: request.inviterUserId,
+        email: request.email,
+        role: request.role ?? OrganizationRole.MEMBER,
+      });
+      return issued.ok
+        ? ok({
+            invitationId: issued.value.invitationId,
+            token: issued.value.token,
+            expiresAt: issued.value.expiresAt,
+            supersededCount: issued.value.supersededCount,
+          })
+        : issued;
+    },
+
+    acceptInvitation: (request: AcceptInvitationRequest) =>
+      acceptInvitation({ token: request.token, userId: request.userId, email: request.email }),
+
+    listOrganizationMembers: (request: ListOrganizationMembersRequest) =>
+      listOrganizationMembers({
+        organizationId: request.organizationId,
+        actorUserId: request.actorUserId,
+      }),
+
+    resolveOperatorEnvironment: (request: ResolveOperatorEnvironmentRequest) =>
+      resolveOperatorEnvironment(request),
+
     listOperatorOrganizations: (userId: UserId) => listOperatorOrganizations(userId),
 
     listVisibleProjects: (userId: UserId) => listVisibleProjects(userId),
@@ -120,6 +169,9 @@ export function createTenancyService(dependencies: TenancyDependencies): Tenancy
       if (entity === null) return err(tenantNotFound("entity"));
       return ok(entity);
     },
+
+    recordEntityConnection: (command: RecordEntityConnectionCommand) =>
+      recordEntityConnection(command),
 
     revokeAccessKeyGeneration: (request: RevokeAccessKeyGenerationRequest) =>
       revokeAccessKeyGeneration(request),

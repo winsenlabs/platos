@@ -133,6 +133,53 @@ jobs:
       - name: Platos vocabulary boundary gate
         run: pnpm test:vocabulary && pnpm audit:vocabulary
 
+      - name: Platools TypeScript SDK suite and the shared protocol fixture
+        # WIN-270 (M4.4), cross-language fixtures. Before this step NO job ran the
+        # platools-js suite: `.github` named platools only in labeler.yml. Its
+        # `tests/protocol-fixture.test.ts` drives the real client against
+        # `tests/sdk-contract/platools-protocol.json`, the file the Python step below
+        # reads too, so the two SDKs are compared by one fixture in one pipeline
+        # rather than by one language in CI and the other on a laptop.
+        run: pnpm --filter @platosdev/platools-sdk test
+
+      - name: Set up Python for the Platools Python SDK suite
+        # Pinned by commit like every other action here, and to an exact
+        # interpreter so a runner image update cannot move the version under the
+        # suite. `pyproject.toml` admits >=3.10; 3.12 is the version the hashed
+        # requirements below were resolved on.
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12.14"
+
+      - name: Platools Python SDK suite and the shared protocol fixture
+        # `--require-hashes --no-deps`: every distribution the suite imports is
+        # named in `requirements-ci.txt` at an exact version and verified by hash.
+        working-directory: packages/platools-py
+        run: |
+          python -m pip install --require-hashes --no-deps -r requirements-ci.txt
+          python -m pytest -p no:cacheprovider
+
+      - name: Changeset gate for publishable packages and the generated SDK
+        # WIN-270 (M4.4), semver automation; founder decision D15: VERSION
+        # automation only, and no publish step may ever be added here. Fails when a
+        # non-private `packages/*` package (the two Python SDKs under their npm
+        # twins) or a generated SDK artifact changed since the merge base without a
+        # changeset naming it, and when a changeset in the diff names a package that
+        # is not publishable or that nothing changed. Licence metadata reconciled to
+        # the governing licence is exempt, as CHANGESETS.md rules. It then computes
+        # the release plan (`changeset status --output`) as a dry run.
+        # `changeset status --since` passes once the diff adds ANY changeset, whatever
+        # package it names, and nothing ran even that: commit 77864609 changed
+        # @platosdev/client with no intent recorded.
+        # The base is the PR's base commit, or the pre-push commit on a push; an
+        # empty or all-zero base is a refusal, never a pass. The checkout above keeps
+        # full history (`fetch-depth: 0`), which the merge base needs.
+        env:
+          CHANGESET_GATE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          pnpm test:changesets
+          pnpm audit:changesets --base "$CHANGESET_GATE_BASE"
+
       - name: V1 M0 executable evidence gates
         run: |
           pnpm test:ci-policy
@@ -156,6 +203,8 @@ jobs:
           node --test scripts/webapp-bff-matrix.test.mjs
           node scripts/operator-operations.mjs --check
           node --test scripts/license-distribution.test.mjs
+          node --test scripts/deploy-bundle-closure.test.mjs
+          node --test tests/persisted-state-gate/smoke-core-api-image.test.mjs
           node scripts/arch/gen-v1-skeleton.mjs --check
           pnpm test:v1-foundation
           pnpm test:install-git-hooks
@@ -192,6 +241,7 @@ jobs:
           pnpm test:webapp-image-inventory
           pnpm test:webapp-inventory-contract
           pnpm test:public-guest-boundary
+          pnpm test:docs-examples
           pnpm --filter platos-agent exec vitest run src/http/deprecation-signal.test.ts
           pnpm test:advisory
           pnpm audit:advisory:check
@@ -271,6 +321,34 @@ jobs:
         # `@platos/tenancy-database` unbuilt the client type is opaque and the
         # analyzer finds fewer call sites than the pin expects.
         run: pnpm --filter platos-agent exec vitest run src/clean-prisma-delegates.test.ts
+
+      - name: WIN-272 legacy SSE terminal-frame and duplicate tool-result suites
+        # "No duplicate tool-result or trailing invalid frames", and both suites
+        # that prove it were DARK. `streaming-terminal-frame.test.ts` reads the
+        # legacy SSE lane back off a real socket and requires at most one terminal
+        # frame and nothing after it; `tool-sync-ws.test.ts` now also proves that a
+        # second `tool_result` or `tool_error` for a call id the service already
+        # settled produces no second settlement. Neither file was named by any job,
+        # and this job selects agent suites by explicit filename, so a suite on no
+        # list is a suite nothing runs.
+        #
+        # Its own step, after "Generate and build compiled Agent dependencies" like
+        # every direct Agent Vitest consumer, so a red log names WHICH clause broke.
+        # `scripts/ci-policy.test.mjs` requires this step, this job, these files,
+        # and every agent suite that imports the subjects they cover.
+        run: pnpm --filter platos-agent exec vitest run src/streaming/streaming-terminal-frame.test.ts src/tool-gateway/tool-sync-ws.test.ts
+
+      - name: WIN-269 external MCP failure isolation against real remote MCP servers
+        # "external MCP failures are isolated" for the LIVE pool, remote-http and
+        # remote-sse only (founder decision D13 excludes stdio, which the product
+        # has never dispatched). The isolation suite starts SDK-built MCP servers on
+        # real listeners and drives `ToolExecutorService.executeBatch` over the real
+        # `McpConnectionPool`: a restarted server recovers on the next call, and a
+        # server hung in a call, hung in the initialize handshake, or crashing
+        # neither delays past a 1 s bound nor fails another entity's concurrent call. The acceptance suite beside it holds the pool
+        # doubles to the methods the executor and discovery really call. No
+        # database, no network beyond loopback, about ten seconds.
+        run: pnpm --filter platos-agent exec vitest run src/tool-gateway/mcp-transport/mcp-client-pool-isolation.test.ts src/tool-gateway/mcp-transport/mcp-connected-entity.acceptance.test.ts
 
       - name: WIN-290 ClickHouse lifecycle, redaction, and DLQ suite
         run: pnpm test:win-290
@@ -698,6 +776,16 @@ jobs:
         # whole stream lane over a real socket — with no new line needed, because
         # that script selects the package rather than the file.
         #
+        # WIN-269 (M4.3) ADDS TWO MORE CORE-API SUITES AND, AGAIN, NO LINE.
+        # `tool-sync-reconnect.integration.test.ts` and
+        # `tool-sync-writers.integration.test.ts` are selected by the same
+        # package-level run. Both start a PostgreSQL of their own and put it into
+        # the state a LEGACY installation is in — the frozen baseline SQL, the
+        # fixture written through the release's own rebuilt client, then the
+        # ordered migration set — so "existing entities reconnect without
+        # reconfiguration" is proved against rows this branch's code did not
+        # create. They FAIL when Docker is absent, like everything else here.
+        #
         # `scripts/ci-policy.test.mjs` now joins this step to the FILESYSTEM: it
         # enumerates every V1 integration suite on disk and fails if any package
         # holding one is not selected by some job here. Deleting any line below
@@ -844,6 +932,27 @@ jobs:
     # integration step above uses, one level up — and `pnpm test:ci-policy` joins
     # that walk to this job, so neither side can go quiet.
     #
+    # WHAT A WALK CANNOT NOTICE is one of its own suites going away, so the M4
+    # conformance evidence is also NAMED: `M4_CONFORMANCE_AGENT_SUITES` in
+    # `scripts/ci-policy.test.mjs` lists the three files of this tranche
+    # (`mcp-protocol-conformance`, `mcp-sse-multi-node`, `tool-call-parity`) and
+    # requires the walker to still find each one, with a negative control that the
+    # membership check fails when a name is renamed away. Deleting a suite is then
+    # a red gate rather than a silent drop — which is the same gate-darkness
+    # pattern this job was created to close, one turn later.
+    #
+    # WIN-269 (M4.3) IS THE FIRST SUITE TO ARRIVE THAT WAY AND THE FIRST TO BE
+    # DELEGATED HERE ON PURPOSE. `tool-sync-characterization.integration.test.ts`
+    # drives the LIVE `/tools/sync` WebSocket against a real client and a real
+    # database, over the same fixture `apps/core-api`'s reconnect suite uses, so
+    # the two transports that now write those rows are joined by one committed
+    # expectation. It imports `tool-sync-ws.service`, which the WIN-272 clause in
+    # the `typecheck` job gates — and that job has no database, where this suite
+    # would gate itself off and report nothing. So the WIN-272 entry in
+    # `scripts/ci-policy.test.mjs` DELEGATES it here by name, and a case there
+    # proves the delegation: this step must exist, must be unconditional, must run
+    # the walking script, and the script's own roots must reach the file.
+    #
     # A SKIP IS A FAILURE HERE. Every one of these suites gates itself on its own
     # `*_REQUIRED` environment variable so a laptop with no PostgreSQL skips
     # instead of erroring; the runner reads those variable NAMES out of the suite
@@ -856,6 +965,17 @@ jobs:
     # canonical migration into a private schema. The same digest-pinned image
     # `postgres-memory-evidence` uses, so the two jobs cannot drift onto different
     # servers.
+    #
+    # REDIS, SINCE WIN-268/WIN-269 (M4). Three suites under the walked roots need
+    # one: `mcp-protocol-conformance.integration.test.ts` (the three Platos MCP
+    # servers driven by the official SDK client, adopted and 1.30.x candidate, on
+    # Streamable HTTP and legacy SSE), `mcp-sse-multi-node.integration.test.ts`
+    # (the legacy SSE stream on one agent PROCESS and its POSTs on another, joined
+    # only by this Redis) and `tool-call-parity.integration.test.ts` (one tool call
+    # through execute-batch, internal-execute-tool and TurnDispatchService). Each
+    # reads `PLATOS_TEST_REDIS_URL` and throws when its `*_REQUIRED` flag is set and
+    # the URL is not — and the walker sets every flag it finds — so a job that lost
+    # this service fails at import instead of skipping.
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -874,8 +994,18 @@ jobs:
           --health-interval 2s
           --health-timeout 5s
           --health-retries 30
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
     env:
       PLATOS_POSTGRES_INTEGRATION_DATABASE_URL: postgresql://platos_agent_tenancy_ci:postgres-agent-tenancy@127.0.0.1:55434/platos_agent_tenancy_ci?schema=public
+      PLATOS_TEST_REDIS_URL: redis://127.0.0.1:6379
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -903,8 +1033,112 @@ jobs:
         # tenancy rule.
         run: pnpm --filter @platos/tenancy-database build
 
+      - name: Build the packages the MCP conformance and tool-call parity suites resolve
+        # The conformance harness mounts the production `ScopeGuard`, which
+        # imports `@internal/workload-identity`, and the docs MCP server, which
+        # reads `@internal/docs`; both ship only a compiled dist entry. Without
+        # this step those suites fail to LOAD rather than fail an assertion.
+        run: pnpm --filter @internal/workload-identity build && pnpm --filter @internal/docs build
+
       - name: MCP-surface and tool-lifecycle real-PostgreSQL suites
         run: pnpm test:agent-tenancy-postgres:integration
+
+      - name: Build the compiled packages the MCP regression suite imports
+        # The body-limit and auth suites below mount the real MCP and OAuth
+        # controllers and the real ScopeGuard, which import
+        # `@internal/workload-identity` and `@platosdev/token-mint`. Both ship only a
+        # compiled dist entry, so on a fresh checkout Vite cannot resolve them and
+        # the suite reports "no tests" rather than a broken rule — the failure
+        # `non-browser-completion-postgres` records for the first of the two.
+        # core-api's D21 mirror composes the real application, so it needs every
+        # workspace package core-api depends on (`^...`), but not core-api's own
+        # dist: Vitest runs its source.
+        run: pnpm --filter @internal/workload-identity build && pnpm --filter @platosdev/token-mint build && pnpm --filter "@platos/core-api^..." build
+
+      - name: WIN-268 MCP auth, isolation and body-limit regression suite
+        # ONE STEP, THREE CLAIMS, TWO DEPLOYABLES, because the clause is one
+        # sentence: "auth/isolation/body-limit regression suite passes". It was
+        # recorded as met with no such suite named anywhere and no body-limit test in
+        # the tree.
+        #
+        #   body limit  `request-body-limits.test.ts` — over a real socket, /mcp and
+        #               /oauth over their caps are 413 payload_too_large BEFORE the
+        #               guard pipeline or any controller auth runs, in every spelling
+        #               the router delivers (letter case, absolute-form targets);
+        #               chunked bodies fail closed, GET and DELETE are skipped, and
+        #               every public body-bearing route in the generated manifest
+        #               sits under a cap. core-api's D21 mirror,
+        #               `src/http/mcp-body-cap.test.ts`, is the second command: the
+        #               same refusals before `authenticateOperator`, plus what the
+        #               cap ADMITS (up to exactly 2 MiB) being parsed rather than
+        #               answered as a 500, against the real `startCoreApi`.
+        #   auth        ScopeGuard's public-route predicates and decisions, the
+        #               platform and entity MCP bearer verifiers, the per-entity MCP
+        #               controller and the OAuth authorization server.
+        #   isolation   the forged-scope MCP policy refusal and the end-user tenancy
+        #               proof, against this job's real PostgreSQL. They also run in
+        #               the walker step above; they are named here so this step is
+        #               the whole suite on its own.
+        #
+        # A SKIP IS A FAILURE. The two real-database suites skip when their gate
+        # variable is unset; set here, a missing database throws at import instead.
+        # `scripts/ci-policy.test.mjs` reads the flag names out of the suites and
+        # requires each to be set on this step, and requires both commands.
+        env:
+          MCP_FORGED_SCOPE_REQUIRED: "1"
+          END_USER_TENANCY_REQUIRED: "1"
+        run: |
+          pnpm --filter platos-agent exec vitest run \
+            src/http/request-body-limits.test.ts \
+            src/auth/scope.guard.test.ts \
+            src/mcp-platform/token.service.test.ts \
+            src/mcp-platform/mcp-bearer-token.service.test.ts \
+            src/mcp-platform/mcp-entity.controller.test.ts \
+            src/oauth/oauth.service.test.ts \
+            src/oauth/oauth.controller.test.ts \
+            src/mcp-platform/permission-gateway-forged-scope.integration.test.ts \
+            src/mcp-platform/tools/end-users-tenancy-postgres.integration.test.ts \
+            --no-file-parallelism \
+            --testTimeout=300000 \
+            --hookTimeout=300000
+          pnpm --filter @platos/core-api exec vitest run src/http/mcp-body-cap.test.ts
+
+      - name: MCP SDK 1.30.x candidate compatibility, re-derived and compared
+        # WIN-268 (M4.2). The candidate is aliased as a DEV dependency and asked the
+        # same questions as the adopted SDK — its client against Platos' servers,
+        # its server behind the Platos client. The derivation reruns those suites
+        # and requires the result to equal the committed
+        # `docs/audits/win-268-mcp-sdk-candidate-compatibility.json` byte for byte,
+        # so the evidence cannot go stale behind a green run. The tools-context
+        # build is what `packages/contexts/tools`' dispatch suite resolves through.
+        run: |
+          pnpm --filter "@platos/context-tools..." build
+          node --test scripts/mcp-sdk-candidate-compatibility.test.mjs
+          node scripts/mcp-sdk-candidate-compatibility.mjs --check
+
+      - name: WIN-269 tool-call parity across the direct, bridged and channel turns
+        # THE SAME CLAUSE AS THE `typecheck` JOB'S WIN-269 STEP, IN THE JOB THAT HAS
+        # THE STORES. The parity suite drives the same `McpConnectionPool` through
+        # the whole executor seam — the direct turn, the bridged turn that reaches
+        # `InternalExecuteToolController`, and the channel turn are asked for the
+        # SAME tool call and must produce the same arguments, the same audit and the
+        # same result — and it composes the real application, so it needs this job's
+        # PostgreSQL and Redis. The
+        # `typecheck` job has neither, which is why this clause has two steps rather
+        # than one.
+        #
+        # NAMED BY FILENAME, following the convention the other agent steps use.
+        # Before this step it reached CI only through
+        # `scripts/agent-tenancy-postgres-integration.mjs`'s directory walk plus the
+        # `.integration.test.ts` suffix, so renaming the file dropped it from CI
+        # with no gate failing. `scripts/ci-policy.test.mjs` pins the step, the
+        # filename and the flag.
+        #
+        # A SKIP IS A FAILURE: with the flag set, an absent PostgreSQL or Redis
+        # throws at import instead of skipping green.
+        env:
+          TOOL_CALL_PARITY_REQUIRED: "1"
+        run: pnpm --filter platos-agent exec vitest run src/tool-gateway/tool-call-parity.integration.test.ts
 
   non-browser-completion-postgres:
     name: non-browser-completion-postgres

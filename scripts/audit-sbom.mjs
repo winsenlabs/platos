@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // audit-sbom.mjs — deterministic SBOM generation + drift/licence gate for the
-// two Platos shipping images. WIN-250 / M0.5 deliverables #1 and #6.
+// Platos shipping application images (IMAGES in scripts/lib/pnpm-closure.mjs).
+// WIN-250 / M0.5 deliverables #1 and #6.
 //
 //   node scripts/audit-sbom.mjs generate   # (re)write CycloneDX SBOMs + receipts
 //   node scripts/audit-sbom.mjs check       # fail on SBOM drift or a policy breach
 //   node scripts/audit-sbom.mjs check --lockfile <path>   # gate a scratch/other tree
 //
 // DETERMINISM CONTRACT
-//   The agent component set is a pure function of pnpm-lock.yaml. The webapp
+//   The agent component set is a pure function of pnpm-lock.yaml, and so is the
+//   core-api set (that closure minus the deploy bundle's reviewed absences; see
+//   derivationOf below). The webapp
 //   component set is the committed, sorted exact Docker production-deps package
 //   inventory, validated as a subset of its production lock closure. Licences
 //   come from the COMMITTED frozen snapshot docs/audits/sbom/license-index.json
@@ -28,6 +31,7 @@ import { fileURLToPath } from 'node:url';
 import {
   loadLockfile, computeClosure, componentsFromSnapshots, IMAGES,
 } from './lib/pnpm-closure.mjs';
+import { DERIVATIONS, derivationOf, lockDerivedComponents } from './lib/shipping-components.mjs';
 import {
   WEBAPP_TARGET_PLATFORM,
   buildInputReceipts,
@@ -55,7 +59,12 @@ const REVIEWED_WEBAPP_LOCK_ONLY_COMPONENTS = [
   '@sentry/cli-win32-x64@2.50.2',
 ];
 
-const SBOM_FILE = { agent: 'platos-agent.cdx.json', webapp: 'platos-webapp.cdx.json' };
+const SBOM_FILE = {
+  agent: 'platos-agent.cdx.json',
+  webapp: 'platos-webapp.cdx.json',
+  'core-api': 'platos-core-api.cdx.json',
+};
+
 
 // Fixed timestamp keeps `generate` byte-reproducible. Bump only intentionally.
 const FIXED_EPOCH = '2026-08-28T00:00:00.000Z';
@@ -72,7 +81,7 @@ function loadImageInventory(inventoryPath = WEBAPP_INVENTORY) {
 
 function componentsForImage(parsed, image, webappInventory) {
   if (image === 'webapp') return webappInventory.components;
-  return componentsFromSnapshots(computeClosure(IMAGES[image].roots, parsed));
+  return lockDerivedComponents(parsed, image);
 }
 
 function validateImageInventory(parsed, webappInventory) {
@@ -212,7 +221,9 @@ function generateSbomForImage(parsed, resolveLicense, image, imageMembership, we
         name: IMAGES[image].displayName,
         description: image === 'webapp'
           ? 'Platos webapp shipping image — exact installed package inventory from the Docker production-deps stage'
-          : `Platos ${image} shipping image — production dependency closure resolved from pnpm-lock.yaml`,
+          : derivationOf(image) === 'deploy-bundle-closure-check'
+            ? `Platos ${image} shipping image — production dependency closure resolved from pnpm-lock.yaml, as the image build proves its deploy bundle`
+            : `Platos ${image} shipping image — production dependency closure resolved from pnpm-lock.yaml`,
       },
       properties: [
         { name: 'platos:image', value: image },
@@ -221,9 +232,7 @@ function generateSbomForImage(parsed, resolveLicense, image, imageMembership, we
         ...(image === 'webapp'
           ? [{ name: 'platos:targetPlatform', value: webappInventory.inventory.targetPlatform }]
           : []),
-        { name: 'platos:derivation', value: image === 'webapp'
-          ? 'exact linux/amd64 Docker production-deps node_modules/.pnpm plus linked first-party workspace manifests, reverse-reconciled against the production lock closure and importer links'
-          : 'pnpm-lock.yaml production closure (dependencies+optionalDependencies, devDependencies excluded)' },
+        { name: 'platos:derivation', value: DERIVATIONS[derivationOf(image)] },
       ],
     },
     components,
@@ -306,7 +315,7 @@ function cmdGenerate() {
       componentCount: sbom.components.length,
       distinctNames: new Set(sbom.components.map((c) => c.name)).size,
       roots: IMAGES[image].roots,
-      derivation: image === 'webapp' ? 'docker-production-deps-image-inventory' : 'pnpm-lock-production-closure',
+      derivation: derivationOf(image),
     };
     if (image === 'webapp') {
       receiptImages[image].inventoryFile = path.relative(ROOT, webappInventory.path).split(path.sep).join('/');
@@ -435,9 +444,7 @@ function cmdCheck(argv) {
           console.error(`DRIFT: receipt roots for ${image} do not match the configured image roots.`);
           failed = true;
         }
-        const expectedDerivation = image === 'webapp'
-          ? 'docker-production-deps-image-inventory'
-          : 'pnpm-lock-production-closure';
+        const expectedDerivation = derivationOf(image);
         if (imageReceipt.derivation !== expectedDerivation) {
           console.error(`DRIFT: receipt derivation for ${image} does not match its shipping inventory source.`);
           failed = true;

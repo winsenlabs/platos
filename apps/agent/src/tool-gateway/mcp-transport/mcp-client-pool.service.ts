@@ -20,6 +20,39 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 
+/**
+ * WIN-269 — does a call's failure leave its pooled session usable?
+ *
+ * Eviction CLOSES the pooled `Client`, and a closed client rejects every request
+ * still pending on it with "MCP error -32000: Connection closed". The pool key is
+ * `server.id`, the resolved URL and the credential hash, not the call, so one
+ * session carries every concurrent call to that entity's tools — and every end
+ * user whose resolved URL and headers are the same. Evicting on a failure that
+ * did not kill the session therefore fails calls that had nothing wrong with them.
+ *
+ * The session SURVIVES when both hold:
+ *   * the client's transport is still attached (the SDK detaches it on close, and
+ *     then every pending request has already been rejected), and
+ *   * the failure is an `McpError`, i.e. it came out of the protocol layer: the
+ *     server's own JSON-RPC error answer (it answered, on this session), or this
+ *     client's request clock (`RequestTimeout`, -32001 — the client stopped
+ *     waiting; the session did not die).
+ * Everything else ENDS it: an HTTP status from the transport (a restarted server's
+ * 404 for a session it never issued), `fetch failed`, a reset socket, "Not
+ * connected", or a detached transport. Those are what the next call must rebuild
+ * past, and calls pending on such a session fail on their own.
+ *
+ * `name === "McpError"` rather than `instanceof`, so the check holds whichever of
+ * the SDK's dual (CJS/ESM) builds constructed the error.
+ */
+export function failureEndsSession(client: Pick<Client, "transport">, failure: unknown): boolean {
+  if (client.transport === undefined) return true;
+  const candidate = failure as { name?: unknown; code?: unknown } | null;
+  const fromProtocolLayer =
+    typeof candidate === "object" && candidate !== null && candidate.name === "McpError" && typeof candidate.code === "number";
+  return !fromProtocolLayer;
+}
+
 const DEFAULT_POOL_IDLE_MS = 300_000;
 const DEFAULT_POOL_SIZE = 32;
 const DEFAULT_DISCOVERY_TIMEOUT_MS = 15_000;
@@ -72,6 +105,12 @@ export class McpConnectionPool implements OnModuleDestroy {
   private readonly pool = new Map<string, PoolEntry>();
   /** In-flight builds — dedupe concurrent getClient() for the same key. */
   private readonly building = new Map<string, Promise<PoolEntry>>();
+  /**
+   * WIN-269 — which pool key a handed-out `Client` was built for, so a caller
+   * whose call failed can evict EXACTLY that session (see `evict`). Weak, so an
+   * evicted or closed client is not kept alive by the lookup.
+   */
+  private readonly keyOfClient = new WeakMap<Client, string>();
   private sweepTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly credentials: McpCredentialService) {
@@ -167,7 +206,62 @@ export class McpConnectionPool implements OnModuleDestroy {
       throw err;
     }
 
+    this.keyOfClient.set(client, key);
     return { key, client, lastUsedAt: Date.now() };
+  }
+
+  /**
+   * WIN-269 — "external MCP failures are isolated": drop a session whose call
+   * failed in a way that ended it, so the NEXT call rebuilds it instead of reusing
+   * a dead one.
+   *
+   * WHY. Before this, entries left the pool only on overflow or on the idle sweep,
+   * and `getClient` refreshed `lastUsedAt` on every hit. A remote server that
+   * restarted mid-session forgets its `Mcp-Session-Id`, answers every request on
+   * it with 404, and the pooled client kept being handed out — so an entity used
+   * at least once every `MCP_POOL_IDLE_MS` (300 s by default) never recovered
+   * until the agent restarted. Callers go through `evictAfterFailure`: a request
+   * timeout and a server's JSON-RPC error answer do not evict (see
+   * `failureEndsSession`), and neither does an `isError: true` result — in all
+   * three the session is alive, and closing it would fail every other call
+   * pending on it.
+   *
+   * THE V1 CONTEXT ADAPTER NOW APPLIES THE SAME RULE, and this paragraph used to
+   * say something false about it. It said that adapter "already evicts on exactly
+   * this condition" and that this pool is NARROWER than it. It was not narrower;
+   * it was correct and the adapter was wrong. `packages/contexts/tools/adapters/
+   * mcp-dispatch.ts` evicted in both catch arms BEFORE classifying the failure, so
+   * a plain -32001 there closed the session under every caller sharing the pool
+   * key — the identical failure this pool was fixed for. That adapter now exports
+   * its own `failureEndsSession` with the same reading, and its sibling-call cases
+   * in `dispatch.integration.test.ts` hold it to it.
+   *
+   * IDENTITY, NOT KEY. The entry is dropped only if the pool still holds THIS
+   * client for its key. A slow call that fails after a concurrent caller already
+   * rebuilt the session must not tear down the healthy replacement.
+   *
+   * Only this session's key is touched, so one entity's failing server never
+   * closes a client another entity is using. It DOES close the session under
+   * every caller sharing the key — other tools of the same entity, and end users
+   * whose resolved URL and headers are the same — which is why only a failure
+   * that already ended the session may reach here. Returns whether an entry was
+   * dropped.
+   */
+  evict(client: Client): boolean {
+    const key = this.keyOfClient.get(client);
+    if (key === undefined) return false;
+    if (this.pool.get(key)?.client !== client) return false;
+    this.closeEntry(key);
+    return true;
+  }
+
+  /**
+   * Evict `client` only if `failure` ended its session (`failureEndsSession`).
+   * The call path and discovery both use this; returns whether an entry was
+   * dropped.
+   */
+  evictAfterFailure(client: Client, failure: unknown): boolean {
+    return failureEndsSession(client, failure) ? this.evict(client) : false;
   }
 
   /**

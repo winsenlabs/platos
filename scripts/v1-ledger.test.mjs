@@ -594,7 +594,49 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `streaming.service.ts`, `tool-registry.service.ts`, `tool-sync-ws.test.ts`,
     // `agent-runtime.module.ts`, `api-surface.test.ts`, `generate-control-plane.mjs`
     // and every generated artifact are edited IN PLACE and add no file.
-    "apps-agent": 15,
+    //
+    // M4 GATES (lane gates) 15 -> 18. THREE files, and NO LEDGER RULE CHANGED — they
+    // land on `apps-agent.source.runtime` (+1, 280 -> 281) and
+    // `apps-agent.test.suites` (+2, 214 -> 216), the same two rules as above.
+    //   `http/request-body-limits.ts` — the unauthenticated body cap and its parser
+    //   order, extracted out of `main.ts` so it can be driven over a socket.
+    //   `http/request-body-limits.test.ts` — WIN-268's body limit: 413 before auth.
+    //   `tool-gateway/mcp-transport/mcp-client-pool-isolation.test.ts` — WIN-269's
+    //   external MCP isolation against real remote MCP servers (D13: no stdio).
+    // `main.ts`, `mcp-client-pool.service.ts`, `tool-executor.service.ts`,
+    // `entity-mcp-discovery.service.ts`, `tool-sync-ws.test.ts` and
+    // `mcp-connected-entity.acceptance.test.ts` are EDITS and add no file.
+    //
+    // MCP CONFORMANCE LANE 18 -> 24. SIX files, all under rules that already
+    // existed. On `apps-agent.source.runtime` (281 -> 284):
+    //   `mcp-platform/redis-subscriber.ts` — the READY-before-SUBSCRIBE subscriber
+    //   the legacy SSE sessions now use, which stopped losing `initialize` frames;
+    //   `mcp-platform/mcp-conformance.test-fixture.ts` and
+    //   `mcp-platform/mcp-sse-node.test-fixture.ts` — the real-socket harness for
+    //   the three MCP servers and the child agent process the two-node suite
+    //   starts (both excluded from `tsconfig.build.json`).
+    // On `apps-agent.test.suites` (216 -> 219): the MCP protocol conformance
+    // matrix, the two-process legacy SSE suite and the tool-call parity suite.
+    //
+    // THAT LANE'S ROUND-2 FIXES 24 -> 25. ONE file, on the same rule:
+    //   `shared/url-validator.test.ts` — the IPv4-mapped and IPv4-compatible IPv6
+    //   spellings the SSRF screen must refuse, lifted out of the service-gated
+    //   integration suite so the security fix is gated with no database, no Redis
+    //   and no network (`apps-agent.test.suites` 219 -> 220). Everything else that
+    //   round changed in THIS area is an EDIT. NO LEDGER RULE CHANGED.
+    //
+    // 25 IS RE-MEASURED ON THE MERGED TREE: the lane pinned 22 against a head with
+    // neither the gates lane's three files nor this merge in it; 18 + 7 = 25.
+    //
+    // THE `/tools/sync` RECONNECT TRANSPORT (M4.3) 25 -> 26. ONE file on the existing
+    // `apps-agent.test.suites` rule:
+    // `tool-gateway/tool-sync-characterization.integration.test.ts`, which drives the
+    // LIVE `/tools/sync` WebSocket against a real client and a real PostgreSQL over
+    // the same fixture the V1 route's reconnect suite uses, so the two transports
+    // that now write those rows are joined by one committed expectation.
+    // `tool-sync-ws.service.ts` is NOT touched -- the socket keeps serving.
+    // NO LEDGER RULE CHANGED.
+    "apps-agent": 26,
     // WIN-272 (M4.6) 0 -> 1. `test/publicGuestBoundary.test.ts`: the public-guest
     // and embed boundary over two real `node:http` listeners with `fetch`
     // unstubbed. It is the FIRST file this programme has added under
@@ -857,7 +899,87 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // files and are recorded where they live -- `EXPECTED_FILE_COUNT` in
     // `scripts/arch/env-access.mjs` (1699 -> 1701) and a sixth `PROSE_ONLY` entry in
     // its suite, because the helper MENTIONS `process.env` while reading none.
-    "apps-core-api": 96,
+    //
+    // CORE-API IMAGE 96 -> 97. ONE file, `apps/core-api/Dockerfile`, the image the
+    // deployable had never had. NO LEDGER RULE CHANGED: `apps-core-api.infra.container`
+    // was declared for exactly this path before the file existed and matched it on
+    // arrival (0 -> 1). Every other file the change touches -- the root and core-api
+    // manifests, the compose file, the Caddyfile, the self-hosting page and the
+    // suites that pin them -- is an EDIT.
+    //
+    // WIN-302 THE FACTORY ENTRIES 97 -> 116. NINETEEN files, ALL in `apps-core-api`,
+    // and NO LEDGER RULE CHANGED:
+    //
+    //   SEVENTEEN on `source.process` (33 -> 50): the modules of
+    //   `src/composition/factory-entries/`, one per context. Each re-exports that
+    //   context's one contract factory from the entry point its manifest
+    //   publishes, `.` or `./application/index.js`, so a manifest that stops
+    //   publishing it fails ONE named case and not a whole suite at load. Ten
+    //   landed first (97 -> 109); the seven `.`-route modules followed when a
+    //   removed `.` entry was measured failing the whole suite at load.
+    //
+    //   ONE on `test.suites` (34 -> 35): `src/composition/context-factories.test.ts`,
+    //   one case per context that imports its factory, the partition that moved
+    //   out of `installation.test.ts`, and the readback of importability counts in
+    //   the repository's prose.
+    //
+    //   ONE on `config.package` (7 -> 8): `mutations-win302.json`, the sweep that
+    //   shows each of those three can go red.
+    //
+    // The six manifests that gained the subpath, `context-ports.ts`,
+    // `gen-v1-skeleton.mjs` and every corrected comment are EDITS.
+    //
+    // M4 GATES (founder decision D21), integrated after the factory entries, 116 -> 118.
+    // TWO files under `apps/core-api/src/http/`:
+    // `mcp-body-cap.ts` on `apps-core-api.source.process` (50 -> 51) and its real-socket
+    // suite on `apps-core-api.test.suites` (35 -> 36). NO LEDGER RULE CHANGED.
+    // `runtime/lifecycle.ts`, which installs the cap, is an EDIT.
+    //
+    // THE IDENTITY/TENANCY REST REMAINDER (2026-09-15), integrated third, 118 -> 126.
+    // EIGHT files: five controllers and `session-cookie-value.ts` under
+    // `src/transports/rest` and `src/transports/bff` (the `transports` source rule,
+    // 30 -> 36), and two suites (`identity-tenancy-rest.test.ts` and the
+    // real-servers `composition/identity-tenancy-rest.integration.test.ts`, the
+    // `suites` rule 36 -> 38). NO LEDGER RULE CHANGED.
+    //
+    // 126 IS RE-MEASURED ON THE MERGED TREE. The lane branch pinned 105 because it
+    // measured 97 + 8 without the nineteen factory-entry files or the two gate
+    // files in the tree; 97 + 19 + 2 + 8 = 126 is the arithmetic and the regenerated
+    // `docs/v1-ledger-rules.json` is the authority.
+    //
+    // The three V1 source censuses that count these files moved with them and say so
+    // where they live: `EXPECTED_FILE_COUNT` in `scripts/arch/env-access.mjs`
+    // (1701 -> 1742 integrated), `arch-boundaries.test.mjs` (1742) and
+    // `max-file-lines.test.mjs` (1653 -> 1675).
+    //
+    // THE CORE-API DEPLOYABILITY RESIDUE (core-residue lane), integrated fourth,
+    // 126 -> 134. EIGHT files. Seven under `src/`: `config/trusted-proxy.ts` and
+    // `runtime/trusted-proxy.ts` (D-COOKIE's one trusted hop) and
+    // `http/store-faults.ts` (the store-unavailable classification) on
+    // `apps-core-api.source.process`, and four suites --
+    // `config/trusted-proxy.test.ts`, `http/store-faults.test.ts`,
+    // `transports/rest/session-cookie-transport.test.ts` and
+    // `composition/compose-readiness.test.ts` -- on `apps-core-api.test.suites`.
+    // And `scripts/dev.mjs`, the runner the `dev` script now invokes, on the ONE
+    // NEW RULE `apps-core-api.tooling.scripts`, declared because no core-api rule
+    // matched a file outside `src/` that is not config, prose or the Dockerfile.
+    // The lane pinned 105 against a tree without the factory entries, the gates or
+    // the REST remainder; 126 + 8 = 134 is what THIS merge produces and the
+    // regenerated `docs/v1-ledger-rules.json` is the authority for it.
+    //
+    // THE `/tools/sync` RECONNECT TRANSPORT (M4.3) 134 -> 139. FIVE files, no ledger
+    // rule changed:
+    //   `transports/tools/tool-sync.controller.ts` and `tool-sync-body.ts` on
+    //   `apps-core-api.source.transport` -- the `/tools/sync` route and the one place
+    //   a platools wire frame becomes a command, split so neither breaches the
+    //   ADR M0.3 §6 budget;
+    //   `composition/tool-sync-legacy.ts` on the support rule its six sibling
+    //   harnesses already sit on;
+    //   `composition/tool-sync-reconnect.integration.test.ts` and
+    //   `tool-sync-writers.integration.test.ts` on `apps-core-api.test.suites`.
+    // `http/http.module.ts`, `http/idempotency-policy.test.ts` and
+    // `transports/rest/operator.ts` are EDITS.
+    "apps-core-api": 139,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1441,7 +1563,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 20260909120000_win267_eval_run_queue/migration.sql`, the row the store
     // above writes. `schema.prisma`, `src/json.ts`, `src/source-model-manifest.ts`
     // and the three suites that pin the model count are edits.
-    "internal-packages": 10,
+    // WIN-269 (M4.3) 10 -> 11. ONE file: `tenancy-database/scripts/seed-legacy-installation.mjs`,
+    // which puts a database into the state a LEGACY installation is in from
+    // OUTSIDE any application. It is a process rather than a module because
+    // `tenancy-prisma-only` bans `@platos/tenancy-database` from `apps/core-api`,
+    // and a copy of the fixture there would be a second fixture. `upgrade-fixture.ts`
+    // gains the `ToolHealth` row and the published declaration as an EDIT.
+    "internal-packages": 11,
     //   +6  packages/adapters/postgres-tenancy (WIN-267 G2) -- FOUR source,
     //       `governance-read-seams.ts`, `governance-seam-guards.ts`,
     //       `governance-seam-conversations.ts` and `governance-seam-activity.ts`,
@@ -1557,7 +1685,69 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // two planners and its new refusals, the service, the double, the bearer store and
     // `harness.ts`'s one opt-in variable add no file. 1550 + 6 = 1556, and NO LEDGER
     // RULE CHANGED.
-    packages: 1556,
+    // IDENTITY/TENANCY REST REMAINDER 1556 -> 1569 (2026-09-15). THIRTEEN files:
+    // `notifier-email`'s four source modules and two suites (the adapter source and
+    // test rules, 280 -> 284 and 194 -> 196), and seven in the two contexts — the
+    // `MagicLinkDelivery` port, the administration gate and two tenancy read models
+    // (context source 730 -> 734) and three suites (context test 363 -> 366). NO
+    // LEDGER RULE CHANGED.
+    //
+    // THE SDK LANE — 1569 -> 1577 integrated. EIGHT files:
+    // `packages/platools-js/tests/protocol-fixture.test.ts` and
+    // `packages/platools-py/tests/test_protocol_fixture.py` (the two readers of the
+    // shared platools protocol fixture, on `packages.test.suites`);
+    // `packages/platools-py/requirements-ci.{in,txt}` (the hashed pytest lock CI
+    // installs, on the ONE new rule `packages.python.ci-requirements`, because no
+    // existing packages rule matched a requirements file);
+    // `packages/platos-client/src/v1-stream.ts` (`packages.source.typescript`) and
+    // `packages/platos-client/tests/v1-stream.test.ts` (`packages.test.suites`);
+    // `packages/platos-client-py/platos_client/v1_stream.py`
+    // (`packages.python.sources`) and `packages/platos-client-py/tests/test_v1_stream.py`
+    // (`packages.test.suites`).
+    //
+    // THE SDK LANE, ROUND 2 — 1577 -> 1578. ONE file:
+    // `packages/platos-client/vitest.config.ts`, on the existing
+    // `packages.config.build` rule beside the other packages' vitest configs.
+    //
+    // WIN-271 (M4.5), D10 — 1578 -> 1599 integrated. TWENTY-ONE files, all under
+    // `packages/adapters/channel-discord/`: the three generator-owned scaffolding
+    // files (`package.json`, `tsconfig.json`, `README.md`) and eighteen under
+    // `src/` — thirteen modules and five suites. A NEW directory, so no generated
+    // placeholder is netted against them. NOT ONE under `packages/contexts/`, which
+    // is the clause the directory evidences. They land on the existing
+    // `packages.adapters.*` rules; NO LEDGER RULE CHANGED.
+    //
+    // 1599 IS RE-MEASURED ON THE MERGED TREE: each lane added its own delta to
+    // 1556, and 1556 + 13 + 9 + 21 = 1599 is what the four together produce.
+    //
+    // THE MCP CONFORMANCE LANE'S ROUND-2 FIXES — 1599 -> 1600. ONE file, on
+    // `packages.contexts.source`, a rule that already existed:
+    // `packages/contexts/tools/adapters/sdk-builds.test-fixture.ts`. It exists
+    // because of a BUDGET, not because of new behaviour — the module-identity joins
+    // that round added to `dispatch.integration.test.ts` took it from 487 to 535
+    // effective lines and past the 500 the ADR M0.3 §6 gate enforces, so the two SDK
+    // server builds, the entry points, the manifest reader and the store-path
+    // resolver moved out and the joins stayed. It declares no case and does not end
+    // in `.test.ts`, so the test-case census's file count for this package is
+    // unmoved. NO LEDGER RULE CHANGED.
+    //
+    // 1600 IS RE-MEASURED ON THE MERGED TREE: 1556 + 13 + 9 + 21 + 1 = 1600.
+    //
+    // THE `/tools/sync` RECONNECT TRANSPORT (M4.3) 1600 -> 1602. TWO files, one per
+    // context, both the published form of a write the `/tools/sync` socket had been
+    // making through Prisma directly:
+    // `contexts/tenancy/application/record-entity-connection.ts` and
+    // `contexts/tools/application/record-tool-health.ts`. Their contracts, domains
+    // and the postgres-tenancy row narrowing are EDITS.
+    //
+    // AND THE POOL-EVICTION FIX THIS INTEGRATION ROUND CARRIED IN, 1602 -> 1603.
+    // ONE file on the existing `packages.contexts.source` rule:
+    // `contexts/tools/adapters/mcp-session-failure.integration.test.ts`. It is a
+    // FILE and not four more cases in `dispatch.integration.test.ts` because the
+    // 500-line budget refused them there -- the same reason
+    // `sdk-builds.test-fixture.ts` exists beside it. `mcp-dispatch.ts` and the
+    // agent pool's corrected cross-reference are EDITS. NO LEDGER RULE CHANGED.
+    packages: 1603,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1905,7 +2095,22 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // second copy nothing joins. It lands on the existing
     // `docs-content.evidence.audit-receipts` rule (21 -> 22), is `retain`, is under
     // `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
-    "docs-content": 24,
+    // CORE-API SBOM 24 -> 25. ONE file: `docs/audits/sbom/platos-core-api.cdx.json`,
+    // the fourth build candidate's CycloneDX SBOM, generated by `pnpm audit:sbom`
+    // beside the agent and webapp SBOMs. It lands on the existing
+    // `docs-content.evidence.audit-receipts` rule as `generated`/`regenerate`, under
+    // `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
+    // M2/M4 DELEGATED DECISIONS 25 -> 26. ONE file:
+    // `docs/adr/M2-M4-delegated-decisions-2026-09-15.md`, the accepted record of the
+    // decisions the founder delegated on 2026-09-15, filed beside ADR M0.3 and M0.4.
+    // It lands on the existing `docs-content.evidence.adr` rule (2 -> 3) as a
+    // `doc`/`retain`, under `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
+    // MCP SDK 1.30.x CANDIDATE 26 -> 27. ONE file:
+    // `docs/audits/win-268-mcp-sdk-candidate-compatibility.json`, the re-derived
+    // result of asking the adopted SDK and the candidate the same questions, on the
+    // existing `docs-content.evidence.audit-receipts` rule (23 -> 24), under
+    // `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
+    "docs-content": 27,
     // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
     // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
     // for the same reason T0's ledger took it — the blanket rule's verdict
@@ -2068,7 +2273,50 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // SIXTH tranche to use that convention. It is evidence rather than a gate: no
     // script reads it, and its whole value is that four of its thirty-five rows say
     // `survived` on a first pass and name the case that closes each one.
-    "root-infra": 90,
+    //
+    // CORE-API BUNDLE CLOSURE 90 -> 92. TWO files:
+    // `scripts/deploy-bundle-closure.mjs`, the prune and lockfile-closure check
+    // `apps/core-api/Dockerfile` runs on its deploy bundle, and its suite
+    // `scripts/deploy-bundle-closure.test.mjs`. They take the blanket
+    // `root-infra.tooling.scripts` and `root-infra.test.script-suites` rules every
+    // script and suite above them took. The Dockerfile, `ci.yml`,
+    // `ci-policy.test.mjs` and `audit-platos-build.mjs` are edited IN PLACE. NO
+    // LEDGER RULE CHANGED.
+    //
+    // CORE-API CANDIDATE SMOKE AND SHIPPING COMPONENTS 92 -> 95. THREE files:
+    // `tests/persisted-state-gate/smoke-core-api-image.mjs`, the script
+    // build-images.yml's `core-api-smoke` job runs to serve the loaded candidate,
+    // and its suite `smoke-core-api-image.test.mjs`, both on the existing
+    // `root-infra.test.harness` rule beside the other persisted-state-gate files;
+    // and `scripts/lib/shipping-components.mjs`, the one derivation of each shipping
+    // image's component set that the SBOM and the advisory scan share, on
+    // `root-infra.tooling.scripts`. NO LEDGER RULE CHANGED.
+    //
+    // WIN-270 (M4.4) / WIN-272 (M4.6), THE SDK LANE — 95 -> 102. SEVEN files:
+    // `scripts/sdk/changeset-gate.mjs` and its suite; the two hand-stated
+    // cross-language fixtures `tests/sdk-contract/platools-protocol.json` and
+    // `tests/sdk-contract/v1-stream-resume.json`; and three changesets
+    // (`.changeset/platools-sdk-tenancy-id-docs.md`,
+    // `platos-client-post-retry-guard.md`, `platos-client-v1-event-streams.md`).
+    // All on existing root-infra rules. 95 + 7 = 102.
+    //
+    // WIN-271 (M4.5), D10 — 102 -> 104. TWO files on `root-infra.tooling.scripts`:
+    // `scripts/win271-discord-mutation-plan.json`, the rows the existing driver
+    // applies (the driver itself is edited in place to take a plan path), and
+    // `scripts/mutations-win271-discord.json`, the ledger that sweep wrote.
+    // NO LEDGER RULE CHANGED. 95 + 7 + 2 = 104 on the merged tree.
+    //
+    // THE CORE-API DEPLOYABILITY RESIDUE — 104 -> 105. ONE file,
+    // `scripts/lib/core-api-config-schema.mjs`, which loads the core-api config
+    // field tables so `audit-platos-build.mjs` refuses every schema-secret field in
+    // an image layer. On `root-infra.tooling.scripts`; NO ROOT-INFRA RULE CHANGED.
+    //
+    // MCP SDK 1.30.x CANDIDATE — 105 -> 107. TWO files:
+    // `scripts/mcp-sdk-candidate-compatibility.mjs`, the derivation the
+    // `agent-tenancy-postgres` job reruns with `--check`, on
+    // `root-infra.tooling.scripts`, and its suite on
+    // `root-infra.test.script-suites`. NO LEDGER RULE CHANGED.
+    "root-infra": 107,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2332,7 +2580,8 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // its real-race proof. Nothing else this tranche adds a file. Its context-factory
   // half adds none at all — it corrects a CONSTANT
   // (`UNIMPORTABLE_CONTEXT_FACTORIES`, 7 -> 6), derives the other side of that
-  // partition inside `installation.test.ts`, and replaces a false reason at four
+  // partition inside `installation.test.ts` (the factory entries below later
+  // moved it to `context-factories.test.ts`), and replaces a false reason at four
   // sites, every one of which is an EDIT. The eight-key re-derivation from the merged
   // `expectedDeltas` is 15 + 1 + 94 + 4 + 10 + 1556 + 24 + 90 = 1794.
   //
@@ -2346,7 +2595,83 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // existing suite, and the second-channel-adapter measurement is a comment in an
   // existing port. The eight-key re-derivation from the merged `expectedDeltas` is
   // 15 + 1 + 96 + 4 + 10 + 1556 + 24 + 90 = 1796.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1796);
+  //
+  // AND THE CORE-API IMAGE — 1796 -> 1797. ONE file, `apps/core-api/Dockerfile`, in
+  // `apps-core-api` and itemised on that area's delta above. The eight-key
+  // re-derivation from the merged `expectedDeltas` is
+  // 15 + 1 + 97 + 4 + 10 + 1556 + 24 + 90 = 1797.
+  //
+  // AND THE CORE-API BUNDLE CLOSURE — 1797 -> 1799. TWO files in `root-infra`, the
+  // script and its suite, itemised on that area's delta above:
+  // 15 + 1 + 97 + 4 + 10 + 1556 + 24 + 92 = 1799.
+  //
+  // AND THE CORE-API CANDIDATE SMOKE AND SBOM — 1799 -> 1803. FOUR files, itemised
+  // on their areas' deltas above: three in `root-infra` (the smoke script, its
+  // suite, the shared shipping-components derivation) and one in `docs-content`
+  // (the core-api SBOM): 15 + 1 + 97 + 4 + 10 + 1556 + 25 + 95 = 1803.
+  //
+  // AND THE M2/M4 DELEGATED-DECISIONS ADR — 1803 -> 1804. ONE file in `docs-content`,
+  // itemised on that area's delta above: 15 + 1 + 97 + 4 + 10 + 1556 + 26 + 95 = 1804.
+  //
+  // AND THE WIN-302 FACTORY ENTRIES — 1804 -> 1823. NINETEEN files, all in
+  // `apps-core-api` and itemised on that area's delta above: seventeen
+  // factory-entry modules, their suite and the mutation ledger. Re-measured on
+  // the integrated tree, not summed from either branch:
+  // 15 + 1 + 116 + 4 + 10 + 1556 + 26 + 95 = 1823.
+  //
+  // AND THE M4 GATES LANE — 1823 -> 1828. FIVE files, itemised on their areas'
+  // deltas above: three in `apps-agent` (the body-limit module and its suite, the
+  // external-MCP isolation suite) and two in `apps-core-api` (the D21 MCP body cap and
+  // its suite). Re-measured on the integrated tree:
+  // 18 + 1 + 118 + 4 + 10 + 1556 + 26 + 95 = 1828.
+  //
+  // AND THE IDENTITY/TENANCY REST REMAINDER — 1828 -> 1849. TWENTY-ONE files,
+  // itemised on their areas' deltas above: eight in `apps-core-api` and thirteen in
+  // `packages`. Re-measured on the integrated tree, not summed from the lane
+  // report (which read 1824 against a tree without the factory entries or the
+  // gates): 18 + 1 + 126 + 4 + 10 + 1569 + 26 + 95 = 1849.
+  //
+  // AND THE SDK LANE — 1849 -> 1865. SIXTEEN files, itemised on their areas' deltas
+  // above: nine in `packages` (eight in round 1, the client's vitest config in round
+  // 2) and seven in `root-infra`. Re-measured on the integrated tree, not summed
+  // from the lane report (which read 1819 against a tree with none of the three
+  // earlier lanes in it): 18 + 1 + 126 + 4 + 10 + 1578 + 26 + 102 = 1865.
+  //
+  // AND THE SECOND CHANNEL RUNTIME (WIN-271 (M4.5), D10) — 1865 -> 1888.
+  // TWENTY-THREE files in two areas, each itemised on its delta above: `packages`
+  // +21 and `root-infra` +2. Re-measured on the integrated tree, not summed from
+  // the lane report (which read 1827 against a tree with none of the four earlier
+  // lanes in it): 18 + 1 + 126 + 4 + 10 + 1599 + 26 + 104 = 1888.
+  //
+  // AND THE CORE-API DEPLOYABILITY RESIDUE — 1888 -> 1897. NINE files, itemised
+  // on their areas' deltas above: eight in `apps-core-api` and one in
+  // `root-infra`. Re-measured on the integrated tree, not summed from the lane
+  // report (which read 1813 against a tree with none of the five earlier lanes in
+  // it): 18 + 1 + 134 + 4 + 10 + 1599 + 26 + 105 = 1897.
+  //
+  // AND THE MCP CONFORMANCE LANE, BOTH ROUNDS — 1897 -> 1908. ELEVEN files,
+  // itemised on their areas' deltas above: seven in `apps-agent` (six from the
+  // lane's own round, the service-free SSRF suite from its round 2), one in
+  // `packages` (the SDK-builds fixture the 500-line budget forced out of the
+  // dispatch suite), one in `docs-content` (the candidate compatibility receipt)
+  // and two in `root-infra` (the derivation and its suite). Re-measured on the
+  // integrated tree, not summed from the lane report (which read 1815 against a
+  // tree with none of the six earlier lanes in it):
+  // 25 + 1 + 134 + 4 + 10 + 1600 + 27 + 107 = 1908.
+  //
+  // AND THE `/tools/sync` RECONNECT TRANSPORT (M4.3) -- 1908 -> 1917. NINE files,
+  // itemised on their areas' deltas above: two in `packages` (the published
+  // writers), five in `apps-core-api` (the route, its body reader, the legacy
+  // harness and two integration suites), one in `internal-packages` (the
+  // legacy-installation seed) and one in `apps-agent` (the live-socket
+  // characterization). Re-measured on the integrated tree, not summed from the lane
+  // report (which read 1837 against a tree with none of the seven earlier lanes in
+  // it): 26 + 1 + 139 + 4 + 11 + 1602 + 27 + 107 = 1917.
+  //
+  // AND THE POOL-EVICTION FIX THIS ROUND CARRIED IN -- 1917 -> 1918. ONE file, in
+  // `packages` and itemised on that area's delta above:
+  // 26 + 1 + 139 + 4 + 11 + 1603 + 27 + 107 = 1918.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1918);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2650,7 +2975,37 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `expectedDeltas["apps-core-api"]` were moved first, this figure was not, and
     // the suite went red on exactly the disagreement it exists to find. 1794 + 2 =
     // 1796, with no mutation-manifest +1 because this tranche pins none either.
-    rulesDocument.baseline.totalFiles + 1796
+    // AND THE CORE-API IMAGE — 1796 -> 1797, moved in the same edit as the total and
+    // as `expectedDeltas["apps-core-api"]`: the one Dockerfile, summed per area here.
+    // AND THE CORE-API BUNDLE CLOSURE — 1797 -> 1799, the script and its suite.
+    // AND THE CORE-API CANDIDATE SMOKE AND SBOM — 1799 -> 1803, moved in the same
+    // edit as the total and both area deltas: three root-infra files and one SBOM.
+    // AND THE M2/M4 DELEGATED-DECISIONS ADR — 1803 -> 1804, moved in the same edit as
+    // the total and `expectedDeltas["docs-content"]`: one ADR, summed per area here.
+    // AND THE WIN-302 FACTORY ENTRIES — 1804 -> 1823, moved in the same edit as the
+    // total and as `expectedDeltas["apps-core-api"]`: nineteen core-api files.
+    // AND THE M4 GATES LANE — 1823 -> 1828, moved in the same edit as the total and as
+    // both area deltas: apps-agent +3 and apps-core-api +2, summed per area here.
+    // AND THE IDENTITY/TENANCY REST REMAINDER — 1828 -> 1849, moved in the same edit
+    // as the total and both area deltas: eight apps-core-api files, thirteen packages.
+    // AND THE SDK LANE — 1849 -> 1865, moved in the same edit as the total and both
+    // area deltas: nine packages files and seven root-infra files.
+    // AND THE SECOND CHANNEL RUNTIME — 1865 -> 1888, moved in the same edit as the
+    // total and both area deltas: twenty-one packages files and two root-infra files.
+    // AND THE CORE-API DEPLOYABILITY RESIDUE — 1888 -> 1897, moved in the same edit
+    // as the total and both area deltas: eight core-api files and one root-infra
+    // script, summed per area here.
+    // AND THE MCP CONFORMANCE LANE, BOTH ROUNDS — 1897 -> 1908, moved in the same
+    // edit as the total and four area deltas: seven agent files, one packages
+    // fixture, one receipt and two scripts, summed per area here.
+    // AND THE `/tools/sync` RECONNECT TRANSPORT (M4.3) -- 1908 -> 1917, moved in the
+    // same edit as the total and as four area deltas: packages +2, apps-core-api +5,
+    // internal-packages +1 and apps-agent +1, summed per area here. THE POINT OF THE
+    // SECOND SUM is that it is derived differently from the first, so the two can
+    // disagree and be caught -- which is why both halves move together or not at all.
+    // AND THE POOL-EVICTION FIX -- 1917 -> 1918, moved in the same edit as the
+    // total and as `expectedDeltas.packages`: one suite file.
+    rulesDocument.baseline.totalFiles + 1918
   );
 });
 

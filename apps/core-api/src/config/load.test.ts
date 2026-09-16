@@ -19,6 +19,7 @@ describe("startup configuration", () => {
       requestIdHeader: "x-request-id",
       logLevel: "info",
       adminHealthToken: null,
+      trustedProxy: null,
     });
   });
 
@@ -154,9 +155,46 @@ describe("the schema itself", () => {
   it("gives every non-required field a default, so absence can never mean undefined", () => {
     for (const field of CORE_API_CONFIG_FIELDS) {
       if (field.required) continue;
-      // The admin token is the one legitimate null: absent means "detail off".
+      // Two legitimate nulls. The admin token's absence means "detail off", and
+      // the trusted proxy's absence means "believe no forwarded header" — for
+      // either, a default value would switch on the thing absence refuses.
       if (field.name === "PLATOS_CORE_API_ADMIN_HEALTH_TOKEN") continue;
+      if (field.name === "PLATOS_CORE_API_TRUSTED_PROXY") continue;
       expect(field.defaultValue, field.name).not.toBeNull();
     }
+  });
+});
+
+describe("the trusted proxy (D-COOKIE)", () => {
+  it("is off by default: no range, so no forwarded header is believed", () => {
+    const outcome = loadCoreApiConfiguration(MINIMAL);
+    expect(outcome.ok && outcome.value.trustedProxy).toBeNull();
+  });
+
+  it.each([
+    ["172.18.0.1", 4, "172.18.0.1", 32],
+    ["172.18.0.0/16", 4, "172.18.0.0", 16],
+    ["fd00::1", 6, "fd00::1", 128],
+    ["fd00::/8", 6, "fd00::", 8],
+  ])("parses %s as one range", (value, family, address, prefixLength) => {
+    const outcome = loadCoreApiConfiguration({ ...MINIMAL, PLATOS_CORE_API_TRUSTED_PROXY: value });
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.value.trustedProxy).toEqual({ source: value, family, address, prefixLength });
+  });
+
+  it.each([
+    ["caddy", "must be an IPv4 or IPv6 address"],
+    ["172.18.0.1/33", "prefix length between 1 and 32"],
+    ["172.18.0.1/16/2", "must be an IPv4 or IPv6 address"],
+    ["0.0.0.0/0", "trusts every caller"],
+    ["::/0", "trusts every caller"],
+    ["::ffff:172.18.0.1", "as the IPv4 address it maps"],
+  ])("refuses %s at startup and names the field", (value, problem) => {
+    const outcome = loadCoreApiConfiguration({ ...MINIMAL, PLATOS_CORE_API_TRUSTED_PROXY: value });
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.diagnostics.map((entry) => entry.field)).toEqual(["PLATOS_CORE_API_TRUSTED_PROXY"]);
+    expect(outcome.diagnostics[0]?.problem).toContain(problem);
   });
 });

@@ -8,6 +8,17 @@ import { x } from "tinyexec";
 
 const MINIO_PORT = 9000;
 
+/**
+ * The MinIO server image, pinned to the same registry, release and index digest as
+ * the `minio` service in `docker-compose.platos.yml` and the persisted-state gate's
+ * compose file. Docker Hub no longer serves `minio/minio` (a pull of
+ * `minio/minio:latest` answers "pull access denied"), so the old default could not
+ * start anywhere. The image ships the `mc` client that `start()` execs to create
+ * the `packets` bucket.
+ */
+export const MINIO_SERVER_IMAGE =
+  "quay.io/minio/minio:RELEASE.2025-02-03T21-03-04Z@sha256:a62e44a7db506b8ed114a44e67b4996c4f1ecca981d9c6e40aa2581334999313";
+
 export type MinIOConnectionConfig = {
   baseUrl: string;
   accessKeyId: string;
@@ -20,7 +31,7 @@ export class MinIOContainer extends GenericContainer {
   private secretAccessKey = "minioadmin";
   private region = "us-east-1";
 
-  constructor(image = "minio/minio:latest") {
+  constructor(image = MINIO_SERVER_IMAGE) {
     super(image);
     this.withExposedPorts(MINIO_PORT);
     this.withCommand(["server", "/data"]);

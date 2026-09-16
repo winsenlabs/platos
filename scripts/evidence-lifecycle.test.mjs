@@ -103,8 +103,26 @@ test("committed lifecycle manifest classifies every approved evidence path exact
   // own source on each run and fails when the tree and the file disagree in EITHER
   // direction, so a dated snapshot is precisely what it must not be.
   // POINT-IN-TIME, SUPERSEDED-BY and DRAFT are unchanged.
-  assert.equal(manifest.entryCount, 257, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, the WIN-260 M2.5 milestone note, the WIN-268 MCP store-ownership register, the WIN-269 tool-lifecycle register, and the WIN-272 stream vocabulary census");
-  assert.deepEqual(manifest.counts, { ACCEPTED: 231, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
+  // CORE-API SBOM: 257 -> 258 and ACCEPTED 231 -> 232. ONE addition,
+  // docs/audits/sbom/platos-core-api.cdx.json, the fourth build candidate's SBOM,
+  // ACCEPTED beside the agent and webapp SBOMs for their reason: audit:sbom:check
+  // regenerates it on every run and fails on a byte of drift. POINT-IN-TIME,
+  // SUPERSEDED-BY and DRAFT are unchanged.
+  // M2/M4 DELEGATED DECISIONS: 258 -> 259 and ACCEPTED 232 -> 233. ONE addition,
+  // docs/adr/M2-M4-delegated-decisions-2026-09-15.md, the record of the decisions
+  // the founder delegated on 2026-09-15. ACCEPTED by the mechanically current
+  // docs/adr/ root, beside ADR M0.3 and M0.4, and rightly so: the decisions bind
+  // the branch now, and the record is not a dated measurement that later work is
+  // expected to leave behind. POINT-IN-TIME, SUPERSEDED-BY and DRAFT are unchanged.
+  // MCP SDK 1.30.x CANDIDATE: 259 -> 260 and ACCEPTED 233 -> 234. ONE addition,
+  // docs/audits/win-268-mcp-sdk-candidate-compatibility.json, a receipt without a
+  // rendered note like the stream vocabulary census. ACCEPTED because
+  // `scripts/mcp-sdk-candidate-compatibility.mjs --check` reruns the suites that
+  // ask the adopted SDK and the candidate the same questions and requires the file
+  // byte for byte; it records no date, so POINT-IN-TIME would misdescribe it.
+  // POINT-IN-TIME, SUPERSEDED-BY and DRAFT are unchanged.
+  assert.equal(manifest.entryCount, 260, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, the WIN-260 M2.5 milestone note, the WIN-268 MCP store-ownership register, the WIN-268 MCP SDK candidate compatibility result, the WIN-269 tool-lifecycle register, the WIN-272 stream vocabulary census, the core-api image SBOM, and the M2/M4 delegated-decisions ADR");
+  assert.deepEqual(manifest.counts, { ACCEPTED: 234, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
   assert.equal(POINT_IN_TIME_PATHS.length, 21);
   assert.equal(Object.keys(SUPERSESSIONS).length, 4);
   assert.deepEqual(Object.keys(manifest.counts), STATUSES);

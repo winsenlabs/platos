@@ -1,8 +1,12 @@
 // The CHANNELS section — the inbound channel adapter and the two notifiers.
 //
-// ADR M0.3 §4 gives three adapter directories to this section: `channel-slack`
-// satisfies `ChannelAdapter` for the `channels` context, and `notifier-email` and
-// `notifier-webhook` each satisfy `Notifier` for `cost-monitoring`. Two adapters
+// ADR M0.3 §4 gives the channel and notifier adapter directories to this section:
+// `channel-slack` and — since WIN-271 (M4.5), D10 — `channel-discord` satisfy
+// `ChannelAdapter` and `ChannelRuntime` for the `channels` context, and
+// `notifier-email` and `notifier-webhook` each satisfy `Notifier` for
+// `cost-monitoring`. Since D20 (2026-09-15) `notifier-email` also satisfies
+// identity-access's `MagicLinkDelivery`, which is why its group now names a login
+// page. Two adapters
 // on one port is not a mistake in the binding table — a budget alert can go to a
 // mailbox, to an endpoint, or to both — so they are two independent groups here,
 // and an install may declare either, neither or both.
@@ -36,6 +40,43 @@ const slackSigningSecret: ConfigFieldSpec = Object.freeze({
   // grind offline against a body they chose. The vendor mints longer ones; this
   // refuses the hand-typed placeholder that would otherwise ship to production.
   minimumLength: 32,
+});
+
+/**
+ * WIN-271 (M4.5), D10. Discord's verification material is a PUBLIC KEY, and the
+ * anchor rule above holds for it unchanged: the group is declared by the thing
+ * that lets the endpoint tell Discord from a forger, never by a bot token.
+ *
+ * NOT A SECRET, and marked so deliberately. Discord shows it on the application's
+ * General Information page and anybody holding it can do exactly one thing:
+ * verify a signature. Redacting it from diagnostics would hide the one value an
+ * operator needs to compare against the developer portal when every delivery is
+ * refused INVALID.
+ *
+ * SIXTY-FOUR HEX DIGITS, AND NOTHING LONGER. It is a raw 32-byte Ed25519 key.
+ * `packages/adapters/channel-discord/src/ed25519.ts` refuses anything else at
+ * verification time as well, and explains why a longer value is the dangerous
+ * one: `Buffer.from(value, "hex")` stops at the first non-hex character, so a key
+ * with a stray suffix would decode to the genuine key. Refusing it HERE turns a
+ * process that would boot and refuse every interaction into one that does not
+ * boot and says which variable is wrong.
+ *
+ * AND NO BOT TOKEN BESIDE IT, for the reason the header gives about Slack's: a bot
+ * token is the credential a CONNECTION holds, read per send from the `channels`
+ * store through `ChannelCredentialReader`, so a rotation takes effect on the next
+ * message. A process-wide token here would be a second copy of a credential with
+ * a second rotation story, and nothing in the adapter would read it.
+ */
+const discordPublicKey: ConfigFieldSpec = Object.freeze({
+  name: "PLATOS_CHANNELS_DISCORD_PUBLIC_KEY",
+  kind: "string",
+  required: false,
+  defaultValue: null,
+  secret: false,
+  describe: "the application public key every inbound Discord interaction is verified against",
+  pattern: "[0-9a-fA-F]{64}",
+  patternDescribe: "sixty-four hexadecimal digits (a raw Ed25519 public key)",
+  minimumLength: 64,
 });
 
 const emailSmtpUrl: ConfigFieldSpec = Object.freeze({
@@ -88,6 +129,27 @@ export const CHANNELS_SECTION: ConfigSectionSpec = Object.freeze({
       ]),
     }),
     Object.freeze({
+      id: "discord",
+      describe: "the inbound Discord interactions endpoint's application identity",
+      anchor: discordPublicKey,
+      requiredWithAnchor: Object.freeze([]),
+      optional: Object.freeze([
+        Object.freeze({
+          name: "PLATOS_CHANNELS_DISCORD_REQUEST_MAX_AGE_S",
+          kind: "integer",
+          required: false,
+          // Five minutes and the same bounds as Slack's. Discord documents no
+          // replay window at all, which is why the adapter enforces one: the
+          // timestamp is signed, and only a clock makes that mean anything.
+          defaultValue: "300",
+          secret: false,
+          describe: "how old a signed interaction may be before it is refused as a replay",
+          minimum: 1,
+          maximum: 3600,
+        }),
+      ]),
+    }),
+    Object.freeze({
       id: "emailNotifier",
       describe: "the email notifier",
       anchor: emailSmtpUrl,
@@ -107,8 +169,41 @@ export const CHANNELS_SECTION: ConfigSectionSpec = Object.freeze({
           patternDescribe: "an email address",
           minimumLength: 6,
         }),
+        // D20 (2026-09-15) — the page a sign-in link opens. REQUIRED WITH THE RELAY
+        // because the relay is now also how an operator signs in: `notifier-email`
+        // satisfies identity-access's `MagicLinkDelivery`, and a link to nowhere is
+        // a sign-in nobody can finish. It is configuration and never request data:
+        // a link base a caller could choose would let anyone mail a victim a valid
+        // token pointing at the caller's own host. No install declared this group
+        // before the adapter existed (nothing read it), so requiring the field
+        // breaks no deployed configuration.
+        Object.freeze({
+          name: "PLATOS_CHANNELS_EMAIL_LOGIN_URL",
+          kind: "url",
+          required: false,
+          defaultValue: null,
+          secret: false,
+          describe: "the page a sign-in email links to; the single-use token is appended as ?token=",
+          schemes: Object.freeze(["https:", "http:"]),
+        }),
       ]),
-      optional: Object.freeze([]),
+      optional: Object.freeze([
+        // TRUE BY DEFAULT, BECAUSE THE RELAY CARRIES A LOGIN-CAPABLE SECRET. An
+        // `smtp:` relay upgraded only "when offered" hands a sign-in link in clear
+        // to a relay that offers no STARTTLS, or to anybody on the path who strips
+        // the offer from EHLO — which a plaintext EHLO cannot detect. With this
+        // true, such a relay gets EHLO and nothing else
+        // (`NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED`). `false` is for a local sink
+        // that speaks no TLS; relay CREDENTIALS still never go in clear.
+        Object.freeze({
+          name: "PLATOS_CHANNELS_EMAIL_REQUIRE_TLS",
+          kind: "boolean",
+          required: false,
+          defaultValue: "true",
+          secret: false,
+          describe: "whether a message may only be sent over smtps: or a STARTTLS-upgraded connection",
+        }),
+      ]),
     }),
     Object.freeze({
       id: "webhookNotifier",
@@ -136,9 +231,17 @@ export interface SlackChannelConfiguration {
   readonly requestMaxAgeSeconds: number;
 }
 
+export interface DiscordChannelConfiguration {
+  readonly publicKey: string;
+  readonly requestMaxAgeSeconds: number;
+}
+
 export interface EmailNotifierConfiguration {
   readonly smtpUrl: string;
   readonly from: string;
+  readonly loginUrl: string;
+  /** `PLATOS_CHANNELS_EMAIL_REQUIRE_TLS`; true unless set to exactly `false`. */
+  readonly requireTls: boolean;
 }
 
 export interface WebhookNotifierConfiguration {
@@ -148,6 +251,7 @@ export interface WebhookNotifierConfiguration {
 
 export interface ChannelsConfiguration {
   readonly slack: SlackChannelConfiguration | null;
+  readonly discord: DiscordChannelConfiguration | null;
   readonly emailNotifier: EmailNotifierConfiguration | null;
   readonly webhookNotifier: WebhookNotifierConfiguration | null;
 }
@@ -160,11 +264,19 @@ export function assembleChannels(read: SectionReader, declared: GroupPresence): 
           signingSecret: read("PLATOS_CHANNELS_SLACK_SIGNING_SECRET") ?? "",
           requestMaxAgeSeconds: Number(read("PLATOS_CHANNELS_SLACK_REQUEST_MAX_AGE_S")),
         }),
+    discord: !declared("discord")
+      ? null
+      : Object.freeze({
+          publicKey: read("PLATOS_CHANNELS_DISCORD_PUBLIC_KEY") ?? "",
+          requestMaxAgeSeconds: Number(read("PLATOS_CHANNELS_DISCORD_REQUEST_MAX_AGE_S")),
+        }),
     emailNotifier: !declared("emailNotifier")
       ? null
       : Object.freeze({
           smtpUrl: read("PLATOS_CHANNELS_EMAIL_SMTP_URL") ?? "",
           from: read("PLATOS_CHANNELS_EMAIL_FROM") ?? "",
+          loginUrl: read("PLATOS_CHANNELS_EMAIL_LOGIN_URL") ?? "",
+          requireTls: read("PLATOS_CHANNELS_EMAIL_REQUIRE_TLS") !== "false",
         }),
     webhookNotifier: !declared("webhookNotifier")
       ? null

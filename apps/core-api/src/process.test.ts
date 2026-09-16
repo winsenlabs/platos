@@ -203,6 +203,7 @@ describe("the built binary refuses to start on a bad section", () => {
       PLATOS_PROVIDERS_DEFAULT_MODEL: "claude-haiku-4-5",
       PLATOS_CHANNELS_EMAIL_SMTP_URL: "https://relay.internal",
       PLATOS_CHANNELS_EMAIL_FROM: "alerts@platos.example",
+      PLATOS_CHANNELS_EMAIL_LOGIN_URL: "https://app.platos.example/magic",
     });
     const { code } = await spawned.exited;
     expect(code).toBe(EXIT_CONFIGURATION);
@@ -235,6 +236,7 @@ describe("the built binary refuses to start on a bad section", () => {
       PLATOS_STORE_OBJECT_SECRET_ACCESS_KEY: "platos-minio-password",
       PLATOS_PROVIDERS_DEFAULT_MODEL: "anthropic:claude-haiku-4-5-20251001",
       PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(32),
+      PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
       PLATOS_DURABLE_RUNTIME_API_URL: "https://durable.internal",
       PLATOS_DURABLE_RUNTIME_SECRET_KEY: "d".repeat(24),
       PLATOS_SECURITY_SESSION_SECRET: "s".repeat(32),
@@ -309,6 +311,15 @@ describe("the built binary starts, serves and stops", () => {
       // real socket on a real spawned binary, and an install that declared
       // everything BUT the channel would be reporting a different fact.
       PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(64),
+      // D20 (2026-09-15). The relay group, for the same reason: a fully declared
+      // install declares the relay operators sign in through.
+      PLATOS_CHANNELS_EMAIL_SMTP_URL: "smtp://relay.internal:25",
+      PLATOS_CHANNELS_EMAIL_FROM: "login@platos.example",
+      PLATOS_CHANNELS_EMAIL_LOGIN_URL: "https://app.platos.example/magic",
+      // WIN-271 (M4.5), D10. The second channel group's anchor, for the reason the
+      // Slack one is here: a fully declared install declares both runtimes. RFC
+      // 8032 §7.1 TEST 1's public key, a real Ed25519 point.
+      PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
     });
     const port = await awaitListening(spawned);
 
@@ -335,8 +346,16 @@ describe("the built binary starts, serves and stops", () => {
         unwiredAdapters: { adapter: string; cause: string }[];
       };
     };
-    expect(body.detail.declaredBindings).toBe(60);
-    expect(body.detail.satisfiedBindings).toHaveLength(55);
+    // THE INTEGRATED FIGURE, RE-MEASURED: 55/60 -> 59/63, and the two lanes move it
+    // in opposite ways. D20's `notifier-email` DECLARES one new binding
+    // (`MagicLinkDelivery`) and IMPLEMENTS a directory that had no constructor, so
+    // declared moves by one and satisfied by two — 57/61 on that lane, and the
+    // unsatisfied remainder falls. WIN-271 (M4.5), D10's `channel-discord` is a NEW
+    // directory that arrived WITH a constructor, so both rows it declares are
+    // satisfied from its first commit — 57/62 on that lane, remainder unchanged.
+    // Together: 60 + 1 + 2 = 63 declared, 55 + 2 + 2 = 59 satisfied, 4 not.
+    expect(body.detail.declaredBindings).toBe(63);
+    expect(body.detail.satisfiedBindings).toHaveLength(59);
     // WIN-267 A1 + A2: 41 -> 45 of 49 -> 53. Both new directories need no
     // configuration, so all four of their bindings are satisfied in every
     // install and the EIGHT that remain are the same eight generated interfaces.
@@ -365,7 +384,7 @@ describe("the built binary starts, serves and stops", () => {
     // skeleton was generated. Declared moves by one and satisfied by two, and the
     // unsatisfied remainder falls from six to FIVE: `redis-streams` is the THIRD
     // directory ever to leave `UNIMPLEMENTED_ADAPTERS`.
-    expect(body.reason).toBe("55 of 60 adapter bindings are satisfied; 5 are not");
+    expect(body.reason).toBe("59 of 63 adapter bindings are satisfied; 4 are not");
     // THE CONTEXTS THIS PROCESS ACTUALLY BUILT, read back OFF THE RUNNING
     // BINARY rather than computed. `tenancy` was the first composed over a REAL
     // PostgreSQL adapter rather than over a bundle an install had to hand in;
@@ -414,12 +433,13 @@ describe("the built binary starts, serves and stops", () => {
     ]);
     expect(body.detail.composedContexts).not.toContain("governance");
     // And every remaining directory says which kind of gap it is.
-    expect(body.detail.unwiredAdapters).toHaveLength(5);
+    // 5 -> 4 (D20, 2026-09-15): `notifier-email` is built from the relay group.
+    expect(body.detail.unwiredAdapters).toHaveLength(4);
     expect(new Set(body.detail.unwiredAdapters.map((row) => row.cause))).toEqual(new Set(["implementation"]));
 
     // The startup log carries the same figure, so an operator with no token can
     // still read it off stdout.
-    expect(spawned.stdout()).toContain("55/60 adapter bindings satisfied");
+    expect(spawned.stdout()).toContain("59/63 adapter bindings satisfied");
 
     spawned.child.kill("SIGTERM");
     const { code, signal } = await spawned.exited;
@@ -501,7 +521,10 @@ describe("the built binary starts, serves and stops", () => {
       // constructed `channel-slack` would not — it opens no socket and holds no
       // timer between calls — but proving that is a different case, and the
       // instrument stays sharpest with exactly one adapter under observation.
-      `  channels: { slack: null, emailNotifier: null, webhookNotifier: null },`,
+      // WIN-271 (M4.5), D10: `discord` absent too, and it MUST be spelled: this
+      // script is JavaScript, so an omitted group is `undefined`, which is not
+      // `null`, and the constructor would try to build a Discord runtime from it.
+      `  channels: { slack: null, discord: null, emailNotifier: null, webhookNotifier: null },`,
       `  clock: { now: () => new Date() },`,
       `  correlation: null,`,
       `});`,

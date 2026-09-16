@@ -66,6 +66,11 @@ const candidateSha = requiredEnvironment("PLATOS_CANDIDATE_SHA", /^[a-f0-9]{40}$
 const agentImage = requiredEnvironment("WIN235_AGENT_IMAGE", /@sha256:[a-f0-9]{64}$/u);
 const webappImage = requiredEnvironment("WIN235_WEBAPP_IMAGE", /@sha256:[a-f0-9]{64}$/u);
 const migrationsImage = requiredEnvironment("WIN235_MIGRATIONS_IMAGE", /@sha256:[a-f0-9]{64}$/u);
+// D-PUBLISH-CORE. core-api is published with the other three, so the tested set
+// must name it too: an archive whose identity candidate-images.json does not
+// record, exactly, is an untested identity and is refused before any registry
+// login.
+const coreApiImage = requiredEnvironment("WIN235_CORE_API_IMAGE", /@sha256:[a-f0-9]{64}$/u);
 const archiveSha256 = requiredEnvironment("WIN235_WEBAPP_ARCHIVE_SHA256", hexSha256Pattern);
 const sourceRunId = requiredEnvironment("SOURCE_RUN_ID", positiveIntegerPattern);
 const sourceRunAttempt = requiredEnvironment("SOURCE_RUN_ATTEMPT", positiveIntegerPattern);
@@ -76,6 +81,7 @@ const expectedIdentities = {
   agent: agentImage,
   webapp: webappImage,
   migrations: migrationsImage,
+  coreApi: coreApiImage,
 };
 requireEqual(
   JSON.stringify(tested),

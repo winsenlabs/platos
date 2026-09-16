@@ -115,6 +115,17 @@ export interface TenancyRepository {
     userId: UserId,
   ): Promise<readonly OrganizationMembershipRecord[]>;
 
+  /**
+   * EVERY membership of one organization, deactivated ones included.
+   *
+   * The team listing's port. Unfiltered for the reason
+   * `listOrganizationMembershipsForUser` is: the read model applies "active only",
+   * and a store that filtered would make deleting that rule invisible.
+   */
+  listOrganizationMemberships(
+    organizationId: OrganizationId,
+  ): Promise<readonly OrganizationMembershipRecord[]>;
+
   /** Every project role held THROUGH one organization membership. */
   listProjectMembershipsForMembership(
     organizationMembershipId: OrganizationMembershipId,

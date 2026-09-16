@@ -74,13 +74,126 @@ test("every Compose quick-start creates and explains .env before model evaluatio
   assert.ok(quickStartEnvironmentErrors(repositoryRoot, lateCopy).some((error) => error.includes("must create .env")));
 });
 
-test("the documented environment setup permits Compose model evaluation in a fresh fixture", () => {
+// A fresh fixture is fresh only if the shell running the suite cannot supply what
+// .env.example omits. Compose reads an interpolated variable from the process
+// environment BEFORE .env, so a developer or runner that happens to export one
+// would turn a missing example value into a pass. Strip every name the Compose
+// file interpolates, and every COMPOSE_* setting that could change which file or
+// profile is evaluated, and keep the rest (PATH, DOCKER_HOST, ...) so the CLI runs.
+function composeInterpolatedNames(composeSource) {
+  return [...new Set([...composeSource.matchAll(/\$\{([A-Za-z_][A-Za-z0-9_]*)/gu)].map((match) => match[1]))];
+}
+
+function freshComposeEnvironment(composeSource, parent = process.env) {
+  const interpolated = new Set(composeInterpolatedNames(composeSource));
+  return Object.fromEntries(
+    Object.entries(parent).filter(([name]) => !interpolated.has(name) && !name.startsWith("COMPOSE_")),
+  );
+}
+
+function composeRequiredNames(composeSource) {
+  return [...new Set([...composeSource.matchAll(/\$\{([A-Za-z_][A-Za-z0-9_]*):\?/gu)].map((match) => match[1]))];
+}
+
+function composeQuickStartFixture() {
   const root = mkdtempSync(join("/var/tmp", "platos-compose-quick-start-"));
+  copyFileSync(join(repositoryRoot, ".env.example"), join(root, ".env.example"));
+  copyFileSync(join(repositoryRoot, "docker-compose.platos.yml"), join(root, "docker-compose.platos.yml"));
+  execFileSync("cp", [".env.example", ".env"], { cwd: root });
+  return root;
+}
+
+test("the documented environment setup permits Compose model evaluation in a fresh fixture", () => {
+  const composeSource = readFileSync(join(repositoryRoot, "docker-compose.platos.yml"), "utf8");
+  assert.ok(composeRequiredNames(composeSource).length >= 13, "the required-variable selector must remain non-vacuous");
+  const root = composeQuickStartFixture();
   try {
-    copyFileSync(join(repositoryRoot, ".env.example"), join(root, ".env.example"));
-    copyFileSync(join(repositoryRoot, "docker-compose.platos.yml"), join(root, "docker-compose.platos.yml"));
-    execFileSync("cp", [".env.example", ".env"], { cwd: root });
-    execFileSync("docker", ["compose", "-f", "docker-compose.platos.yml", "config", "--quiet"], { cwd: root });
+    execFileSync("docker", ["compose", "-f", "docker-compose.platos.yml", "config", "--quiet"], {
+      cwd: root,
+      env: freshComposeEnvironment(composeSource),
+      stdio: "pipe",
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a required Compose variable the example omits fails evaluation even when the parent shell exports it", () => {
+  const composeSource = readFileSync(join(repositoryRoot, "docker-compose.platos.yml"), "utf8");
+  const envExample = readFileSync(join(repositoryRoot, ".env.example"), "utf8");
+  const required = composeRequiredNames(composeSource).find((name) => new RegExp(`^${name}=`, "mu").test(envExample));
+  assert.ok(required, "at least one Compose-required variable must be assigned in .env.example");
+  const root = composeQuickStartFixture();
+  try {
+    writeFileSync(join(root, ".env"), envExample.replace(new RegExp(`^${required}=.*$\\n?`, "mu"), ""));
+    const exported = { ...process.env, [required]: "exported-by-the-parent-shell-0123456789abcdef" };
+    assert.throws(
+      () =>
+        execFileSync("docker", ["compose", "-f", "docker-compose.platos.yml", "config", "--quiet"], {
+          cwd: root,
+          env: freshComposeEnvironment(composeSource, exported),
+          stdio: "pipe",
+        }),
+      (error) => String(error.stderr ?? error.message).includes(required),
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// What Compose RESOLVED for every required variable, read back from its own model.
+// An unquoted `.env` value followed by `   # a comment` is not a blank value in
+// Compose: the comment becomes the value, so `:?required` is satisfied by the text
+// of a comment and the service starts with it as its secret. Evaluating is not
+// enough; the resolved value has to be one somebody wrote as a value.
+function resolvedRequiredValues(root, composeSource) {
+  const model = JSON.parse(
+    execFileSync("docker", ["compose", "-f", "docker-compose.platos.yml", "config", "--format", "json"], {
+      cwd: root,
+      env: freshComposeEnvironment(composeSource),
+      stdio: ["ignore", "pipe", "pipe"],
+      encoding: "utf8",
+    }),
+  );
+  const required = new Set(composeRequiredNames(composeSource));
+  const resolved = [];
+  for (const [service, definition] of Object.entries(model.services ?? {})) {
+    for (const [name, value] of Object.entries(definition.environment ?? {})) {
+      if (required.has(name)) resolved.push({ service, name, value: String(value ?? "") });
+    }
+  }
+  return resolved;
+}
+
+const COMMENT_AS_VALUE = /(?:^|\s)#/u;
+
+test("no Compose-required variable resolves to an inline comment from .env.example", () => {
+  const composeSource = readFileSync(join(repositoryRoot, "docker-compose.platos.yml"), "utf8");
+  const root = composeQuickStartFixture();
+  try {
+    const resolved = resolvedRequiredValues(root, composeSource);
+    // NON-VACUITY: the model really carries the required secrets, by name.
+    for (const name of ["PLATOS_COMPONENT_AUTH_SECRET", "MANAGED_WORKER_SECRET", "PLATOS_INTERNAL_AUTH_TOKEN"]) {
+      assert.ok(resolved.some((entry) => entry.name === name), `the resolved model no longer carries ${name}`);
+    }
+    assert.deepEqual(
+      resolved.filter((entry) => COMMENT_AS_VALUE.test(entry.value)),
+      [],
+      "put the comment on its own line: Compose reads an unquoted inline comment as the value",
+    );
+
+    // NEGATIVE CONTROL: the shape this case exists for is SEEN when planted.
+    const envExample = readFileSync(join(root, ".env"), "utf8");
+    writeFileSync(
+      join(root, ".env"),
+      envExample.replace(/^MANAGED_WORKER_SECRET=.*$/mu, "MANAGED_WORKER_SECRET=   # generate with openssl rand -hex 32"),
+    );
+    assert.deepEqual(
+      resolvedRequiredValues(root, composeSource)
+        .filter((entry) => entry.name === "MANAGED_WORKER_SECRET")
+        .map((entry) => COMMENT_AS_VALUE.test(entry.value)),
+      [true],
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

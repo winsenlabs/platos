@@ -949,7 +949,58 @@ test("the live selectors scan an exact nonzero source census", () => {
   // `APPS-TRANSPORTS` term covers `apps/core-api/src/transports/**` and the suite
   // lives in `composition/`, which no selector here names. A reader who assumed
   // "two new files" would expect 1654.
-  assert.equal(result.fileCount, 1653);
+  //
+  // M4 GATES (founder decision D21) — 1653 -> 1655 alone. TWO files, and here BOTH
+  // count: `apps/core-api/src/http/mcp-body-cap.ts` and `mcp-body-cap.test.ts` sit
+  // under the `APPS-HTTP` selector, which covers the whole directory.
+  //
+  // THE IDENTITY/TENANCY REST REMAINDER (2026-09-15) — 1653 -> 1673 alone: +7
+  // CONTEXTS, +6 ADAPTERS (`notifier-email`), +7 APPS-TRANSPORTS (five controllers,
+  // the cookie codec and its unit suite). The integration suite lives in
+  // `composition/`, which no selector names, so twenty files and not twenty-one.
+  //
+  // WIN-271 (M4.5), D10 — 1653 -> 1671 alone. EIGHTEEN, all under
+  // `packages/adapters/channel-discord/src` (thirteen modules, five suites), which
+  // the `packages/adapters/**` selector counts in full. None is in the warning
+  // band: the largest, `discord-transport.test.ts`, is under 400 effective lines,
+  // so the pinned warning list below does not move.
+  //
+  // INTEGRATED, RE-MEASURED ON THE MERGED TREE: 1653 + 2 + 20 + 18 = 1693. No lane
+  // could see the others, so no number below 1693 is wrong at its own head and
+  // none is right here.
+  //
+  // THE CORE-API DEPLOYABILITY RESIDUE — 1653 -> 1656 alone. THREE files inside
+  // selectors: `APPS-HTTP` +2 (`http/store-faults.ts` and its suite) and
+  // `APPS-TRANSPORTS` +1 (`transports/rest/session-cookie-transport.test.ts`). The
+  // tranche's other five new files are under `config/`, `runtime/`, `composition/`
+  // and `scripts/`, which no selector here names, so they are deliberately absent.
+  //
+  // ALL FOUR, RE-MEASURED ON THE MERGED TREE: 1653 + 2 + 20 + 18 + 3 = 1696.
+  //
+  // THE MCP CONFORMANCE LANE'S ROUND-2 FIXES, 1653 -> 1654 alone. ONE file, under
+  // `packages/contexts/**`: `contexts/tools/adapters/sdk-builds.test-fixture.ts`,
+  // which exists BECAUSE of this gate — the module-identity joins the verifier's
+  // collapse finding forced took `dispatch.integration.test.ts` from 487 to 535
+  // effective lines, past the 500 error threshold, and the two SDK builds moved
+  // out rather than the joins being shortened. Everything else that round touched
+  // is outside every selector here.
+  //
+  // ALL FIVE, RE-MEASURED ON THE MERGED TREE: 1653 + 2 + 20 + 18 + 3 + 1 = 1697.
+  //
+  // THE `/tools/sync` RECONNECT TRANSPORT (M4.3) -- 1655 -> 1659 alone. FOUR files
+  // inside selectors: CONTEXTS +2 (the two published writers) and APPS-TRANSPORTS
+  // +2 (`tools/tool-sync.controller.ts` and `tool-sync-body.ts`). The harness and
+  // the two integration suites are under `src/composition/`, which no selector
+  // here names.
+  //
+  // AND ONE FILE THIS ROUND'S OWN FIX ADDED -- CONTEXTS +1,
+  // `tools/adapters/mcp-session-failure.integration.test.ts`. THIS GATE IS WHY IT
+  // EXISTS: the four cases were written into `dispatch.integration.test.ts` and
+  // took it to 571 effective lines, so they moved out rather than being shortened.
+  //
+  // ALL SIX PLUS THAT ONE, RE-MEASURED ON THE MERGED TREE:
+  // 1653 + 2 + 20 + 18 + 3 + 1 + 4 + 1 = 1702.
+  assert.equal(result.fileCount, 1702);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -1049,6 +1100,39 @@ test("the live selectors scan an exact nonzero source census", () => {
       // integration suite is. Everything else the tranche touched is an EDIT:
       // `http/idempotency-policy.ts`, `transports/rest/operator.ts`,
       // `composition/context-ports.ts` and `composition/installation.test.ts`.
+      1 +
+      // M4 GATES (founder decision D21): TWO, under `apps/core-api/src/http/` --
+      // `mcp-body-cap.ts` and its real-socket suite. `runtime/lifecycle.ts`, which
+      // installs the cap, is an edit.
+      2 +
+      // THE IDENTITY/TENANCY REST REMAINDER (2026-09-15): adapters 6, contexts 7,
+      // transports 7. Its integration suite is under `src/composition/`, which no
+      // selector names, so 20 and not 21.
+      6 + 7 + 7 +
+      // WIN-271 (M4.5), D10: EIGHTEEN under `packages/adapters/channel-discord/src`,
+      // a new directory, so the whole directory and no net.
+      18 +
+      // THE CORE-API DEPLOYABILITY RESIDUE: `APPS-HTTP` 2 (`store-faults.ts` and its
+      // suite) and `APPS-TRANSPORTS` 1 (`session-cookie-transport.test.ts`).
+      2 + 1
+ +
+      // THE MCP CONFORMANCE LANE'S ROUND-2 FIXES: ONE, under
+      // `packages/contexts/tools/adapters/` -- `sdk-builds.test-fixture.ts`, the two
+      // SDK server builds and the store-path resolver, moved out of
+      // `dispatch.integration.test.ts` when its module-identity joins put it over
+      // the 500-line error threshold. Every other file that round touched is an
+      // EDIT, and the agent-side files it added are outside every selector here.
+      1
+ +
+      // THE `/tools/sync` RECONNECT TRANSPORT (M4.3): CONTEXTS 2 (the published
+      // writers) and APPS-TRANSPORTS 2, under `apps/core-api/src/transports/tools/`:
+      // `tool-sync.controller.ts` and `tool-sync-body.ts`. THE SPLIT IS THIS GATE'S
+      // DOING: one file carrying the route, its wire reader and every field refusal
+      // would have crossed the 500-line budget, so the reader is its own module and
+      // is exercisable without a Nest application.
+      4 +
+      // AND THIS ROUND'S OWN FIX: CONTEXTS 1 --
+      // `tools/adapters/mcp-session-failure.integration.test.ts`.
       1
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
@@ -1273,8 +1357,47 @@ test("the live selectors scan an exact nonzero source census", () => {
   // flat — this tranche edits `apps/core-api/src/http/idempotency-policy.ts` and
   // `transports/rest/operator.ts` IN PLACE and adds no file under either.
   //
-  // 30 + 1093 + 474 + 18 + 38 = 1653.
-  assert.equal(result.fileCount, 30 + 1093 + 474 + 18 + 38);
+  // M4 GATES (D21), +2, AND IT LANDS IN ONE TERM: APPS-HTTP 18 -> 20, the MCP body
+  // cap and its suite. `runtime/lifecycle.ts` is edited in place and is outside every
+  // selector here.
+  //
+  // 30 + 1093 + 474 + 20 + 38 = 1655.
+  //
+  // THE IDENTITY/TENANCY REST REMAINDER (2026-09-15), +20 across three terms:
+  // CONTEXTS 1093 -> 1100, ADAPTERS 474 -> 480, APPS-TRANSPORTS 38 -> 45.
+  //
+  // WIN-271 (M4.5), D10, +18 IN ONE TERM: ADAPTERS again, 480 -> 498.
+  //
+  // THE THREE TOGETHER, RE-MEASURED ON THE MERGED TREE:
+  // 30 + 1100 + 498 + 20 + 45 = 1693.
+  //
+  // THE CORE-API DEPLOYABILITY RESIDUE, +3, IN TWO TERMS: APPS-HTTP 20 -> 22
+  // (`store-faults.ts` and its suite) and APPS-TRANSPORTS 45 -> 46
+  // (`session-cookie-transport.test.ts`). `KERNEL`, `CONTEXTS` and `ADAPTERS` are
+  // flat: the identity-access session-cookie change edits two files in place.
+  //
+  // ALL FOUR TOGETHER, RE-MEASURED ON THE MERGED TREE:
+  // 30 + 1100 + 498 + 22 + 46 = 1696.
+  //
+  // THE MCP CONFORMANCE LANE'S ROUND-2 FIXES, +1, AND IT LANDS IN ONE TERM:
+  // CONTEXTS 1100 -> 1101, the SDK-builds fixture the 500-line budget forced out
+  // of `contexts/tools/adapters/dispatch.integration.test.ts`. `KERNEL`,
+  // `ADAPTERS`, `APPS-HTTP` and `APPS-TRANSPORTS` are flat.
+  //
+  // ALL FIVE TOGETHER, RE-MEASURED ON THE MERGED TREE:
+  // 30 + 1101 + 498 + 22 + 46 = 1697.
+  //
+  // THE `/tools/sync` RECONNECT TRANSPORT (M4.3), +4, IN TWO TERMS: CONTEXTS
+  // 1101 -> 1103 (the two published writers) and APPS-TRANSPORTS 46 -> 48 (the
+  // controller and the body reader it is split from). `KERNEL`, `ADAPTERS` and
+  // `APPS-HTTP` are flat: `http/http.module.ts` and the adapter row narrowing are
+  // EDITS, and `composition/` is outside every selector here.
+  //
+  // AND THIS ROUND'S OWN FIX, +1 IN ONE TERM: CONTEXTS 1103 -> 1104.
+  //
+  // ALL SIX PLUS THAT ONE, RE-MEASURED ON THE MERGED TREE:
+  // 30 + 1104 + 498 + 22 + 48 = 1702.
+  assert.equal(result.fileCount, 30 + 1104 + 498 + 22 + 48);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -1593,6 +1716,24 @@ test("the live selectors scan an exact nonzero source census", () => {
     {
       path: "packages/contexts/memory/contracts/index.test.ts",
       effectiveLines: 404,
+      severity: "warning",
+    },
+    {
+      // WIN-268 (M4.2), the MCP SDK 1.30.x candidate: 26 -> 41 cases asked of the
+      // adopted SDK's server AND the candidate's, over http and sse. Measured at 502
+      // on the first write, which this gate FAILED, and brought inside the budget by
+      // joining lines rather than by splitting the suite — a second file would have
+      // moved the test-case census's file pin for no change in what is asserted.
+      //
+      // 487 -> 535 -> 493. The module-identity joins the verifier's collapse finding
+      // forced are 48 more lines and put the file OVER the error threshold, which is
+      // this budget working: the joins are the last thing that should be shortened.
+      // The two builds, their entry points, the manifest reader and the store-path
+      // resolver moved to `adapters/sdk-builds.test-fixture.ts`, which declares no
+      // case and does not end in `.test.ts`, so the census's file pin for this
+      // package is unmoved and the fixture is far below the warning threshold.
+      path: "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      effectiveLines: 493,
       severity: "warning",
     },
     {

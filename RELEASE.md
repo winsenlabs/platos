@@ -19,10 +19,13 @@ in this document grants package-registry write authority.
 
 ## 2. Build and gate the landed SHA
 
-`.github/workflows/build-images.yml` builds Agent, webapp, and migrations OCI
-archives exactly once. It runs the legacy-upgrade rehearsal, persisted-state
-checks, enforced performance budgets, authenticated browser matrix, completion
-audit, and immutable identity verification without registry authentication.
+`.github/workflows/build-images.yml` builds four OCI candidate archives exactly
+once: Agent, webapp, migrations and core-api. It serves the core-api candidate
+against migrated stores (`smoke-candidate-core-api`), and runs the legacy-upgrade
+rehearsal, persisted-state checks, enforced performance budgets, authenticated
+browser matrix, completion audit, and immutable identity verification without
+registry authentication. `candidate-images.json` records all four tested
+identities; core-api's is the one the smoke job served.
 
 Retain the successful run ID, run attempt, landed SHA, candidate archive
 checksums, `candidate-images.json`, and persisted-state evidence.
@@ -40,9 +43,10 @@ The publication workflow:
 - proves the source SHA remains in `main` history;
 - downloads the exact source-run OCI and persisted-state artifacts;
 - re-verifies archive checksums, manifest digests, OCI revision labels, and the
-  passing candidate identity record;
-- publishes immutable `sha-<landed-sha>` tags without rebuilding or writing a
-  mutable `latest` tag.
+  passing candidate identity record, refusing any archive whose identity that
+  record does not carry;
+- publishes the four tested images under immutable `sha-<landed-sha>` tags without
+  rebuilding or writing a mutable `latest` tag.
 
 Publication approval does not authorize deployment.
 

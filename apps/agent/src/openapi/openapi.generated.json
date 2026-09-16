@@ -11,6 +11,36 @@
   },
   "components": {
     "schemas": {
+      "AcceptInvitationBody": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "AcceptedInvitationResource": {
+        "type": "object",
+        "properties": {
+          "organizationId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "membershipId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "membershipId",
+          "organizationId",
+          "role"
+        ]
+      },
       "BearerCredentialResource": {
         "type": "object",
         "properties": {
@@ -89,6 +119,17 @@
           "tokenId"
         ]
       },
+      "ChangeMemberRoleBody": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
       "CollectionEnvelope_BearerCredentialResource": {
         "type": "object",
         "properties": {
@@ -114,6 +155,42 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/EndUserResource"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageBlock"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "CollectionEnvelope_EnvironmentVariableResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnvironmentVariableResource"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageBlock"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "CollectionEnvelope_OrganizationMemberResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrganizationMemberResource"
             }
           },
           "page": {
@@ -177,6 +254,17 @@
         "required": [
           "data",
           "page"
+        ]
+      },
+      "CompleteMagicLinkBody": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
         ]
       },
       "CreateOrganizationBody": {
@@ -356,6 +444,96 @@
           "identities"
         ]
       },
+      "EnvironmentScopeResource": {
+        "type": "object",
+        "properties": {
+          "organization": {
+            "$ref": "#/components/schemas/TenantNodeResource"
+          },
+          "project": {
+            "$ref": "#/components/schemas/TenantNodeResource"
+          },
+          "environment": {
+            "$ref": "#/components/schemas/TenantNodeResource"
+          },
+          "environments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantNodeResource"
+            }
+          },
+          "access": {
+            "type": "string"
+          },
+          "organizationRole": {
+            "type": "string"
+          },
+          "projectRole": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "access",
+          "environment",
+          "environments",
+          "organization",
+          "organizationRole",
+          "project",
+          "projectRole"
+        ]
+      },
+      "EnvironmentVariableResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hasSecret": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "number"
+          },
+          "lastUpdatedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "hasSecret",
+          "id",
+          "key",
+          "kind",
+          "lastUpdatedBy",
+          "updatedAt",
+          "value",
+          "version"
+        ]
+      },
       "ErrorEnvelope": {
         "type": "object",
         "properties": {
@@ -378,11 +556,149 @@
           "token"
         ]
       },
+      "IssueInvitationBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "IssuedInvitationResource": {
+        "type": "object",
+        "properties": {
+          "invitationId": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "supersededCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "invitationId",
+          "supersededCount"
+        ]
+      },
+      "ItemEnvelope_AcceptedInvitationResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AcceptedInvitationResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
       "ItemEnvelope_CreatedProjectResource": {
         "type": "object",
         "properties": {
           "data": {
             "$ref": "#/components/schemas/CreatedProjectResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "ItemEnvelope_EnvironmentScopeResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EnvironmentScopeResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "ItemEnvelope_EnvironmentVariableResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EnvironmentVariableResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "ItemEnvelope_IssuedInvitationResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/IssuedInvitationResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "ItemEnvelope_MagicLinkRequestResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MagicLinkRequestResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "ItemEnvelope_MagicLinkSessionResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MagicLinkSessionResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "ItemEnvelope_MemberRoleChangeResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MemberRoleChangeResource"
           },
           "meta": {
             "$ref": "#/components/schemas/ItemMeta"
@@ -498,6 +814,21 @@
           "meta"
         ]
       },
+      "ItemEnvelope_ToolSyncResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ToolSyncResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
       "ItemMeta": {
         "type": "object",
         "properties": {
@@ -510,6 +841,51 @@
         },
         "required": [
           "contractVersion"
+        ]
+      },
+      "MagicLinkRequestResource": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "expiresAt"
+        ]
+      },
+      "MagicLinkSessionResource": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "sessionId",
+          "userId"
+        ]
+      },
+      "MemberRoleChangeResource": {
+        "type": "object",
+        "properties": {
+          "changed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "changed"
         ]
       },
       "MintEntityTokenBody": {
@@ -677,6 +1053,50 @@
           "impersonating",
           "mfaVerifiedAt",
           "sessionId"
+        ]
+      },
+      "OrganizationMemberResource": {
+        "type": "object",
+        "properties": {
+          "membershipId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accountDisabledAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "accountDisabledAt",
+          "createdAt",
+          "displayName",
+          "email",
+          "membershipId",
+          "role",
+          "userId"
         ]
       },
       "OrganizationPolicyResource": {
@@ -959,6 +1379,20 @@
           "plaintext"
         ]
       },
+      "SetEnvironmentVariableBody": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "secret": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "value"
+        ]
+      },
       "SetOrganizationPolicyBody": {
         "type": "object",
         "properties": {
@@ -977,6 +1411,242 @@
         "required": [
           "pattern",
           "state"
+        ]
+      },
+      "StartMagicLinkBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "TenantNodeResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug"
+        ]
+      },
+      "ToolHealthResource": {
+        "type": "object",
+        "properties": {
+          "toolId": {
+            "type": "string"
+          },
+          "externalEntityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastCalledAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failCount": {
+            "type": "number"
+          },
+          "totalCalls": {
+            "type": "number"
+          },
+          "totalFailures": {
+            "type": "number"
+          },
+          "avgLatencyMs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "avgLatencyMs",
+          "externalEntityId",
+          "failCount",
+          "lastCalledAt",
+          "lastStatus",
+          "toolId",
+          "totalCalls",
+          "totalFailures"
+        ]
+      },
+      "ToolSyncBody": {
+        "type": "object",
+        "properties": {
+          "environmentId": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "externalEntityId": {
+            "type": "string"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolSyncDeclaration"
+            }
+          },
+          "callbackUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "connectionStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "health": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolSyncHealthReport"
+            }
+          }
+        },
+        "required": [
+          "callbackUrl",
+          "connectionStatus",
+          "entityId",
+          "environmentId",
+          "externalEntityId",
+          "health",
+          "tools"
+        ]
+      },
+      "ToolSyncDeclaration": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "paramSchema": {
+            "type": "object"
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "category",
+          "description",
+          "name",
+          "paramSchema"
+        ]
+      },
+      "ToolSyncHealthReport": {
+        "type": "object",
+        "properties": {
+          "toolName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "avgLatencyMs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "avgLatencyMs",
+          "status",
+          "toolName"
+        ]
+      },
+      "ToolSyncResource": {
+        "type": "object",
+        "properties": {
+          "entityId": {
+            "type": "string"
+          },
+          "externalEntityId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "connectionStatus": {
+            "type": "string"
+          },
+          "lastConnectedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registered": {
+            "type": "number"
+          },
+          "newTools": {
+            "type": "number"
+          },
+          "updated": {
+            "type": "number"
+          },
+          "pruned": {
+            "type": "number"
+          },
+          "health": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolHealthResource"
+            }
+          },
+          "unknownToolNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "connectionStatus",
+          "entityId",
+          "environmentId",
+          "externalEntityId",
+          "health",
+          "lastConnectedAt",
+          "newTools",
+          "pruned",
+          "registered",
+          "unknownToolNames",
+          "updated"
         ]
       },
       "WireError": {
@@ -1214,6 +1884,7 @@
               "IDENTITY_STORE_UNAVAILABLE",
               "IMPERSONATION_FORBIDDEN",
               "INVALID_ACCESS_KEY_MATERIAL",
+              "INVALID_EMAIL_ADDRESS",
               "INVALID_END_USER_FILTER",
               "INVALID_GRANT",
               "INVALID_KEY_RING",
@@ -1249,6 +1920,8 @@
               "JOB_SERVICE_UNAVAILABLE",
               "JOB_TIMEOUT",
               "LEGACY_ENVELOPE_UNREADABLE",
+              "MAGIC_LINK_DELIVERY_FAILED",
+              "MAGIC_LINK_DELIVERY_UNAVAILABLE",
               "MCP_ENTITY_ENVIRONMENT_MISMATCH",
               "MCP_TOKEN_MINT_WHILE_IMPERSONATING",
               "MEMORY_AGENT_AMBIGUOUS",
@@ -1280,6 +1953,12 @@
               "MEMORY_UNTRUSTED_SOURCE",
               "MFA_REQUIRED",
               "MISSING_PERMISSION",
+              "NOTIFIER_EMAIL_CONFIGURATION_INVALID",
+              "NOTIFIER_EMAIL_INSECURE_AUTH_REFUSED",
+              "NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED",
+              "NOTIFIER_EMAIL_MESSAGE_REFUSED",
+              "NOTIFIER_EMAIL_RELAY_REFUSED",
+              "NOTIFIER_EMAIL_RELAY_UNREACHABLE",
               "OBSERVABILITY_AUDIT_ACTION_INVALID",
               "OBSERVABILITY_AUDIT_STATE_NOT_AN_OBJECT",
               "OBSERVABILITY_AUDIT_SUBJECT_INVALID",
@@ -1354,6 +2033,7 @@
               "PROVIDERS_UNKNOWN_PROVIDER",
               "RATE_LIMITED",
               "RATE_LIMITER_UNAVAILABLE",
+              "RATE_LIMIT_FAILED_CLOSED",
               "RETRY_POLICY_BASE_DELAY_INVALID",
               "RETRY_POLICY_CEILING_BELOW_BASE",
               "RETRY_POLICY_JITTER_FRACTION_INVALID",
@@ -1397,15 +2077,21 @@
               "TENANCY_ARCHIVED",
               "TENANCY_AUTHORIZATION_FORGED",
               "TENANCY_CROSS_TENANT_MEMBERSHIP",
+              "TENANCY_ENTITY_NOT_IN_SCOPE",
               "TENANCY_ENVIRONMENT_FORBIDDEN",
+              "TENANCY_INVALID_CONNECTION_STATUS",
+              "TENANCY_INVALID_EMAIL",
               "TENANCY_INVALID_NAME",
+              "TENANCY_INVALID_ROLE",
               "TENANCY_INVALID_SLUG",
               "TENANCY_INVITATION_ALREADY_ACTIVE",
               "TENANCY_INVITATION_CONSUMED",
               "TENANCY_INVITATION_EMAIL_MISMATCH",
+              "TENANCY_INVITATION_FORBIDDEN",
               "TENANCY_INVITATION_INVALID",
               "TENANCY_LAST_OWNER",
               "TENANCY_MEMBERSHIP_FORBIDDEN",
+              "TENANCY_MEMBER_LIST_FORBIDDEN",
               "TENANCY_NOT_FOUND",
               "TENANCY_PROJECT_CREATE_FORBIDDEN",
               "TENANCY_SLUG_TAKEN",
@@ -1425,6 +2111,7 @@
               "TOOLS_ENTITY_NOT_IN_SCOPE",
               "TOOLS_ENVIRONMENT_NOT_IN_SCOPE",
               "TOOLS_EXPOSURE_NOT_FOUND",
+              "TOOLS_HEALTH_REPORT_INVALID",
               "TOOLS_MCP_DISABLED",
               "TOOLS_MCP_TRANSPORT_INVALID",
               "TOOLS_MCP_TRANSPORT_UNIMPLEMENTED",
@@ -1440,7 +2127,9 @@
               "TRANSPORT_CONTEXT_UNAVAILABLE",
               "TRANSPORT_REQUEST_INVALID",
               "TRANSPORT_ROUTE_NOT_FOUND",
+              "TRANSPORT_SESSION_COOKIE_REQUIRES_TLS",
               "TRANSPORT_SHUTTING_DOWN",
+              "TRANSPORT_STORE_UNAVAILABLE",
               "TRANSPORT_UNHANDLED_FAULT",
               "UNAUTHENTICATED",
               "UNKNOWN_CLIENT"
@@ -8659,6 +9348,116 @@
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
     },
+    "/api/v1/bff/magic-link": {
+      "post": {
+        "operationId": "post__api_v1_bff_magic_link",
+        "summary": "BffMagicLinkController.start",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "202": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_MagicLinkRequestResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartMagicLinkBody"
+              }
+            }
+          }
+        },
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
+      }
+    },
+    "/api/v1/bff/magic-link/complete": {
+      "post": {
+        "operationId": "post__api_v1_bff_magic_link_complete",
+        "summary": "BffMagicLinkController.complete",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_MagicLinkSessionResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteMagicLinkBody"
+              }
+            }
+          }
+        },
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
+      }
+    },
     "/api/v1/bff/session": {
       "delete": {
         "operationId": "delete__api_v1_bff_session",
@@ -9177,6 +9976,213 @@
         "x-platos-query-parameters": "none-declared"
       }
     },
+    "/api/v1/environments/{environmentId}/variables": {
+      "get": {
+        "operationId": "get__api_v1_environments_by_environmentId_variables",
+        "summary": "EnvironmentVariablesController.list",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionEnvelope_EnvironmentVariableResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "refused"
+      }
+    },
+    "/api/v1/environments/{environmentId}/variables/{key}": {
+      "put": {
+        "operationId": "put__api_v1_environments_by_environmentId_variables_by_key",
+        "summary": "EnvironmentVariablesController.set",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_EnvironmentVariableResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEnvironmentVariableBody"
+              }
+            }
+          }
+        },
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
+      }
+    },
+    "/api/v1/environments/by-slugs": {
+      "get": {
+        "operationId": "get__api_v1_environments_by_slugs",
+        "summary": "EnvironmentScopeController.resolve",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_EnvironmentScopeResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "parameters": [
+          {
+            "name": "access",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentSlug",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "organizationSlug",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "projectSlug",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "derived"
+      }
+    },
     "/api/v1/identity/session": {
       "get": {
         "operationId": "get__api_v1_identity_session",
@@ -9218,6 +10224,61 @@
         "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": [],
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
+      }
+    },
+    "/api/v1/invitations/accept": {
+      "post": {
+        "operationId": "post__api_v1_invitations_accept",
+        "summary": "InvitationsController.accept",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_AcceptedInvitationResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInvitationBody"
+              }
+            }
+          }
+        },
         "x-platos-schema-source": "typescript-dto",
         "x-platos-query-parameters": "none-declared"
       }
@@ -9788,6 +10849,199 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateOrganizationBody"
+              }
+            }
+          }
+        },
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
+      }
+    },
+    "/api/v1/organizations/{organizationId}/invitations": {
+      "post": {
+        "operationId": "post__api_v1_organizations_by_organizationId_invitations",
+        "summary": "InvitationsController.issue",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_IssuedInvitationResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueInvitationBody"
+              }
+            }
+          }
+        },
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
+      }
+    },
+    "/api/v1/organizations/{organizationId}/members": {
+      "get": {
+        "operationId": "get__api_v1_organizations_by_organizationId_members",
+        "summary": "OrganizationMembersController.list",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionEnvelope_OrganizationMemberResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "refused"
+      }
+    },
+    "/api/v1/organizations/{organizationId}/members/{membershipId}": {
+      "patch": {
+        "operationId": "patch__api_v1_organizations_by_organizationId_members_by_membershipId",
+        "summary": "OrganizationMembersController.changeRole",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "membershipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_MemberRoleChangeResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeMemberRoleBody"
               }
             }
           }
@@ -10424,6 +11678,61 @@
         "x-platos-mcp-tools": [],
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
+      }
+    },
+    "/api/v1/tools/sync": {
+      "post": {
+        "operationId": "post__api_v1_tools_sync",
+        "summary": "ToolSyncController.sync",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_ToolSyncResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolSyncBody"
+              }
+            }
+          }
+        },
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
       }
     },
     "/internal/batch-turn": {
@@ -12343,15 +13652,18 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 313,
+  "x-platos-rest-operation-count": 323,
   "x-platos-mcp-tool-count": 202,
   "x-platos-schema-coverage": {
-    "derivedOperations": 19,
+    "derivedOperations": 29,
     "undeclaredOperations": 294,
     "undeclaredReason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)",
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
-    "componentSchemas": 38,
-    "canonicalErrorCodes": 459,
-    "queryParametersNotDerived": []
+    "componentSchemas": 68,
+    "canonicalErrorCodes": 478,
+    "queryParametersNotDerived": [],
+    "openJsonProperties": [
+      "ToolSyncDeclaration.paramSchema"
+    ]
   }
 }

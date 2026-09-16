@@ -10,6 +10,7 @@
 #   memory-profile-migrate — one-shot encrypted profile migration and verification
 #   agent       — Platos agent runtime, NestJS (port 3100)
 #   webapp      — Platos dashboard + API, Remix (port 3030)
+#   core-api    — V1 composition root, opt-in `core-api` profile (loopback port 3200)
 #
 # All config comes from the root .env file. At minimum you need an LLM provider
 # key (ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_GENERATIVE_AI_API_KEY) and
@@ -155,8 +156,12 @@ services:
   # webapp refuse to start against the sentinel values when
   # NODE_ENV=production.
   # ─────────────────────────────────────────────────────────────
+  # MinIO is pulled from quay.io at the index digests pinned before: Docker Hub
+  # no longer serves minio/minio or minio/mc (hub.docker.com answered 404 for
+  # both on 2026-09-15), and quay.io/minio serves both RELEASE tags at the same
+  # digests, so only the registry host changed.
   minio:
-    image: minio/minio:RELEASE.2025-02-03T21-03-04Z@sha256:a62e44a7db506b8ed114a44e67b4996c4f1ecca981d9c6e40aa2581334999313
+    image: quay.io/minio/minio:RELEASE.2025-02-03T21-03-04Z@sha256:a62e44a7db506b8ed114a44e67b4996c4f1ecca981d9c6e40aa2581334999313
     restart: unless-stopped
     logging: *default-logging
     mem_limit: ${MINIO_MEM_LIMIT:-256m}
@@ -193,7 +198,7 @@ services:
   # One-shot: create the platos-media bucket on first boot.
   # Idempotent — re-running is a no-op if the bucket already exists.
   minio-init:
-    image: minio/mc:RELEASE.2025-01-17T23-25-50Z@sha256:b55b1283c0b81b8bb473c94133d4e00a552518c4796a954ddb04bb7b6e05927d
+    image: quay.io/minio/mc:RELEASE.2025-01-17T23-25-50Z@sha256:b55b1283c0b81b8bb473c94133d4e00a552518c4796a954ddb04bb7b6e05927d
     logging: *default-logging
     depends_on:
       minio:
@@ -665,6 +670,129 @@ services:
       # VPS hosts. Agent depends on webapp healthy, so tightening
       # this saves a retry cycle.
       start_period: 180s
+
+  # ─────────────────────────────────────────────────────────────
+  # core-api — the V1 composition root (apps/core-api). DEPLOYABLE, NOT CUT
+  # OVER. Nothing routes an existing path to it: the webapp still reaches the
+  # agent through PLATOS_AGENT_API_URL, and deploy/Caddyfile gives it a host
+  # block of its own. Moving live paths onto it is a separate decision.
+  #
+  # OPT-IN PROFILE. A plain `up -d` starts exactly the services it started
+  # before; add the profile to run this one:
+  #   docker compose -f docker-compose.platos.yml --profile core-api up -d core-api
+  # NOT FOR A PULL-ONLY HOST YET. docker-compose.deploy.yml resets the build
+  # blocks of the services scripts/deploy-platos.sh pulls and starts, and does
+  # not carry this one: that file is byte-pinned to an owner authorization
+  # baseline by scripts/clickhouse-split-audit.mjs, and no publication path
+  # produces a core-api digest for it to require. ITS HEADER OVERSTATES THIS.
+  # It says the override removes every application build block. Under it, this
+  # service and docs-mcp-bridge both keep theirs, and scripts/audit-platos-build.mjs
+  # pins that exact set. `docker compose up` builds such a service whether or not
+  # `build` is passed, so activating this profile on top of that override would
+  # compile on the box. The profile is what keeps a plain `up -d` there from
+  # starting this service.
+  #
+  # CONFIGURATION IS apps/core-api/src/config, and docs/env-vars.md is its
+  # table. PLATOS_ENVIRONMENT is the one variable that module REQUIRES, and the
+  # PROCESS is where that is enforced: blank, the container exits 78 before it
+  # binds a port. This file deliberately does not use `:?` for it. Compose
+  # interpolates every service whether or not its profile is active, so a `:?`
+  # here would make every compose command, on every install that never enables
+  # this profile, refuse to parse until the variable was added.
+  # Every other variable below is an optional group anchor: blank reads as
+  # absent, the group is not wired, and /readyz says so. WHAT THAT MEANS FOR
+  # WHAT COMPOSES is in .env.example beside the variables: without the security
+  # pair, core-api composes the tenancy context alone.
+  # ─────────────────────────────────────────────────────────────
+  core-api:
+    build:
+      context: .
+      dockerfile: apps/core-api/Dockerfile
+    profiles: ["core-api"]
+    restart: unless-stopped
+    # Shutdown waits PLATOS_CORE_API_SHUTDOWN_TIMEOUT_MS (default 10s) for
+    # in-flight work. Docker's own default grace is also 10s, which would
+    # SIGKILL the process at the instant it gives up; 30s leaves the margin.
+    stop_grace_period: 30s
+    logging: *default-logging
+    mem_limit: ${CORE_API_MEM_LIMIT:-1g}
+    ports:
+      # Loopback only, like the agent. The image binds 0.0.0.0 inside the
+      # container on the config default port 3030; the host side is 3200
+      # because the webapp already holds host port 3030. Caddy on the host
+      # reaches it over localhost.
+      - "127.0.0.1:3200:3030"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations-init:
+        condition: service_completed_successfully
+      memory-profile-migrate:
+        condition: service_completed_successfully
+    environment:
+      # Blank when unset: the process refuses it (exit 78), the parse does not.
+      PLATOS_ENVIRONMENT: "${PLATOS_ENVIRONMENT:-}"
+      # stores.postgres and stores.redis — the same canonical database and Redis
+      # the agent and webapp use.
+      PLATOS_STORE_POSTGRES_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}"
+      PLATOS_STORE_REDIS_URL: "redis://redis:6379"
+      # providers — one install-wide default model, the same knob the agent reads.
+      PLATOS_PROVIDERS_DEFAULT_MODEL: "${PLATOS_DEFAULT_MODEL:-anthropic:claude-haiku-4-5-20251001}"
+      # security — the credential root composes identityAccess, secrets,
+      # providers and tools; the session secret declares the cookie group the
+      # three cookie settings below belong to. Optional to the config module, so
+      # blank here; see docs/env-vars.md for their forms.
+      PLATOS_SECURITY_SESSION_SECRET: "${PLATOS_SECURITY_SESSION_SECRET:-}"
+      PLATOS_SECURITY_SESSION_COOKIE_SECURE: "${PLATOS_SECURITY_SESSION_COOKIE_SECURE:-}"
+      PLATOS_SECURITY_SESSION_COOKIE_NAME: "${PLATOS_SECURITY_SESSION_COOKIE_NAME:-}"
+      PLATOS_SECURITY_SESSION_SAME_SITE: "${PLATOS_SECURITY_SESSION_SAME_SITE:-}"
+      PLATOS_SECURITY_ENCRYPTION_KEY: "${PLATOS_SECURITY_ENCRYPTION_KEY:-}"
+      PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "${PLATOS_SECURITY_ENCRYPTION_KEY_VERSION:-}"
+      # The one TLS-terminating proxy whose X-Forwarded-Proto is believed, as an
+      # address or CIDR range. Blank trusts no proxy. Caddy on the host reaches
+      # the published port through this network's gateway, so that is the peer
+      # the container sees (docs/env-vars.md).
+      PLATOS_CORE_API_TRUSTED_PROXY: "${PLATOS_CORE_API_TRUSTED_PROXY:-}"
+      # channels.slack — the inbound signing secret; blank leaves it unwired.
+      PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "${PLATOS_CHANNELS_SLACK_SIGNING_SECRET:-}"
+      # channels.discord — the application public key; blank leaves it unwired.
+      PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "${PLATOS_CHANNELS_DISCORD_PUBLIC_KEY:-}"
+      # channels.emailNotifier — the relay budget alerts and operator sign-in
+      # links go out through. The group is anchored on the relay URL and is
+      # declared only when all three are set; blank leaves it unwired. It is here
+      # because `notifier-email` stopped being a generated interface: an adapter
+      # with a constructor that no variable can reach is one the composed smoke
+      # reports as unwired for a reason configuration could fix.
+      PLATOS_CHANNELS_EMAIL_SMTP_URL: "${PLATOS_CHANNELS_EMAIL_SMTP_URL:-}"
+      PLATOS_CHANNELS_EMAIL_FROM: "${PLATOS_CHANNELS_EMAIL_FROM:-}"
+      PLATOS_CHANNELS_EMAIL_LOGIN_URL: "${PLATOS_CHANNELS_EMAIL_LOGIN_URL:-}"
+      # Gates the detailed /readyz body; blank keeps the detail off entirely.
+      PLATOS_CORE_API_ADMIN_HEALTH_TOKEN: "${PLATOS_CORE_API_ADMIN_HEALTH_TOKEN:-}"
+    healthcheck:
+      # LIVENESS, NOT READINESS. /livez answers 200 whenever the event loop
+      # turns. /readyz answers 503 until every declared adapter binding is
+      # satisfied, and five of the sixty are generated interfaces no
+      # configuration can satisfy yet, so a readiness healthcheck would mark
+      # this container unhealthy forever. /readyz is the load balancer's signal.
+      # THROUGH THE CONTAINER'S OWN NETWORK ADDRESS, NOT LOOPBACK. The container
+      # hostname resolves to its address on the compose network, which is where
+      # the published port and every other service reach it. A listener bound to
+      # 127.0.0.1 would answer a loopback probe and nothing else, and read as
+      # healthy while unreachable; this probe reads it as unhealthy. IPv4 only:
+      # the listener is 0.0.0.0, and the hostname may also resolve to IPv6.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get({ host: require('os').hostname(), family: 4, port: 3030, path: '/livez' }, r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # ─── Platos docs MCP bridge (optional sidecar) ──────────────────────
   # Bridges the public Platos docs MCP at `https://mcp.platos.dev/mcp`

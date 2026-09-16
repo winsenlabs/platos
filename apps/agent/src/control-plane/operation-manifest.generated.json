@@ -10762,6 +10762,40 @@
         ]
       },
       {
+        "id": "POST /api/v1/bff/magic-link",
+        "method": "POST",
+        "path": "/api/v1/bff/magic-link",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "BffMagicLinkController",
+            "handler": "start",
+            "source": "apps/core-api/src/transports/bff/magic-link.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
+        "id": "POST /api/v1/bff/magic-link/complete",
+        "method": "POST",
+        "path": "/api/v1/bff/magic-link/complete",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "BffMagicLinkController",
+            "handler": "complete",
+            "source": "apps/core-api/src/transports/bff/magic-link.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
         "id": "DELETE /api/v1/bff/session",
         "method": "DELETE",
         "path": "/api/v1/bff/session",
@@ -10966,6 +11000,57 @@
         ]
       },
       {
+        "id": "GET /api/v1/environments/:environmentId/variables",
+        "method": "GET",
+        "path": "/api/v1/environments/:environmentId/variables",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "EnvironmentVariablesController",
+            "handler": "list",
+            "source": "apps/core-api/src/transports/rest/environment-variables.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
+        "id": "PUT /api/v1/environments/:environmentId/variables/:key",
+        "method": "PUT",
+        "path": "/api/v1/environments/:environmentId/variables/:key",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "EnvironmentVariablesController",
+            "handler": "set",
+            "source": "apps/core-api/src/transports/rest/environment-variables.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
+        "id": "GET /api/v1/environments/by-slugs",
+        "method": "GET",
+        "path": "/api/v1/environments/by-slugs",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "EnvironmentScopeController",
+            "handler": "resolve",
+            "source": "apps/core-api/src/transports/rest/environment-scope.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
         "id": "GET /api/v1/identity/session",
         "method": "GET",
         "path": "/api/v1/identity/session",
@@ -10978,6 +11063,23 @@
             "controller": "IdentitySessionController",
             "handler": "session",
             "source": "apps/core-api/src/transports/rest/identity-session.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
+        "id": "POST /api/v1/invitations/accept",
+        "method": "POST",
+        "path": "/api/v1/invitations/accept",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "InvitationsController",
+            "handler": "accept",
+            "source": "apps/core-api/src/transports/rest/invitations.controller.ts",
             "requiresOperator": true
           }
         ]
@@ -11277,6 +11379,57 @@
             "controller": "OrganizationsController",
             "handler": "create",
             "source": "apps/core-api/src/transports/rest/organizations.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
+        "id": "POST /api/v1/organizations/:organizationId/invitations",
+        "method": "POST",
+        "path": "/api/v1/organizations/:organizationId/invitations",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "InvitationsController",
+            "handler": "issue",
+            "source": "apps/core-api/src/transports/rest/invitations.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
+        "id": "GET /api/v1/organizations/:organizationId/members",
+        "method": "GET",
+        "path": "/api/v1/organizations/:organizationId/members",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "OrganizationMembersController",
+            "handler": "list",
+            "source": "apps/core-api/src/transports/rest/organization-members.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
+        "id": "PATCH /api/v1/organizations/:organizationId/members/:membershipId",
+        "method": "PATCH",
+        "path": "/api/v1/organizations/:organizationId/members/:membershipId",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "OrganizationMembersController",
+            "handler": "changeRole",
+            "source": "apps/core-api/src/transports/rest/organization-members.controller.ts",
             "requiresOperator": true
           }
         ]
@@ -11674,6 +11827,23 @@
             "handler": "mint",
             "source": "apps/agent/src/auth/public-guest-token.controller.ts",
             "requiresOperator": false
+          }
+        ]
+      },
+      {
+        "id": "POST /api/v1/tools/sync",
+        "method": "POST",
+        "path": "/api/v1/tools/sync",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "ToolSyncController",
+            "handler": "sync",
+            "source": "apps/core-api/src/transports/tools/tool-sync.controller.ts",
+            "requiresOperator": true
           }
         ]
       },
@@ -12675,8 +12845,8 @@
       "MAPPED": 82,
       "MCP_ONLY": 120
     },
-    "restOperations": 313,
-    "restRouteBindings": 320,
+    "restOperations": 323,
+    "restRouteBindings": 330,
     "ambiguousRestOperations": 7,
     "crossDeployableRestOperations": 7,
     "restClassifications": {
@@ -12684,7 +12854,7 @@
       "INTERNAL": 14,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
-      "REST_ONLY": 157
+      "REST_ONLY": 167
     },
     "restScanRoots": [
       {
@@ -12699,9 +12869,9 @@
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
         "strict": true,
-        "registeredControllers": 10,
-        "operations": 19,
-        "routeBindings": 19
+        "registeredControllers": 16,
+        "operations": 29,
+        "routeBindings": 29
       }
     ]
   }

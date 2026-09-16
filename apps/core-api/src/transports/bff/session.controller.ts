@@ -50,17 +50,18 @@ import { BodyReader, jsonBody } from "../rest/body.js";
 import { REST_APPLICATION, type RestApplication } from "../rest/dependencies.js";
 import { itemEnvelope, type ItemEnvelope } from "../rest/envelope.js";
 import { raise } from "../rest/fault.js";
+import { encodeLegacySessionValue } from "../rest/session-cookie-value.js";
 import {
   operatorSessionResource,
   type OperatorSessionResource,
 } from "../rest/resources.js";
 import {
-  authenticateOperator,
-  isSecureTransport,
   presentedOperatorToken,
   requireIdentityAccess,
+  sessionCookieTransport,
   type InboundOperatorRequest,
 } from "../rest/operator.js";
+import { sessionCookieRequiresTls } from "../rest/transport-errors.js";
 
 /** Only the one method this controller calls on a response. */
 export interface CookieResponse {
@@ -101,7 +102,10 @@ export function serializeSetCookie(directive: SessionCookieDirectiveView): strin
   const { shape } = directive;
   const sameSite = `${shape.sameSite.charAt(0).toUpperCase()}${shape.sameSite.slice(1)}`;
   const parts = [
-    `${shape.name}=${encodeURIComponent(directive.value)}`,
+    // D19/D11: the VALUE in Remix's dialect, so a Remix loader still serving a
+    // route during the per-route cutover reads the session core-api set. See
+    // `rest/session-cookie-value.ts`; the empty clearing value stays empty.
+    `${shape.name}=${encodeURIComponent(encodeLegacySessionValue(directive.value))}`,
     `Path=${shape.path}`,
     `Max-Age=${String(directive.maxAgeSeconds)}`,
     `Expires=${directive.expiresAt.toUTCString()}`,
@@ -149,13 +153,18 @@ export class BffSessionController {
   ): Promise<ItemEnvelope<OperatorSessionResource>> {
     const app = this.application.app;
     const identityAccess = requireIdentityAccess(app);
+    // D-COOKIE. BEFORE THE TOKEN IS EVEN LOOKED UP. A Secure install whose request
+    // TLS did not reach refuses outright, so no answer on this request says
+    // anything about the token it carried.
+    const cookie = sessionCookieTransport(request);
+    if (!cookie.mayIssue) raise(sessionCookieRequiresTls());
     const authenticated = await identityAccess.authenticateOperator({ presentedToken: body.token });
     if (!authenticated.ok) raise(authenticated.error);
 
     const directive = identityAccess.issueSessionCookie({
       token: body.token,
       sessionExpiresAt: authenticated.value.expiresAt,
-      secure: isSecureTransport(request),
+      ...cookie.transport,
     });
     if (!directive.ok) raise(directive.error);
     response.setHeader("Set-Cookie", serializeSetCookie(this.onlyTheBytes(directive.value)));
@@ -217,11 +226,17 @@ export class BffSessionController {
     @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<void> {
     const identityAccess = requireIdentityAccess(this.application.app);
+    // D-COOKIE. Refused BEFORE the revocation, for the reason the order below is
+    // not interchangeable: a sign-out that ended the session and then could not
+    // write the clearing cookie would be the half-done answer this route exists
+    // to avoid.
+    const cookie = sessionCookieTransport(request);
+    if (!cookie.mayIssue) raise(sessionCookieRequiresTls());
     const ended = await identityAccess.revokeOperatorSession({
       presentedToken: presentedOperatorToken(identityAccess, request),
     });
     if (!ended.ok && ended.error.category !== "unauthenticated") raise(ended.error);
-    const directive = identityAccess.clearSessionCookie({ secure: isSecureTransport(request) });
+    const directive = identityAccess.clearSessionCookie(cookie.transport);
     if (!directive.ok) raise(directive.error);
     response.setHeader("Set-Cookie", serializeSetCookie(this.onlyTheBytes(directive.value)));
   }

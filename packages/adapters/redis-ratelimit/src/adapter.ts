@@ -8,7 +8,7 @@
 // is `platos:identity:ratelimit:`.
 //
 // ---------------------------------------------------------------------------
-// WHERE THIS ADAPTER FAILS CLOSED, AND WHERE THE SYSTEM DOES NOT. MEASURED.
+// WHERE THIS ADAPTER FAILS CLOSED, AND SINCE D3 THE SYSTEM DOES TOO. MEASURED.
 //
 // This adapter fails closed: `consume` answers a dead Redis with
 // `err(RATE_LIMITER_UNAVAILABLE)` and never with a fabricated bucket, so no
@@ -17,35 +17,38 @@
 // command, and `ratelimit.integration.test.ts` pins it against a real client
 // that has lost its server.
 //
-// THE COMPOSED SYSTEM STILL FAILS OPEN, and stating that plainly is worth more
-// than a claim this file is not entitled to make. `packages/contexts/identity-
-// access/domain/rate-limit.ts` declares
+// THE COMPOSED SYSTEM FAILS CLOSED TOO, BY D3 (2026-09-15). It did not always:
+// until that decision `packages/contexts/identity-access/domain/rate-limit.ts`
+// declared the policy `"allow"`, and an install that lost Redis lost
+// authentication rate limiting until it came back. D3 reads: "The composed
+// rate-limit path FAILS CLOSED: `LIMITER_UNAVAILABLE_POLICY = "deny"`", because
+// its consumers include MFA verification and enrolment, where `"allow"` was
+// unlimited guesses at a six-digit code for the length of the outage. So the
+// constant is now
 //
-//     export const LIMITER_UNAVAILABLE_POLICY: "allow" | "deny" = "allow";
+//     export const LIMITER_UNAVAILABLE_POLICY: "allow" | "deny" = "deny";
 //
-// and `consume-rate-limit.ts` applies it to exactly this refusal: the request is
-// ADMITTED, as `degraded`, and a safety event is recorded. So an install that
-// loses Redis loses authentication rate limiting until it comes back. That is a
-// deliberate, argued trade — the constant's own header says "the alternative —
-// refusing every login while the cache is down — converts a cache outage into a
-// total authentication outage" — and it is DOMAIN policy, not adapter policy:
-// flipping it to `"deny"` closes every use case with no other edit.
+// and `consume-rate-limit.ts` turns exactly this refusal into
+// `RATE_LIMIT_FAILED_CLOSED` (503) — a code distinct from both `RATE_LIMITED`
+// (the budget is spent) and this adapter's own `RATE_LIMITER_UNAVAILABLE` (the
+// port's cause, carried in `details`). The accepted cost, which D3 names: sign-in
+// stops while Redis is unreachable. It is DOMAIN policy, not adapter policy, and
+// this directory did not change to follow it — which is the point of the port.
 //
-// IT IS ALREADY PINNED, AND NOT BY THIS DIRECTORY.
-// `packages/contexts/identity-access/domain/rate-limit.test.ts` asserts
-// `LIMITER_UNAVAILABLE_POLICY` is `"allow"` under the heading "the documented
-// behaviour when the limiter itself is unreachable", so the day it flips, that
-// case is what fails. A second copy here would be a second statement of one
-// fact, in a package that cannot even import the constant — an adapter's only
-// import edge is the port entry point.
+// IT IS PINNED, AND NOT BY THIS DIRECTORY.
+// `packages/contexts/identity-access/domain/rate-limit.test.ts` asserts the
+// policy is `"deny"` (re-recorded under D3 from the oracle's `"allow"`), and
+// `apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts`
+// stops a real Redis mid-test and reads `RATE_LIMIT_FAILED_CLOSED` off the wire
+// with nothing minted or mailed. A second copy here would be a second statement
+// of one fact, in a package that cannot even import the constant — an adapter's
+// only import edge is the port entry point.
 //
-// AND IT IS THE ORACLE'S BEHAVIOUR, WHICH IS WHY THIS TRANCHE DOES NOT FLIP IT.
+// THE ORACLE IS STILL FAIL-OPEN, AND THAT IS NOW A RECORDED DIVERGENCE.
 // `apps/agent/src/auth/rate-limit.guard.ts` catches a failed Redis pipeline with
 // `// Redis down -> fail open (availability over rate limiting).` and returns
-// `true`. Closing the composed system here would be a behaviour change to a live
-// authentication path, decided inside a tranche that builds adapters, and it
-// would be invisible in a diff of this directory. A reviewer who wants it closed
-// changes one constant in the context and every use case follows.
+// `true`. V1 deliberately does not port that line; any differential expectation
+// that encoded it was re-recorded naming D3.
 // ---------------------------------------------------------------------------
 
 import type { RateLimiter } from "@platos/context-identity-access/application/ports/index.js";

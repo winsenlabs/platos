@@ -17,7 +17,8 @@
     "build": "tsc -b",
     "clean": "tsc -b --clean",
     "test": "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "dev": "node scripts/dev.mjs"
   },
   "dependencies": {
     "@platos/kernel": "workspace:*",
@@ -53,6 +54,7 @@
     "@platos/adapter-keyring-envelope": "workspace:*",
     "@platos/adapter-node-crypto-digest": "workspace:*",
     "@platos/adapter-tokenmint-totp": "workspace:*",
+    "@platos/adapter-channel-discord": "workspace:*",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
@@ -61,6 +63,7 @@
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^10.28.0",
-    "@testcontainers/redis": "^10.28.0"
+    "@testcontainers/redis": "^10.28.0",
+    "testcontainers": "^10.28.0"
   }
 }

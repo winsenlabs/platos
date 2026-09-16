@@ -27,9 +27,11 @@ import { applyDeprecationSignal } from "./deprecation-signal";
  * cannot, because there is one string of each and `applyApiSurface` is the only
  * caller that assembles them.
  *
- * WHAT IS DELIBERATELY *NOT* MOVED HERE. `auth/scope.guard.ts` and the
- * `UNAUTH_BODY_CAPS` table in `main.ts` compare an INBOUND REQUEST PATHNAME
- * against `/api/v1/...` string constants. Those are wire facts, not route
+ * WHAT IS DELIBERATELY *NOT* MOVED HERE. `auth/scope.guard.ts` compares an
+ * INBOUND REQUEST PATHNAME against `/api/v1/...` string constants, and the body-cap
+ * table in `http/request-body-limits.ts` (formerly `UNAUTH_BODY_CAPS` in
+ * `main.ts`) mounts its caps on the same literal prefixes; its one entry added in
+ * M4 is composed from `API_V1_PREFIX` and says why. Those are wire facts, not route
  * declarations: the whole claim of this change is that the wire paths do not
  * move, so a guard that keeps matching the literal it always matched is the
  * independent witness that they did not. Rewriting them to derive from

@@ -91,7 +91,7 @@ def list_orders(customer_id: str) -> list[Order]:
     # auth="user" and the upstream request carried a user token).
     token = current_user_token()
 
-    # The trigger.dev scope tuple — useful if you cache per-project.
+    # The Platos tenancy scope — useful if you cache per-project.
     org_id, project_id, environment_id = current_scope()
 
     return db.list_orders(

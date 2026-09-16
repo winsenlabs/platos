@@ -110,6 +110,20 @@ export interface TenancyPoolSettings {
   readonly connectionLimit?: number;
   /** Seconds a query waits for a free connection before it fails. */
   readonly poolTimeoutSeconds?: number;
+  /**
+   * Seconds the CLIENT waits for any one query's response before it abandons
+   * the socket and fails the query.
+   *
+   * Separate from every timeout below because those are the SERVER's, and a
+   * PostgreSQL that has stopped answering altogether (frozen, partitioned, its
+   * host paused) enforces none of them. Measured against a paused container
+   * through core-api: an operator-session lookup held its HTTP request open
+   * for the caller's full 40-second limit with no answer, while the process
+   * went on answering liveness. With this parameter at 3 the same request
+   * failed at 3.0 seconds. `socket_timeout` is on the driver's closed list of
+   * connection-string parameters, like `pool_timeout`, so it travels on the URL.
+   */
+  readonly socketTimeoutSeconds?: number;
   /** Milliseconds a single statement may run before PostgreSQL cancels it. */
   readonly statementTimeoutMs?: number;
   /**
@@ -266,6 +280,12 @@ export function buildDatasourceUrl(databaseUrl: string, pool: TenancyPoolSetting
     url.searchParams.set(
       "pool_timeout",
       String(requirePositiveInteger("poolTimeoutSeconds", pool.poolTimeoutSeconds)),
+    );
+  }
+  if (pool.socketTimeoutSeconds !== undefined) {
+    url.searchParams.set(
+      "socket_timeout",
+      String(requirePositiveInteger("socketTimeoutSeconds", pool.socketTimeoutSeconds)),
     );
   }
   const serverOptions = buildServerOptions(pool);

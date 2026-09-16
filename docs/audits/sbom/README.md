@@ -3,7 +3,12 @@
 Machine-readable SBOMs, an advisory receipt, licence dispositions, and a deterministic,
 non-vacuous gate — the executable closure of the `docs/audits/M0.5-dependency-sbom.md` report.
 The agent SBOM is derived from `pnpm-lock.yaml`; the webapp SBOM is grounded in the committed,
-deterministically sorted package inventory captured from its exact Docker `production-deps` stage.
+deterministically sorted package inventory captured from its exact Docker `production-deps` stage; the
+core-api SBOM is its `pnpm-lock.yaml` closure minus the reviewed absences that
+`scripts/deploy-bundle-closure.mjs check` proves against its deploy bundle inside the image build.
+The image set is `IMAGES` in `scripts/lib/pnpm-closure.mjs`, joined to the `build-images.yml`
+candidate matrix by `pnpm test:sbom`; the migrations candidate is the one reviewed row without an SBOM
+(it installs from its own lockfile).
 
 Start with **`closure-contract.md`** — the narrative + full disposition ledger.
 
@@ -15,23 +20,24 @@ Start with **`closure-contract.md`** — the narrative + full disposition ledger
 | `NON-VACUITY-PROOF.md` | proof the licence gate can fail | `pnpm audit:sbom:nonvacuity` |
 | `platos-agent.cdx.json` | CycloneDX 1.5 SBOM — agent image (718 comps / 657 names) | `pnpm audit:sbom` |
 | `platos-webapp.cdx.json` | CycloneDX 1.5 SBOM — exact webapp image inventory (330 comps / 303 names) | `pnpm audit:sbom` |
+| `platos-core-api.cdx.json` | CycloneDX 1.5 SBOM — core-api image, lock closure 326 minus 3 reviewed bundle absences (323 comps / 310 names) | `pnpm audit:sbom` |
 | `platos-webapp.image-inventory.json` | exact name/version pairs installed in the Docker `production-deps` stage | `scripts/image-package-inventory.mjs` against the built stage |
 | `closure-receipts.json` | per-image SBOM/inventory hashes, exact counts, roots, and input hashes | `pnpm audit:sbom` |
-| `license-index.json` | frozen registry licence snapshot (883-component lock closure plus two linked first-party workspaces) | `pnpm audit:licenses` (network) |
+| `license-index.json` | frozen registry licence snapshot (886 components: the union lock closure plus two linked first-party workspaces) | `pnpm audit:licenses` (network) |
 | `license-overlay.json` | curated licence elections/corrections (hand-maintained) | — |
 | `license-policy.json` | copyleft/commercial gate + dispositioned baseline (hand-maintained) | — |
-| `advisory/osv-report.json` | OSV receipt for the agent lock closure plus exact verified webapp image inventory | `pnpm audit:advisory` (network) |
+| `advisory/osv-report.json` | OSV receipt for the agent lock closure, the core-api bundle-proven closure, and the exact verified webapp image inventory | `pnpm audit:advisory` (network) |
 
 ## Commands
 
 ```bash
-pnpm audit:sbom            # regenerate both CycloneDX SBOMs + receipts (offline, deterministic)
+pnpm audit:sbom            # regenerate every CycloneDX SBOM + receipts (offline, deterministic)
 pnpm audit:sbom:check      # FAIL on SBOM drift or an un-dispositioned copyleft/commercial dep (offline)
 pnpm audit:sbom:nonvacuity # prove the licence gate can actually fail (offline)
 pnpm test:sbom             # node --test: closure counts + drift + non-vacuity (offline, CI gate)
 pnpm audit:webapp-image-inventory # gate-only: verify production-deps + exact downloaded candidate archive
 
-pnpm audit:advisory        # OSV scan of both closures -> advisory/osv-report.json (network)
+pnpm audit:advisory        # OSV scan of every shipping set -> advisory/osv-report.json (network)
 pnpm audit:advisory:check  # fail if lock/inventory bytes, hash, platform, counts, scan set, or finding membership drift
 pnpm audit:licenses        # refresh the frozen licence index from the registry (network, after a relock)
 ```

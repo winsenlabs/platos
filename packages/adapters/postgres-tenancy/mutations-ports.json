@@ -201,7 +201,7 @@
     {
       "name": "M-P13 directory: identity-access's record is spread through unprojected",
       "file": "src/operator-peers.ts",
-      "from": "      return {\n        userId: account.userId,\n        email: account.email,\n        disabledAt: account.disabledAt,\n      };",
+      "from": "      return {\n        userId: account.userId,\n        email: account.email,\n        displayName: account.displayName,\n        disabledAt: account.disabledAt,\n      };",
       "to": "      return { ...account };",
       "suites": ["src/ports-conformance.integration.test.ts"],
       "kills": [

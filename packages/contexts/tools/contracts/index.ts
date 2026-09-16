@@ -67,6 +67,8 @@ export type {
   DisambiguationStrategy,
   DispatchSource,
   HealthOutcome,
+  HealthReport,
+  HealthStatus,
   IdentityMode,
   McpCaller,
   McpTransport,
@@ -83,6 +85,8 @@ export {
   DISAMBIGUATION_STRATEGIES,
   DISPATCH_SOURCES,
   HEALTH_OUTCOMES,
+  HEALTH_REPORTS,
+  HEALTH_STATUSES,
   IDENTITY_MODES,
   MCP_TRANSPORTS,
   PERMISSION_STATES,
@@ -143,7 +147,10 @@ export type {
   ReadOrganizationPoliciesQuery,
   ReadToolAuditQuery,
   ReadToolsQuery,
+  RecordedToolHealth,
+  RecordToolHealthCommand,
   RegisterToolsCommand,
+  ToolHealthReportIntake,
   ResolvePermissionQuery,
   SetEntityToolPolicyCommand,
   SetOrganizationPolicyCommand,
@@ -157,6 +164,20 @@ export interface RegisteredToolsView {
   readonly newTools: number;
   readonly removed: number;
   readonly tools: readonly useCases.ToolView[];
+}
+
+/**
+ * What one heartbeat changed.
+ *
+ * `ToolHealthView` is already published for the row shape, so this view carries
+ * the rows plus the ONE fact a caller cannot derive: which of the names it sent
+ * this environment has no exposure for. A transport that answered only with the
+ * recorded rows would leave a client unable to tell "we took your report" from
+ * "we quietly dropped half of it".
+ */
+export interface ToolHealthRecordingView {
+  readonly recorded: readonly useCases.ToolHealthView[];
+  readonly unknownToolNames: readonly string[];
 }
 
 export interface OrganizationPolicyView {
@@ -185,6 +206,20 @@ export interface ToolsContract {
   /** Replace one entity's complete declaration for this environment. */
   registerTools(command: useCases.RegisterToolsCommand): Promise<Result<RegisteredToolsView>>;
   listTools(query: useCases.ReadToolsQuery): Promise<Result<readonly useCases.ToolView[]>>;
+  /**
+   * Record what a connected entity says about its own tools — the platools
+   * `heartbeat` frame, as a contract method.
+   *
+   * IT IS ON THE REGISTRY BLOCK AND NOT BESIDE `executeTool`, because it is not
+   * a call. `applyOutcome` folds what a dispatch DID; this folds what the entity
+   * REPORTS between dispatches, and `domain/health.ts` keeps the two vocabularies
+   * apart for that reason. A name this environment does not expose is skipped and
+   * returned in `unknownToolNames`, which is the oracle's own behaviour made
+   * visible rather than silent.
+   */
+  recordToolHealth(
+    command: useCases.RecordToolHealthCommand,
+  ): Promise<Result<ToolHealthRecordingView>>;
   pageTools(query: useCases.PageToolsQuery): Promise<Result<ToolPageView>>;
   setToolEnabled(command: useCases.SetToolEnabledCommand): Promise<Result<useCases.ToolView>>;
 
@@ -287,6 +322,11 @@ export function toolsContract(dependencies: ToolsDependencies): ToolsContract {
       map(await useCases.registerTools(dependencies, command), (registered) => ({
         ...registered.outcome,
         tools: registered.exposures.map(useCases.toToolView),
+      })),
+    recordToolHealth: async (command) =>
+      map(await useCases.recordToolHealth(dependencies, command), (recording) => ({
+        recorded: recording.recorded.map(useCases.toToolHealthView),
+        unknownToolNames: [...recording.unknownToolNames],
       })),
     listTools: async (query) =>
       map(await useCases.listTools(dependencies, query), (tools) => tools.map(useCases.toToolView)),

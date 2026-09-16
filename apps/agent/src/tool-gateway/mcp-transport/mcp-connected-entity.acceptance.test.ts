@@ -6,6 +6,7 @@ import { ToolExecutorService } from "../tool-executor.service";
 import type { OrgToolEntry, ToolSchema } from "../tool-registry.service";
 import { McpCredentialService } from "./mcp-credential.service";
 import { EntityMcpDiscoveryService } from "./entity-mcp-discovery.service";
+import { McpConnectionPool } from "./mcp-client-pool.service";
 
 /**
  * WHAT THE EXECUTOR ACTUALLY CALLS ON `mcpCredentials`, read off the executor.
@@ -29,6 +30,16 @@ const EXECUTOR_SOURCE = readFileSync(
   join(__dirname, "..", "tool-executor.service.ts"),
   "utf8",
 );
+const DISCOVERY_SOURCE = readFileSync(join(__dirname, "entity-mcp-discovery.service.ts"), "utf8");
+
+/** Every pool method a source calls through `receiver` (`this.mcpPool` / `this.pool`). */
+function poolMethodsCalled(source: string, receiver: RegExp): string[] {
+  const names = new Set<string>();
+  for (const match of source.matchAll(new RegExp(`${receiver.source}\\??\\.([A-Za-z0-9_]+)\\s*\\(`, "gu"))) {
+    names.add(match[1]!);
+  }
+  return [...names].sort();
+}
 
 function credentialMethodsTheExecutorCalls(): string[] {
   const names = new Set<string>();
@@ -149,7 +160,8 @@ function makeExecutor(options: {
   });
   const callTool = vi.fn(async () => ({ content: [{ type: "text", text: "ok" }] }));
   const getClient = vi.fn(async () => ({ callTool }));
-  const pool = { getClient };
+  const evictAfterFailure = vi.fn(() => true);
+  const pool = { getClient, evictAfterFailure };
   const executor = new ToolExecutorService(
     prisma,
     registry as any,
@@ -165,7 +177,7 @@ function makeExecutor(options: {
     credentials as any,
     pool as any,
   );
-  return { executor, healthWrites, resolvedHeaders, getClient, callTool };
+  return { executor, healthWrites, resolvedHeaders, getClient, callTool, pool };
 }
 
 function makeWireExecutor(
@@ -264,6 +276,7 @@ describe("clean EntityMcpClient discovery", () => {
           ],
         }),
       }),
+      evictAfterFailure: () => true,
     };
     const registry = {
       registerTools: async (params: any, tools: ToolSchema[]) => {
@@ -545,13 +558,25 @@ function makeDiscovery(options: {
       },
     },
   };
+  const sdkClient = {
+    listTools: async () => {
+      if (options.listThrows !== undefined) throw new Error(options.listThrows);
+      return { tools: options.listed ?? [] };
+    },
+  };
+  // `evictAfterFailure` is the pool method a failed enumeration calls (WIN-269).
+  // A double without it answered the throw above with "this.pool.evictAfterFailure
+  // is not a function" instead of the refusal under test. It records the failure
+  // too: the real pool decides from it whether the session ended.
+  const evicted: unknown[] = [];
+  const evictionFailures: unknown[] = [];
   const pool = {
-    getClient: async () => ({
-      listTools: async () => {
-        if (options.listThrows !== undefined) throw new Error(options.listThrows);
-        return { tools: options.listed ?? [] };
-      },
-    }),
+    getClient: async () => sdkClient,
+    evictAfterFailure: (client: unknown, failure: unknown) => {
+      evicted.push(client);
+      evictionFailures.push(failure);
+      return true;
+    },
   };
   const registry = {
     registerTools: async (params: any, tools: ToolSchema[]) => {
@@ -569,7 +594,7 @@ function makeDiscovery(options: {
     pool as any,
     registry as any,
   );
-  return { discovery, registrations, clientWrites, entityWrites, dispatchableWrites };
+  return { discovery, registrations, clientWrites, entityWrites, dispatchableWrites, evicted, evictionFailures, sdkClient, pool };
 }
 
 describe("WIN-269 — the doubles in this file stand for the real collaborators", () => {
@@ -584,6 +609,26 @@ describe("WIN-269 — the doubles in this file stand for the real collaborators"
       // ...and it must be a method the SERVICE really has, so the double cannot
       // paper over an executor calling something that does not exist.
       expect(typeof (McpCredentialService.prototype as any)[method]).toBe("function");
+    }
+  });
+
+  it("provides every pool method the executor and discovery call, and each is real on McpConnectionPool", () => {
+    // The same join, for the pool. WIN-269's eviction added a pool call to both
+    // paths, and the discovery double without it turned a refusal case red with
+    // "this.pool.evict is not a function" — the failure mode the case above was
+    // written to catch, one collaborator over. Both paths now hand the failure to
+    // `evictAfterFailure`, which keeps a session a timeout or a JSON-RPC error
+    // answer did not end.
+    const executorCalls = poolMethodsCalled(EXECUTOR_SOURCE, /this\.mcpPool/u);
+    const discoveryCalls = poolMethodsCalled(DISCOVERY_SOURCE, /this\.pool/u);
+    expect(executorCalls).toEqual(["evictAfterFailure", "getClient"]);
+    expect(discoveryCalls).toEqual(["evictAfterFailure", "getClient"]);
+    const executorPool = makeExecutor().pool as Record<string, unknown>;
+    const discoveryPool = makeDiscovery({}).pool as Record<string, unknown>;
+    for (const method of executorCalls) expect(typeof executorPool[method]).toBe("function");
+    for (const method of discoveryCalls) expect(typeof discoveryPool[method]).toBe("function");
+    for (const method of new Set([...executorCalls, ...discoveryCalls])) {
+      expect(typeof (McpConnectionPool.prototype as any)[method]).toBe("function");
     }
   });
 });
@@ -693,9 +738,14 @@ describe("WIN-269 — a discovery that did not run is distinguishable from one t
   });
 
   it("a server that REFUSES is a failure: disconnected, lastDiscoveryAt nulled, nothing pruned", async () => {
-    const { discovery, registrations, clientWrites, entityWrites, dispatchableWrites } =
+    const { discovery, registrations, clientWrites, entityWrites, dispatchableWrites, evicted, evictionFailures, sdkClient } =
       makeDiscovery({ listThrows: "upstream refused the session" });
     const result = await discovery.discover("entity-1");
+
+    // The session that failed is handed back for eviction, and only that one,
+    // with the failure the pool decides from.
+    expect(evicted).toEqual([sdkClient]);
+    expect(evictionFailures.map((failure) => String((failure as Error).message))).toEqual(["upstream refused the session"]);
 
     expect(result.contacted).toBe(0);
     expect(result.failed).toBe(1);

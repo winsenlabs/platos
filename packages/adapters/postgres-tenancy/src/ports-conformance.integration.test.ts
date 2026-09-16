@@ -133,6 +133,7 @@ async function observeInMemory(ids: PortsConformanceIds): Promise<PortsObservati
   operators.add({
     userId: asIdentifier<UserId>(ids.memberUserId),
     email: asIdentifier<EmailAddress>(ids.memberEmail),
+    displayName: null,
     disabledAt: null,
   });
 
@@ -330,7 +331,25 @@ describe("what the shared scenario cannot reach", () => {
     const userId = await harness.seedUser("shape@ports.test");
     const account = await harness.adapter.operators.findAccount(asIdentifier<UserId>(userId));
     expect(account).not.toBeNull();
-    expect(Object.keys(account ?? {}).sort()).toEqual(["disabledAt", "email", "userId"]);
+    expect(Object.keys(account ?? {}).sort()).toEqual(["disabledAt", "displayName", "email", "userId"]);
+  });
+
+  test("the operator directory reads the display name the User row holds, and null where it holds none", async () => {
+    // The team page renders `displayName ?? email`, so the listing needs the
+    // column — read from the ROW, written here by SQL the adapter did not issue,
+    // not from a record this suite built.
+    const namedUserId = await harness.seedUser("named@ports.test");
+    const unnamedUserId = await harness.seedUser("unnamed@ports.test");
+    await harness.client.$executeRawUnsafe(
+      `UPDATE "User" SET "displayName" = $2 WHERE id = $1::uuid`,
+      namedUserId,
+      "Ada Lovelace",
+    );
+    const named = await harness.adapter.operators.findAccount(asIdentifier<UserId>(namedUserId));
+    const unnamed = await harness.adapter.operators.findAccount(asIdentifier<UserId>(unnamedUserId));
+    expect(named?.displayName).toBe("Ada Lovelace");
+    expect(unnamed).not.toBeNull();
+    expect(unnamed?.displayName).toBeNull();
   });
 
   test("the operator directory reads a disabled account rather than hiding it", async () => {

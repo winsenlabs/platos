@@ -119,6 +119,19 @@ class ProbeController {
     throw new TypeError(`connection refused: postgres://platos:${PLANTED}@db/platos`);
   }
 
+  /**
+   * The database client giving up on a store that stopped answering: the shape
+   * measured through this process against a paused PostgreSQL (socket deadline).
+   * Its text carries the host, which must stay in the log.
+   */
+  @Get("store-down")
+  storeDown(): never {
+    throw Object.assign(new Error(`Socket timeout at postgres://platos:${PLANTED}@db/platos`), {
+      name: "PrismaClientKnownRequestError",
+      code: "P1008",
+    });
+  }
+
   /** A handler that chose its own status and body, as `health.controller.ts` does. */
   @Get("handler-chose")
   handlerChose(): never {
@@ -333,6 +346,21 @@ describe("WIN-260 (c) — every canonical code is reachable over REST", () => {
     expect(errorOf(answer)["code"]).toBe("TRANSPORT_UNHANDLED_FAULT");
     expect(answer.text).not.toContain(PLANTED);
     expect(answer.text).not.toContain("postgres://");
+  });
+
+  it("answers a store that stopped answering as TRANSPORT_STORE_UNAVAILABLE at 503, not as a defect", async () => {
+    const answer = await get("/probe/store-down");
+    expect(answer.status).toBe(TAXONOMY.codes["TRANSPORT_STORE_UNAVAILABLE"]?.status);
+    expect(answer.status).toBe(503);
+    expect(errorOf(answer)["code"]).toBe("TRANSPORT_STORE_UNAVAILABLE");
+    expect(answer.headers.get("retry-after")).toBe("1");
+    expect(answer.text).not.toContain(PLANTED);
+    const line = logLines()
+      .filter((entry) => entry["message"] === "http.request_failed")
+      .at(-1);
+    // The driver's text is the operator's, joined to the caller's error id.
+    expect(line).toMatchObject({ code: "TRANSPORT_STORE_UNAVAILABLE", status: 503, errorId: errorOf(answer)["errorId"] });
+    expect(String(line?.["fault"])).toContain("Socket timeout");
   });
 
   it("logs a fault that arrived after the response, instead of writing a second one", async () => {

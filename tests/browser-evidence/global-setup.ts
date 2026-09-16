@@ -17,6 +17,7 @@ type CandidateImages = {
   agent: string;
   webapp: string;
   migrations: string;
+  coreApi: string;
 };
 
 async function createBrowserCredential(scope: ReturnType<typeof loadFixtureManifest>["scopes"][number]) {
@@ -86,7 +87,7 @@ export default async function globalSetup() {
       `PLATOS_CANDIDATE_SHA ${process.env.PLATOS_CANDIDATE_SHA} does not equal browser evidence HEAD ${head}`
     );
   }
-  for (const name of ["agent", "webapp", "migrations"] as const) {
+  for (const name of ["agent", "webapp", "migrations", "coreApi"] as const) {
     digestReference(candidateImages[name], name);
   }
   if (fixture.sha256 !== fixtureBodySha256(fixture)) {

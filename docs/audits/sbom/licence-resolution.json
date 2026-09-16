@@ -1890,15 +1890,15 @@
     "shippingSbomAbsence": [
       {
         "path": "docs/audits/sbom/platos-agent.cdx.json",
-        "sha256": "8b880df3301024028e23517dc24088f987baaf62005d800f6da8dad70bb485c8",
-        "size": 541837,
+        "sha256": "0d8dfddaab11cc4f3bbca893baa2fa1a9407adaf305aaa75e2548c7d04ff876e",
+        "size": 544744,
         "packageName": "@platos/otlp-importer",
         "absent": true
       },
       {
         "path": "docs/audits/sbom/platos-webapp.cdx.json",
-        "sha256": "89c8d9d5d6948ea37eb32134b5f8aa648dc13740bb25e04c745ab53519344511",
-        "size": 247926,
+        "sha256": "4c00515664dc823f6eac34b98d044cc4470a61cc0bcd7f53706913e174251225",
+        "size": 248934,
         "packageName": "@platos/otlp-importer",
         "absent": true
       },
@@ -1906,6 +1906,13 @@
         "path": "docs/audits/sbom/platos-webapp.image-inventory.json",
         "sha256": "9b745000948ff8837790fd51c51b8be1f2efc10b43f00a86228fc4139983c419",
         "size": 24107,
+        "packageName": "@platos/otlp-importer",
+        "absent": true
+      },
+      {
+        "path": "docs/audits/sbom/platos-core-api.cdx.json",
+        "sha256": "a178d363b5651af932583aa5359c344cd3793432e48ce857eb10bbfc4bc90c9c",
+        "size": 245951,
         "packageName": "@platos/otlp-importer",
         "absent": true
       }

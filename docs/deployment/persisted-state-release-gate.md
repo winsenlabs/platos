@@ -29,8 +29,11 @@ Agent logs, and Postgres/Redis/ClickHouse/MinIO read-back evidence for 14 days.
    Pull requests, including forks, have no package-write permission and neither
    authenticate to GHCR nor publish official candidate tags.
 2. The `persisted-state-completion` job downloads, verifies, and locally loads
-   the exact Agent, webapp, and migration OCI artifacts. Its Remix requests go
-   through the production webapp image, not imported checkout route handlers.
+   the exact Agent, webapp, migration and core-api OCI artifacts — all four
+   candidates. Its Remix requests go through the production webapp image, not
+   imported checkout route handlers. The core-api candidate is served by the
+   `smoke-candidate-core-api` job, which this job waits for; `candidate-images.json`
+   records core-api only as the identity that job reported serving.
 3. A merge or successful `main` gate does not authorize publication. An
    operator must separately dispatch `.github/workflows/publish-images.yml`
    with the successful landed-main run ID and approve the `image-publication`
@@ -54,7 +57,7 @@ docker buildx imagetools inspect "ghcr.io/winsenlabs/platos-webapp@sha256:<teste
 ```
 
 Save both `candidate-images.json` and the trusted `published-images.json`
-artifact. Require their commit and three `sha256:...` identities to match before
+artifact. Require their commit and four `sha256:...` identities to match before
 touching the target environment.
 
 ## Protected `test-platos` environment
