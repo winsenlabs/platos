@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import type { RequestScope } from "../auth/scope.guard";
 import { ToolRegistryService, type OrgToolEntry } from "./tool-registry.service";
-import { filterByEntityIds as filterToolsByEntityIds } from "../agent-runtime/context-resolver";
+import { filterByEntityIds as filterToolsByEntityIds } from "./tool-context/context-resolver";
 
 /**
  * PIFSP-11 — the single source of truth for "given a (toolName, scope, entity_ids)

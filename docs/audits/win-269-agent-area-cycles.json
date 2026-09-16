@@ -1,0 +1,1096 @@
+{
+  "issue": "WIN-269",
+  "milestone": "M4.3",
+  "agentSrc": "apps/agent/src",
+  "layers": [
+    {
+      "id": "mcp",
+      "areas": [
+        "mcp-platform",
+        "mcp-docs"
+      ]
+    },
+    {
+      "id": "runtime",
+      "areas": [
+        "agent-runtime"
+      ]
+    },
+    {
+      "id": "tool",
+      "areas": [
+        "tool-gateway"
+      ]
+    }
+  ],
+  "allowlist": [
+    {
+      "from": "apps/agent/src/agent-runtime/agent.controller.ts",
+      "to": "apps/agent/src/mcp-platform/mcp-management.validation.ts",
+      "owner": "M3.1 (WIN-261)",
+      "reason": "AgentController imports the MCP management request validators to serve the `/entities/:entityId/mcp/*` routes. M3.1 owns apps/agent AgentController and AgentService and this tranche may not edit either file, so the edge cannot be inverted here. The fix is M3.1's: the validators are a leaf and move behind a tool-gateway-owned seam exactly as context-resolver, context-automap and the postman handle did, or the routes move to core-api with the rest of M3.1's controller. While this entry stands, WIN-269 is NOT closed."
+    }
+  ],
+  "violationCodes": [
+    "AAC-1-TOOL_REACHES_RUNTIME",
+    "AAC-2-TOOL_REACHES_MCP",
+    "AAC-3-RUNTIME_REACHES_MCP",
+    "AAC-4-STALE_ALLOWLIST_ENTRY",
+    "AAC-5-UNUSED_ALLOWLIST_ENTRY",
+    "AAC-6-UNOWNED_ALLOWLIST_ENTRY"
+  ],
+  "violations": [],
+  "clauseViolations": [
+    {
+      "code": "AAC-3-RUNTIME_REACHES_MCP",
+      "from": "agent-runtime",
+      "to": "mcp-platform",
+      "path": [
+        "agent-runtime",
+        "mcp-platform"
+      ],
+      "firstHop": [
+        "agent-runtime/agent.controller.ts -> mcp-platform/mcp-management.validation.ts"
+      ]
+    }
+  ],
+  "summary": {
+    "files": 283,
+    "areas": 28,
+    "fileEdges": 1106,
+    "layerEdges": {
+      "mcp-platform -> agent-runtime": 15,
+      "mcp-platform -> tool-gateway": 16,
+      "mcp-docs -> mcp-platform": 1,
+      "agent-runtime -> mcp-platform": 1,
+      "agent-runtime -> tool-gateway": 15
+    },
+    "allowlisted": 1,
+    "residualComponent": [
+      {
+        "size": 7,
+        "areas": [
+          "agent-runtime",
+          "channels",
+          "connections",
+          "mcp-platform",
+          "skills",
+          "streaming",
+          "trigger-bridge"
+        ]
+      },
+      {
+        "size": 5,
+        "areas": [
+          "auth",
+          "governance",
+          "monitoring",
+          "providers",
+          "tool-gateway"
+        ]
+      }
+    ]
+  },
+  "clause": {
+    "row": "no runtime<->tool<->MCP import cycle remains",
+    "closed": false,
+    "openBecause": [
+      "agent-runtime/agent.controller.ts -> mcp-platform/mcp-management.validation.ts (owner M3.1 (WIN-261))"
+    ]
+  },
+  "edges": {
+    "<root>": {
+      "agent-runtime": [
+        "app.module.ts -> agent-runtime/agent-runtime.module.ts"
+      ],
+      "auth": [
+        "app.module.ts -> auth/auth.module.ts",
+        "app.module.ts -> auth/rate-limit.guard.ts",
+        "app.module.ts -> auth/scope.guard.ts",
+        "main.ts -> auth/auth.service.ts"
+      ],
+      "channels": [
+        "app.module.ts -> channels/channels.module.ts"
+      ],
+      "connections": [
+        "app.module.ts -> connections/connections.module.ts"
+      ],
+      "evals": [
+        "app.module.ts -> evals/evals.module.ts"
+      ],
+      "files": [
+        "app.module.ts -> files/files.module.ts"
+      ],
+      "health": [
+        "app.module.ts -> health/health.module.ts"
+      ],
+      "http": [
+        "main.ts -> http/api-surface.ts",
+        "main.ts -> http/request-body-limits.ts"
+      ],
+      "mcp-docs": [
+        "app.module.ts -> mcp-docs/docs-mcp.module.ts"
+      ],
+      "mcp-platform": [
+        "app.module.ts -> mcp-platform/host-router.middleware.ts",
+        "app.module.ts -> mcp-platform/mcp-platform.module.ts"
+      ],
+      "memory": [
+        "app.module.ts -> memory/memory.module.ts"
+      ],
+      "monitoring": [
+        "app.module.ts -> monitoring/monitoring.module.ts"
+      ],
+      "oauth": [
+        "app.module.ts -> oauth/oauth.module.ts"
+      ],
+      "observability": [
+        "app.module.ts -> observability/observability.module.ts"
+      ],
+      "openapi": [
+        "app.module.ts -> openapi/openapi.module.ts"
+      ],
+      "performance-evidence": [
+        "app.module.ts -> performance-evidence/performance-evidence.middleware.ts",
+        "app.module.ts -> performance-evidence/performance-evidence.module.ts"
+      ],
+      "privacy": [
+        "app.module.ts -> privacy/privacy.module.ts"
+      ],
+      "providers": [
+        "app.module.ts -> providers/providers.module.ts"
+      ],
+      "shared": [
+        "app.module.ts -> shared/database.provider.ts",
+        "app.module.ts -> shared/redis.provider.ts",
+        "main.ts -> shared/env.ts",
+        "main.ts -> shared/external-trigger-config.ts"
+      ],
+      "skills": [
+        "app.module.ts -> skills/skills.module.ts"
+      ],
+      "streaming": [
+        "app.module.ts -> streaming/streaming.module.ts"
+      ],
+      "tool-gateway": [
+        "app.module.ts -> tool-gateway/tool-gateway.module.ts"
+      ],
+      "trigger-bridge": [
+        "app.module.ts -> trigger-bridge/trigger-bridge.module.ts"
+      ]
+    },
+    "admin": {
+      "auth": [
+        "admin/environment.service.ts -> auth/scope.guard.ts"
+      ],
+      "shared": [
+        "admin/environment.service.ts -> shared/database.provider.ts",
+        "admin/organization.service.ts -> shared/database.provider.ts",
+        "admin/organization.service.ts -> shared/env.ts"
+      ]
+    },
+    "agent-runtime": {
+      "auth": [
+        "agent-runtime/agent-cluster.service.ts -> auth/scope.guard.ts",
+        "agent-runtime/agent-crud.service.ts -> auth/scope.guard.ts",
+        "agent-runtime/agent-runtime.module.ts -> auth/auth.module.ts",
+        "agent-runtime/agent-task.service.ts -> auth/scope.guard.ts",
+        "agent-runtime/agent.controller.ts -> auth/auth.service.ts",
+        "agent-runtime/agent.controller.ts -> auth/provider-health.service.ts",
+        "agent-runtime/agent.controller.ts -> auth/scope.guard.ts",
+        "agent-runtime/agent.controller.ts -> auth/secrets.service.ts",
+        "agent-runtime/agent.service.ts -> auth/scope.guard.ts",
+        "agent-runtime/attachment-upload.controller.ts -> auth/scope.guard.ts",
+        "agent-runtime/attachments.service.ts -> auth/scope.guard.ts",
+        "agent-runtime/channel-apps.controller.ts -> auth/scope.guard.ts",
+        "agent-runtime/channels.controller.ts -> auth/scope.guard.ts",
+        "agent-runtime/chat-stream.controller.ts -> auth/scope.guard.ts",
+        "agent-runtime/jobs.controller.ts -> auth/auth.service.ts",
+        "agent-runtime/jobs.controller.ts -> auth/scope.guard.ts",
+        "agent-runtime/turn-dispatch.service.ts -> auth/scope.guard.ts"
+      ],
+      "channels": [
+        "agent-runtime/channel-apps.controller.ts -> channels/channel-persistence.service.ts",
+        "agent-runtime/channel-apps.controller.ts -> channels/channel-runtime.service.ts",
+        "agent-runtime/channels.controller.ts -> channels/channel-persistence.service.ts",
+        "agent-runtime/channels.controller.ts -> channels/channel-runtime.service.ts"
+      ],
+      "evals": [
+        "agent-runtime/agent-runtime.module.ts -> evals/evals.module.ts",
+        "agent-runtime/agent.controller.ts -> evals/criterion.service.ts",
+        "agent-runtime/agent.controller.ts -> evals/eval.service.ts",
+        "agent-runtime/agent.controller.ts -> evals/golden-set.service.ts",
+        "agent-runtime/agent.controller.ts -> evals/rating.service.ts"
+      ],
+      "governance": [
+        "agent-runtime/agent-runtime.module.ts -> governance/governance.module.ts",
+        "agent-runtime/agent.service.ts -> governance/pii-filter.service.ts"
+      ],
+      "http": [
+        "agent-runtime/agent.controller.ts -> http/api-surface.ts",
+        "agent-runtime/attachment-upload.controller.ts -> http/api-surface.ts",
+        "agent-runtime/channel-apps.controller.ts -> http/api-surface.ts",
+        "agent-runtime/channels.controller.ts -> http/api-surface.ts",
+        "agent-runtime/chat-stream.controller.ts -> http/api-surface.ts",
+        "agent-runtime/job-execution.controller.ts -> http/api-surface.ts",
+        "agent-runtime/jobs.controller.ts -> http/api-surface.ts"
+      ],
+      "mcp-platform": [
+        "agent-runtime/agent.controller.ts -> mcp-platform/mcp-management.validation.ts"
+      ],
+      "memory": [
+        "agent-runtime/agent-runtime.module.ts -> memory/memory.module.ts",
+        "agent-runtime/agent-task.service.ts -> memory/conversation.service.ts",
+        "agent-runtime/agent-task.service.ts -> memory/memory.service.ts",
+        "agent-runtime/agent-task.service.ts -> memory/profile-cache.service.ts",
+        "agent-runtime/agent.controller.ts -> memory/conversation.service.ts",
+        "agent-runtime/agent.service.ts -> memory/knowledge-graph.service.ts",
+        "agent-runtime/agent.service.ts -> memory/memory-extraction.service.ts",
+        "agent-runtime/agent.service.ts -> memory/memory-feedback-legacy.ts",
+        "agent-runtime/agent.service.ts -> memory/memory.service.ts",
+        "agent-runtime/agent.service.ts -> memory/profile-cache.service.ts",
+        "agent-runtime/agent.service.ts -> memory/retrieval/context-retrieval.ts",
+        "agent-runtime/attachment-upload.controller.ts -> memory/conversation.service.ts",
+        "agent-runtime/turn-dispatch.service.ts -> memory/conversation.service.ts"
+      ],
+      "monitoring": [
+        "agent-runtime/agent-crud.service.ts -> monitoring/admin-audit.service.ts",
+        "agent-runtime/agent-crud.service.ts -> monitoring/usage-ledger.ts",
+        "agent-runtime/agent-runtime.module.ts -> monitoring/monitoring.module.ts",
+        "agent-runtime/agent-task.service.ts -> monitoring/budget.service.ts",
+        "agent-runtime/agent-task.service.ts -> monitoring/cost.service.ts",
+        "agent-runtime/agent-task.service.ts -> monitoring/metrics.service.ts",
+        "agent-runtime/agent-task.service.ts -> monitoring/model-pricing-preflight.ts",
+        "agent-runtime/agent-task.service.ts -> monitoring/rate-limit.service.ts",
+        "agent-runtime/agent-task.service.ts -> monitoring/safety-event.service.ts",
+        "agent-runtime/agent-task.service.ts -> monitoring/safety.service.ts",
+        "agent-runtime/agent-task.service.ts -> monitoring/spans.service.ts",
+        "agent-runtime/agent-task.service.ts -> monitoring/usage-ledger.ts",
+        "agent-runtime/agent.controller.ts -> monitoring/approval-keys.ts",
+        "agent-runtime/agent.controller.ts -> monitoring/approvals.service.ts",
+        "agent-runtime/agent.controller.ts -> monitoring/budget-alert.types.ts",
+        "agent-runtime/agent.controller.ts -> monitoring/budget.service.ts",
+        "agent-runtime/agent.controller.ts -> monitoring/cost-catalog-ingestion.ts",
+        "agent-runtime/agent.controller.ts -> monitoring/cost.service.ts",
+        "agent-runtime/agent.controller.ts -> monitoring/governance.service.ts",
+        "agent-runtime/agent.controller.ts -> monitoring/message-crypto.service.ts",
+        "agent-runtime/agent.controller.ts -> monitoring/model-pricing-preflight.ts",
+        "agent-runtime/agent.controller.ts -> monitoring/safety-event.service.ts",
+        "agent-runtime/agent.controller.ts -> monitoring/spans.service.ts",
+        "agent-runtime/agent.controller.ts -> monitoring/tool-audit.service.ts",
+        "agent-runtime/agent.controller.ts -> monitoring/trace.service.ts",
+        "agent-runtime/agent.controller.ts -> monitoring/utilization.service.ts",
+        "agent-runtime/agent.service.ts -> monitoring/approval-keys.ts",
+        "agent-runtime/agent.service.ts -> monitoring/approvals.service.ts",
+        "agent-runtime/agent.service.ts -> monitoring/cost.service.ts",
+        "agent-runtime/agent.service.ts -> monitoring/model-pricing-preflight.ts",
+        "agent-runtime/agent.service.ts -> monitoring/rate-limit.service.ts",
+        "agent-runtime/agent.service.ts -> monitoring/spans.service.ts",
+        "agent-runtime/agent.service.ts -> monitoring/usage-ledger.ts",
+        "agent-runtime/channel-apps.controller.ts -> monitoring/message-crypto.service.ts",
+        "agent-runtime/channels.controller.ts -> monitoring/message-crypto.service.ts"
+      ],
+      "observability": [
+        "agent-runtime/agent-runtime.module.ts -> observability/observability.module.ts",
+        "agent-runtime/agent.controller.ts -> observability/observability-outbox.ts",
+        "agent-runtime/agent.controller.ts -> observability/observability.service.ts"
+      ],
+      "providers": [
+        "agent-runtime/agent-runtime.module.ts -> providers/providers.module.ts",
+        "agent-runtime/agent-task.service.ts -> providers/provider-runtime.error.ts",
+        "agent-runtime/agent.controller.ts -> providers/provider-registry.service.ts",
+        "agent-runtime/agent.service.ts -> providers/provider-registry.service.ts",
+        "agent-runtime/agent.service.ts -> providers/provider-runtime.error.ts",
+        "agent-runtime/agent.service.ts -> providers/scoped-env.service.ts"
+      ],
+      "shared": [
+        "agent-runtime/agent-cluster.service.ts -> shared/database.provider.ts",
+        "agent-runtime/agent-crud.service.ts -> shared/database.provider.ts",
+        "agent-runtime/agent-crud.service.ts -> shared/feature-flag-registry.ts",
+        "agent-runtime/agent-crud.service.ts -> shared/pagination.ts",
+        "agent-runtime/agent-crud.service.ts -> shared/redis.provider.ts",
+        "agent-runtime/agent-task.service.ts -> shared/env.ts",
+        "agent-runtime/agent-task.service.ts -> shared/external-trigger-config.ts",
+        "agent-runtime/agent-task.service.ts -> shared/redis.provider.ts",
+        "agent-runtime/agent.controller.ts -> shared/async-heartbeat.ts",
+        "agent-runtime/agent.controller.ts -> shared/database.provider.ts",
+        "agent-runtime/agent.controller.ts -> shared/env.ts",
+        "agent-runtime/agent.controller.ts -> shared/feature-flag-registry.ts",
+        "agent-runtime/agent.controller.ts -> shared/pagination.ts",
+        "agent-runtime/agent.controller.ts -> shared/redis.provider.ts",
+        "agent-runtime/agent.service.ts -> shared/database.provider.ts",
+        "agent-runtime/agent.service.ts -> shared/end-user-id.ts",
+        "agent-runtime/agent.service.ts -> shared/env.ts",
+        "agent-runtime/agent.service.ts -> shared/external-trigger-config.ts",
+        "agent-runtime/agent.service.ts -> shared/redis.provider.ts",
+        "agent-runtime/attachments.service.ts -> shared/database.provider.ts",
+        "agent-runtime/attachments.service.ts -> shared/env.ts",
+        "agent-runtime/channel-apps.controller.ts -> shared/database.provider.ts",
+        "agent-runtime/channel-apps.controller.ts -> shared/pagination.ts",
+        "agent-runtime/channels.controller.ts -> shared/database.provider.ts",
+        "agent-runtime/channels.controller.ts -> shared/pagination.ts",
+        "agent-runtime/chat-stream.controller.ts -> shared/async-heartbeat.ts",
+        "agent-runtime/chat-stream.controller.ts -> shared/env.ts",
+        "agent-runtime/job-execution.controller.ts -> shared/env.ts",
+        "agent-runtime/job-execution.service.ts -> shared/database.provider.ts",
+        "agent-runtime/job-execution.service.ts -> shared/env.ts",
+        "agent-runtime/job-execution.service.ts -> shared/redis.provider.ts",
+        "agent-runtime/jobs.controller.ts -> shared/database.provider.ts",
+        "agent-runtime/jobs.controller.ts -> shared/external-trigger-config.ts",
+        "agent-runtime/jobs.controller.ts -> shared/pagination.ts",
+        "agent-runtime/prompt-cache.service.ts -> shared/redis.provider.ts",
+        "agent-runtime/trigger-integration.ts -> shared/env.ts",
+        "agent-runtime/turn-dispatch.service.ts -> shared/database.provider.ts",
+        "agent-runtime/turn-dispatch.service.ts -> shared/external-trigger-config.ts",
+        "agent-runtime/turn-dispatch.service.ts -> shared/redis.provider.ts"
+      ],
+      "skills": [
+        "agent-runtime/agent-runtime.module.ts -> skills/skills.module.ts",
+        "agent-runtime/agent.controller.ts -> skills/skill-runtime.service.ts",
+        "agent-runtime/agent.service.ts -> skills/skill-runtime.service.ts"
+      ],
+      "streaming": [
+        "agent-runtime/agent-runtime.module.ts -> streaming/streaming.module.ts",
+        "agent-runtime/agent.controller.ts -> streaming/streaming.service.ts",
+        "agent-runtime/chat-stream.controller.ts -> streaming/streaming.service.ts"
+      ],
+      "tool-gateway": [
+        "agent-runtime/agent-crud.service.ts -> tool-gateway/tool-policy-invalidation.ts",
+        "agent-runtime/agent-runtime.module.ts -> tool-gateway/tool-gateway.module.ts",
+        "agent-runtime/agent-task.service.ts -> tool-gateway/schema-injector.service.ts",
+        "agent-runtime/agent-task.service.ts -> tool-gateway/tool-context/postman-context-handle.ts",
+        "agent-runtime/agent-task.service.ts -> tool-gateway/tool-executor.service.ts",
+        "agent-runtime/agent.controller.ts -> tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+        "agent-runtime/agent.controller.ts -> tool-gateway/tool-executor.service.ts",
+        "agent-runtime/agent.controller.ts -> tool-gateway/tool-registry.service.ts",
+        "agent-runtime/agent.controller.ts -> tool-gateway/tool-sync-ws.service.ts",
+        "agent-runtime/agent.service.ts -> tool-gateway/tool-executor.service.ts",
+        "agent-runtime/agent.service.ts -> tool-gateway/tool-registry.service.ts",
+        "agent-runtime/agent.service.ts -> tool-gateway/tool-router.service.ts",
+        "agent-runtime/context-automap.service.ts -> tool-gateway/tool-context/context-automap.ts",
+        "agent-runtime/context-resolver.ts -> tool-gateway/tool-context/context-resolver.ts",
+        "agent-runtime/postman-context-handle.ts -> tool-gateway/tool-context/postman-context-handle.ts"
+      ],
+      "trigger-bridge": [
+        "agent-runtime/agent.service.ts -> trigger-bridge/runs-bridge.service.ts"
+      ]
+    },
+    "auth": {
+      "http": [
+        "auth/public-guest-token.controller.ts -> http/api-surface.ts",
+        "auth/session-token.controller.ts -> http/api-surface.ts"
+      ],
+      "monitoring": [
+        "auth/rate-limit.guard.ts -> monitoring/safety-event.service.ts"
+      ],
+      "providers": [
+        "auth/auth.module.ts -> providers/providers.module.ts",
+        "auth/provider-health.service.ts -> providers/manifests/index.ts",
+        "auth/provider-health.service.ts -> providers/provider-runtime.error.ts",
+        "auth/provider-health.service.ts -> providers/scoped-env.service.ts"
+      ],
+      "shared": [
+        "auth/auth.service.ts -> shared/database.provider.ts",
+        "auth/auth.service.ts -> shared/entity-secret.ts",
+        "auth/auth.service.ts -> shared/redis.provider.ts",
+        "auth/provider-health.service.ts -> shared/redis.provider.ts",
+        "auth/public-guest-token.controller.ts -> shared/database.provider.ts",
+        "auth/public-guest-token.controller.ts -> shared/env.ts",
+        "auth/public-guest-token.controller.ts -> shared/redis.provider.ts",
+        "auth/rate-limit.guard.ts -> shared/env.ts",
+        "auth/rate-limit.guard.ts -> shared/redis.provider.ts",
+        "auth/scope.guard.ts -> shared/env.ts",
+        "auth/secrets.service.ts -> shared/env.ts",
+        "auth/session-token.controller.ts -> shared/database.provider.ts"
+      ],
+      "tool-gateway": [
+        "auth/auth.module.ts -> tool-gateway/tool-gateway.module.ts",
+        "auth/auth.service.ts -> tool-gateway/tool-registry.service.ts"
+      ]
+    },
+    "channels": {
+      "agent-runtime": [
+        "channels/channel-runtime.service.ts -> agent-runtime/turn-dispatch.service.ts",
+        "channels/channels.module.ts -> agent-runtime/agent-runtime.module.ts"
+      ],
+      "auth": [
+        "channels/channel-runtime.service.ts -> auth/scope.guard.ts"
+      ],
+      "http": [
+        "channels/channel-app-events.controller.ts -> http/api-surface.ts",
+        "channels/channel-app-oauth.controller.ts -> http/api-surface.ts",
+        "channels/channel-link.controller.ts -> http/api-surface.ts",
+        "channels/channels-inbound.controller.ts -> http/api-surface.ts"
+      ],
+      "monitoring": [
+        "channels/channel-persistence.service.ts -> monitoring/message-crypto.service.ts",
+        "channels/channels.module.ts -> monitoring/monitoring.module.ts"
+      ],
+      "privacy": [
+        "channels/channel-persistence.service.ts -> privacy/erasure-register.ts"
+      ],
+      "shared": [
+        "channels/channel-app-oauth.controller.ts -> shared/redis.provider.ts",
+        "channels/channel-link.controller.ts -> shared/redis.provider.ts",
+        "channels/channel-persistence.service.ts -> shared/database.provider.ts",
+        "channels/channel-persistence.service.ts -> shared/pagination.ts",
+        "channels/channel-runtime.service.ts -> shared/database.provider.ts",
+        "channels/channel-runtime.service.ts -> shared/env.ts"
+      ]
+    },
+    "connections": {
+      "agent-runtime": [
+        "connections/connections.gateway.ts -> agent-runtime/agent-task.service.ts",
+        "connections/connections.gateway.ts -> agent-runtime/turn-dispatch.service.ts",
+        "connections/connections.module.ts -> agent-runtime/agent-runtime.module.ts"
+      ],
+      "auth": [
+        "connections/connections.gateway.ts -> auth/auth.service.ts",
+        "connections/connections.gateway.ts -> auth/scope.guard.ts",
+        "connections/connections.module.ts -> auth/auth.module.ts"
+      ],
+      "monitoring": [
+        "connections/connections.gateway.ts -> monitoring/approval-keys.ts",
+        "connections/connections.gateway.ts -> monitoring/approvals.service.ts",
+        "connections/connections.gateway.ts -> monitoring/rate-limit.service.ts",
+        "connections/connections.gateway.ts -> monitoring/safety-event.service.ts",
+        "connections/connections.module.ts -> monitoring/monitoring.module.ts"
+      ],
+      "shared": [
+        "connections/connections.gateway.ts -> shared/database.provider.ts",
+        "connections/connections.gateway.ts -> shared/redis.provider.ts"
+      ]
+    },
+    "evals": {
+      "auth": [
+        "evals/criterion.service.ts -> auth/scope.guard.ts",
+        "evals/eval.service.ts -> auth/scope.guard.ts",
+        "evals/golden-set.service.ts -> auth/scope.guard.ts",
+        "evals/rating.service.ts -> auth/scope.guard.ts"
+      ],
+      "memory": [
+        "evals/evals.module.ts -> memory/memory.module.ts",
+        "evals/rating.service.ts -> memory/memory-feedback.service.ts"
+      ],
+      "monitoring": [
+        "evals/eval.service.ts -> monitoring/cost.service.ts",
+        "evals/eval.service.ts -> monitoring/model-pricing-preflight.ts",
+        "evals/evals.module.ts -> monitoring/monitoring.module.ts"
+      ],
+      "providers": [
+        "evals/eval.service.ts -> providers/scoped-env.service.ts",
+        "evals/evals.module.ts -> providers/providers.module.ts"
+      ],
+      "shared": [
+        "evals/criterion.service.ts -> shared/database.provider.ts",
+        "evals/eval.service.ts -> shared/database.provider.ts",
+        "evals/eval.service.ts -> shared/pagination.ts",
+        "evals/golden-set.service.ts -> shared/database.provider.ts",
+        "evals/rating.service.ts -> shared/database.provider.ts"
+      ]
+    },
+    "files": {
+      "agent-runtime": [
+        "files/files.controller.ts -> agent-runtime/attachments.service.ts",
+        "files/files.module.ts -> agent-runtime/agent-runtime.module.ts"
+      ],
+      "auth": [
+        "files/files.controller.ts -> auth/scope.guard.ts"
+      ],
+      "http": [
+        "files/files.controller.ts -> http/api-surface.ts"
+      ],
+      "shared": [
+        "files/files.controller.ts -> shared/database.provider.ts",
+        "files/files.controller.ts -> shared/pagination.ts"
+      ]
+    },
+    "governance": {
+      "auth": [
+        "governance/pii-filter.service.ts -> auth/scope.guard.ts"
+      ]
+    },
+    "health": {
+      "shared": [
+        "health/health.controller.ts -> shared/env.ts"
+      ]
+    },
+    "mcp-docs": {
+      "http": [
+        "mcp-docs/docs-mcp.controller.ts -> http/mcp-surface.ts"
+      ],
+      "mcp-platform": [
+        "mcp-docs/docs-mcp.controller.ts -> mcp-platform/mcp-router.ts"
+      ],
+      "shared": [
+        "mcp-docs/docs-mcp.service.ts -> shared/redis.provider.ts"
+      ]
+    },
+    "mcp-platform": {
+      "admin": [
+        "mcp-platform/mcp-platform.controller.ts -> admin/environment.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> admin/organization.service.ts",
+        "mcp-platform/mcp-platform.module.ts -> admin/admin.module.ts",
+        "mcp-platform/tools/index.ts -> admin/environment.service.ts",
+        "mcp-platform/tools/index.ts -> admin/organization.service.ts",
+        "mcp-platform/tools/settings.ts -> admin/environment.service.ts",
+        "mcp-platform/tools/settings.ts -> admin/organization.service.ts"
+      ],
+      "agent-runtime": [
+        "mcp-platform/mcp-platform.controller.ts -> agent-runtime/agent-cluster.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> agent-runtime/agent-crud.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> agent-runtime/agent-task.service.ts",
+        "mcp-platform/mcp-platform.module.ts -> agent-runtime/agent-runtime.module.ts",
+        "mcp-platform/stdio-app.module.ts -> agent-runtime/agent-runtime.module.ts",
+        "mcp-platform/tools/channel-apps.ts -> agent-runtime/channel-routing.ts",
+        "mcp-platform/tools/channels.ts -> agent-runtime/channel-routing.ts",
+        "mcp-platform/tools/index.ts -> agent-runtime/agent-cluster.service.ts",
+        "mcp-platform/tools/index.ts -> agent-runtime/agent-crud.service.ts",
+        "mcp-platform/tools/index.ts -> agent-runtime/agent-task.service.ts",
+        "mcp-platform/tools/jobs.ts -> agent-runtime/job-persistence.ts",
+        "mcp-platform/tools/orchestration.ts -> agent-runtime/agent-crud.service.ts",
+        "mcp-platform/tools/providers.ts -> agent-runtime/agent-crud.service.ts",
+        "mcp-platform/tools/reflection.ts -> agent-runtime/agent-crud.service.ts",
+        "mcp-platform/tools/settings.ts -> agent-runtime/agent-cluster.service.ts"
+      ],
+      "auth": [
+        "mcp-platform/mcp-entity.controller.ts -> auth/scope.guard.ts",
+        "mcp-platform/mcp-platform.controller.ts -> auth/auth.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> auth/provider-health.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> auth/scope.guard.ts",
+        "mcp-platform/mcp-platform.module.ts -> auth/auth.module.ts",
+        "mcp-platform/mcp-router.ts -> auth/scope.guard.ts",
+        "mcp-platform/permission-gateway.service.ts -> auth/scope.guard.ts",
+        "mcp-platform/token.service.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/admin.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/alert_channels.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/channel-apps.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/channels.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/end-users.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/entities.ts -> auth/auth.service.ts",
+        "mcp-platform/tools/entities.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/events.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/index.ts -> auth/auth.service.ts",
+        "mcp-platform/tools/index.ts -> auth/provider-health.service.ts",
+        "mcp-platform/tools/index.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/jobs.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/kg.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/macros.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/mcp.ts -> auth/auth.service.ts",
+        "mcp-platform/tools/mcp.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/monitoring.ts -> auth/provider-health.service.ts",
+        "mcp-platform/tools/monitoring.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/oauth.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/orchestration.ts -> auth/auth.service.ts",
+        "mcp-platform/tools/orchestration.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/platos-control.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/providers.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/reflection.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/settings.ts -> auth/scope.guard.ts",
+        "mcp-platform/tools/skills.ts -> auth/scope.guard.ts"
+      ],
+      "channels": [
+        "mcp-platform/mcp-platform.controller.ts -> channels/channel-persistence.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> channels/channel-runtime.service.ts",
+        "mcp-platform/tools/channel-apps.ts -> channels/channel-persistence.service.ts",
+        "mcp-platform/tools/channels.ts -> channels/channel-persistence.service.ts",
+        "mcp-platform/tools/index.ts -> channels/channel-persistence.service.ts"
+      ],
+      "evals": [
+        "mcp-platform/mcp-platform.controller.ts -> evals/eval.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> evals/golden-set.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> evals/rating.service.ts",
+        "mcp-platform/mcp-platform.module.ts -> evals/evals.module.ts",
+        "mcp-platform/tools/index.ts -> evals/eval.service.ts",
+        "mcp-platform/tools/index.ts -> evals/golden-set.service.ts",
+        "mcp-platform/tools/index.ts -> evals/rating.service.ts",
+        "mcp-platform/tools/orchestration.ts -> evals/golden-set.service.ts",
+        "mcp-platform/tools/platos-control.ts -> evals/eval.service.ts"
+      ],
+      "http": [
+        "mcp-platform/mcp-entity.controller.ts -> http/mcp-surface.ts",
+        "mcp-platform/mcp-router.ts -> http/mcp-surface.ts"
+      ],
+      "memory": [
+        "mcp-platform/mcp-platform.controller.ts -> memory/conversation.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> memory/knowledge-graph.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> memory/memory-extraction.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> memory/memory-import.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> memory/memory.service.ts",
+        "mcp-platform/mcp-platform.module.ts -> memory/memory.module.ts",
+        "mcp-platform/tools/admin.ts -> memory/knowledge-graph.service.ts",
+        "mcp-platform/tools/admin.ts -> memory/memory.service.ts",
+        "mcp-platform/tools/index.ts -> memory/conversation.service.ts",
+        "mcp-platform/tools/index.ts -> memory/knowledge-graph.service.ts",
+        "mcp-platform/tools/index.ts -> memory/memory-extraction.service.ts",
+        "mcp-platform/tools/index.ts -> memory/memory-import.service.ts",
+        "mcp-platform/tools/index.ts -> memory/memory.service.ts",
+        "mcp-platform/tools/kg.ts -> memory/knowledge-graph.service.ts",
+        "mcp-platform/tools/orchestration.ts -> memory/memory.service.ts",
+        "mcp-platform/tools/platos-control.ts -> memory/conversation.service.ts",
+        "mcp-platform/tools/platos-control.ts -> memory/knowledge-graph.service.ts",
+        "mcp-platform/tools/platos-control.ts -> memory/memory-bundle.ts",
+        "mcp-platform/tools/platos-control.ts -> memory/memory-extraction.service.ts",
+        "mcp-platform/tools/platos-control.ts -> memory/memory-import.service.ts",
+        "mcp-platform/tools/platos-control.ts -> memory/memory.service.ts",
+        "mcp-platform/tools/reflection.ts -> memory/conversation.service.ts"
+      ],
+      "monitoring": [
+        "mcp-platform/mcp-platform.controller.ts -> monitoring/approvals.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> monitoring/budget.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> monitoring/cost.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> monitoring/message-crypto.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> monitoring/safety-event.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> monitoring/spans.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> monitoring/trace.service.ts",
+        "mcp-platform/mcp-platform.module.ts -> monitoring/monitoring.module.ts",
+        "mcp-platform/mcp-router.ts -> monitoring/approvals.service.ts",
+        "mcp-platform/tools/admin.ts -> monitoring/cost.service.ts",
+        "mcp-platform/tools/admin.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/tools/alert_channels.ts -> monitoring/alert-email-delivery.ts",
+        "mcp-platform/tools/alert_channels.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/tools/channel-apps.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/tools/channels.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/tools/end-users.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/tools/entities.ts -> monitoring/message-crypto.service.ts",
+        "mcp-platform/tools/entities.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/tools/index.ts -> monitoring/approvals.service.ts",
+        "mcp-platform/tools/index.ts -> monitoring/budget.service.ts",
+        "mcp-platform/tools/index.ts -> monitoring/cost.service.ts",
+        "mcp-platform/tools/index.ts -> monitoring/message-crypto.service.ts",
+        "mcp-platform/tools/index.ts -> monitoring/safety-event.service.ts",
+        "mcp-platform/tools/index.ts -> monitoring/spans.service.ts",
+        "mcp-platform/tools/index.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/tools/index.ts -> monitoring/trace.service.ts",
+        "mcp-platform/tools/jobs.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/tools/kg.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/tools/monitoring.ts -> monitoring/trace.service.ts",
+        "mcp-platform/tools/oauth.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/tools/platos-control.ts -> monitoring/approvals.service.ts",
+        "mcp-platform/tools/platos-control.ts -> monitoring/budget.service.ts",
+        "mcp-platform/tools/platos-control.ts -> monitoring/cost.service.ts",
+        "mcp-platform/tools/platos-control.ts -> monitoring/safety-event.service.ts",
+        "mcp-platform/tools/platos-control.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/tools/providers.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/tools/reflection.ts -> monitoring/approvals.service.ts",
+        "mcp-platform/tools/reflection.ts -> monitoring/cost.service.ts",
+        "mcp-platform/tools/reflection.ts -> monitoring/model-pricing-preflight.ts",
+        "mcp-platform/tools/reflection.ts -> monitoring/spans.service.ts",
+        "mcp-platform/tools/reflection.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/tools/settings.ts -> monitoring/tool-audit.service.ts",
+        "mcp-platform/tools/skills.ts -> monitoring/tool-audit.service.ts"
+      ],
+      "oauth": [
+        "mcp-platform/mcp-entity.controller.ts -> oauth/oauth.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> oauth/oauth.service.ts",
+        "mcp-platform/mcp-platform.module.ts -> oauth/oauth.module.ts",
+        "mcp-platform/tools/index.ts -> oauth/oauth.service.ts",
+        "mcp-platform/tools/oauth.ts -> oauth/oauth.service.ts"
+      ],
+      "privacy": [
+        "mcp-platform/mcp-port-bindings.module.ts -> privacy/admin-credential.port.ts",
+        "mcp-platform/token.service.ts -> privacy/admin-credential.port.ts",
+        "mcp-platform/tools/end-users.ts -> privacy/erasure-register.ts"
+      ],
+      "providers": [
+        "mcp-platform/mcp-platform.controller.ts -> providers/provider-key.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> providers/provider-registry.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> providers/scoped-env.service.ts",
+        "mcp-platform/mcp-platform.module.ts -> providers/providers.module.ts",
+        "mcp-platform/tools/alert_channels.ts -> providers/scoped-env.service.ts",
+        "mcp-platform/tools/index.ts -> providers/provider-key.service.ts",
+        "mcp-platform/tools/index.ts -> providers/provider-registry.service.ts",
+        "mcp-platform/tools/index.ts -> providers/scoped-env.service.ts",
+        "mcp-platform/tools/platos-control.ts -> providers/provider-registry.service.ts",
+        "mcp-platform/tools/providers.ts -> providers/provider-key.service.ts",
+        "mcp-platform/tools/providers.ts -> providers/provider-registry.service.ts",
+        "mcp-platform/tools/providers.ts -> providers/scoped-env.service.ts"
+      ],
+      "shared": [
+        "mcp-platform/events.service.ts -> shared/database.provider.ts",
+        "mcp-platform/events.service.ts -> shared/redis.provider.ts",
+        "mcp-platform/events.service.ts -> shared/url-validator.ts",
+        "mcp-platform/identity-resolver.service.ts -> shared/database.provider.ts",
+        "mcp-platform/mcp-bearer-token.service.ts -> shared/database.provider.ts",
+        "mcp-platform/mcp-entity.controller.ts -> shared/database.provider.ts",
+        "mcp-platform/mcp-entity.controller.ts -> shared/redis.provider.ts",
+        "mcp-platform/mcp-platform.controller.ts -> shared/database.provider.ts",
+        "mcp-platform/mcp-platform.controller.ts -> shared/redis.provider.ts",
+        "mcp-platform/mcp-tool-acl.service.ts -> shared/database.provider.ts",
+        "mcp-platform/permission-gateway.service.ts -> shared/database.provider.ts",
+        "mcp-platform/stdio-app.module.ts -> shared/database.provider.ts",
+        "mcp-platform/stdio-app.module.ts -> shared/redis.provider.ts",
+        "mcp-platform/stdio-main.ts -> shared/database.provider.ts",
+        "mcp-platform/stdio-main.ts -> shared/redis.provider.ts",
+        "mcp-platform/token.service.ts -> shared/database.provider.ts",
+        "mcp-platform/tools/admin.ts -> shared/database.provider.ts",
+        "mcp-platform/tools/alert_channels.ts -> shared/url-validator.ts",
+        "mcp-platform/tools/channel-apps.ts -> shared/database.provider.ts",
+        "mcp-platform/tools/channels.ts -> shared/database.provider.ts",
+        "mcp-platform/tools/end-users.ts -> shared/database.provider.ts",
+        "mcp-platform/tools/entities.ts -> shared/database.provider.ts",
+        "mcp-platform/tools/events.ts -> shared/env.ts",
+        "mcp-platform/tools/jobs.ts -> shared/database.provider.ts",
+        "mcp-platform/tools/jobs.ts -> shared/external-trigger-config.ts",
+        "mcp-platform/tools/macros.ts -> shared/database.provider.ts",
+        "mcp-platform/tools/mcp.ts -> shared/database.provider.ts",
+        "mcp-platform/tools/orchestration.ts -> shared/database.provider.ts",
+        "mcp-platform/tools/providers.ts -> shared/database.provider.ts",
+        "mcp-platform/tools/reflection.ts -> shared/database.provider.ts"
+      ],
+      "skills": [
+        "mcp-platform/mcp-platform.controller.ts -> skills/skill-importer.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> skills/skill-registry.service.ts",
+        "mcp-platform/mcp-platform.module.ts -> skills/skills.module.ts",
+        "mcp-platform/tools/index.ts -> skills/skill-importer.service.ts",
+        "mcp-platform/tools/index.ts -> skills/skill-registry.service.ts",
+        "mcp-platform/tools/orchestration.ts -> skills/skill-registry.service.ts",
+        "mcp-platform/tools/skills.ts -> skills/skill-importer.service.ts",
+        "mcp-platform/tools/skills.ts -> skills/skill-registry.service.ts"
+      ],
+      "tool-gateway": [
+        "mcp-platform/mcp-entity.controller.ts -> tool-gateway/tool-executor.service.ts",
+        "mcp-platform/mcp-entity.controller.ts -> tool-gateway/tool-registry.service.ts",
+        "mcp-platform/mcp-entity.controller.ts -> tool-gateway/tool-router.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> tool-gateway/tool-executor.service.ts",
+        "mcp-platform/mcp-platform.controller.ts -> tool-gateway/tool-registry.service.ts",
+        "mcp-platform/mcp-platform.module.ts -> tool-gateway/tool-gateway.module.ts",
+        "mcp-platform/mcp-port-bindings.module.ts -> tool-gateway/tool-permission.port.ts",
+        "mcp-platform/permission-gateway.service.ts -> tool-gateway/tool-permission.port.ts",
+        "mcp-platform/tools/entities.ts -> tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+        "mcp-platform/tools/entities.ts -> tool-gateway/tool-executor.service.ts",
+        "mcp-platform/tools/entities.ts -> tool-gateway/tool-registry.service.ts",
+        "mcp-platform/tools/index.ts -> tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+        "mcp-platform/tools/index.ts -> tool-gateway/tool-executor.service.ts",
+        "mcp-platform/tools/index.ts -> tool-gateway/tool-registry.service.ts",
+        "mcp-platform/tools/macros.ts -> tool-gateway/tool-context/context-resolver.ts"
+      ]
+    },
+    "memory": {
+      "auth": [
+        "memory/conversation.service.ts -> auth/scope.guard.ts",
+        "memory/embedding.service.ts -> auth/scope.guard.ts",
+        "memory/memory-feedback-admin.controller.ts -> auth/auth.service.ts",
+        "memory/memory-feedback-admin.controller.ts -> auth/scope.guard.ts",
+        "memory/memory-scope.ts -> auth/scope.guard.ts",
+        "memory/memory.controller.ts -> auth/scope.guard.ts",
+        "memory/memory.module.ts -> auth/auth.module.ts"
+      ],
+      "http": [
+        "memory/memory-feedback-admin.controller.ts -> http/api-surface.ts",
+        "memory/memory.controller.ts -> http/api-surface.ts"
+      ],
+      "monitoring": [
+        "memory/conversation.service.ts -> monitoring/usage-ledger.ts",
+        "memory/embedding.service.ts -> monitoring/cost.service.ts",
+        "memory/embedding.service.ts -> monitoring/model-pricing-preflight.ts",
+        "memory/knowledge-graph.service.ts -> monitoring/message-crypto.service.ts",
+        "memory/memory-extraction.service.ts -> monitoring/cost.service.ts",
+        "memory/memory-extraction.service.ts -> monitoring/model-pricing-preflight.ts",
+        "memory/memory-feedback-backfill.service.ts -> monitoring/message-crypto.service.ts",
+        "memory/memory-import.service.ts -> monitoring/message-crypto.service.ts",
+        "memory/memory.module.ts -> monitoring/monitoring.module.ts",
+        "memory/memory.service.ts -> monitoring/message-crypto.service.ts"
+      ],
+      "observability": [
+        "memory/conversation.service.ts -> observability/observability.service.ts",
+        "memory/conversation.service.ts -> observability/turn-projection.ts",
+        "memory/memory.module.ts -> observability/observability.module.ts"
+      ],
+      "privacy": [
+        "memory/conversation.service.ts -> privacy/erasure-register.ts"
+      ],
+      "providers": [
+        "memory/embedding.service.ts -> providers/scoped-env.service.ts",
+        "memory/memory-extraction.service.ts -> providers/provider-runtime.error.ts",
+        "memory/memory-extraction.service.ts -> providers/scoped-env.service.ts",
+        "memory/memory.module.ts -> providers/providers.module.ts"
+      ],
+      "shared": [
+        "memory/conversation.service.ts -> shared/database.provider.ts",
+        "memory/conversation.service.ts -> shared/external-trigger-config.ts",
+        "memory/embedding.service.ts -> shared/env.ts",
+        "memory/knowledge-graph.service.ts -> shared/database.provider.ts",
+        "memory/memory-extraction.service.ts -> shared/database.provider.ts",
+        "memory/memory-extraction.service.ts -> shared/env.ts",
+        "memory/memory-extraction.service.ts -> shared/redis.provider.ts",
+        "memory/memory-feedback-backfill.service.ts -> shared/database.provider.ts",
+        "memory/memory-feedback.service.ts -> shared/database.provider.ts",
+        "memory/memory-import.service.ts -> shared/database.provider.ts",
+        "memory/memory-profile-startup-verifier.service.ts -> shared/database.provider.ts",
+        "memory/memory-scheduler.service.ts -> shared/database.provider.ts",
+        "memory/memory-scheduler.service.ts -> shared/redis.provider.ts",
+        "memory/memory-scope.ts -> shared/database.provider.ts",
+        "memory/memory.controller.ts -> shared/database.provider.ts",
+        "memory/memory.controller.ts -> shared/env.ts",
+        "memory/memory.controller.ts -> shared/redis.provider.ts",
+        "memory/memory.service.ts -> shared/database.provider.ts",
+        "memory/profile-cache.service.ts -> shared/redis.provider.ts",
+        "memory/working-memory.service.ts -> shared/env.ts",
+        "memory/working-memory.service.ts -> shared/redis.provider.ts"
+      ]
+    },
+    "monitoring": {
+      "auth": [
+        "monitoring/admin-audit.service.ts -> auth/scope.guard.ts",
+        "monitoring/approvals.service.ts -> auth/scope.guard.ts",
+        "monitoring/budget.service.ts -> auth/scope.guard.ts",
+        "monitoring/cost.service.ts -> auth/scope.guard.ts",
+        "monitoring/governance.service.ts -> auth/scope.guard.ts",
+        "monitoring/rate-limit.service.ts -> auth/scope.guard.ts",
+        "monitoring/safety-event.service.ts -> auth/scope.guard.ts",
+        "monitoring/spans.service.ts -> auth/scope.guard.ts",
+        "monitoring/tool-audit.service.ts -> auth/scope.guard.ts",
+        "monitoring/trace.service.ts -> auth/scope.guard.ts",
+        "monitoring/utilization.service.ts -> auth/scope.guard.ts"
+      ],
+      "governance": [
+        "monitoring/safety.service.ts -> governance/pii-detectors.ts"
+      ],
+      "providers": [
+        "monitoring/budget.service.ts -> providers/scoped-env.service.ts",
+        "monitoring/model-pricing-preflight.ts -> providers/provider-runtime.error.ts",
+        "monitoring/monitoring.module.ts -> providers/providers.module.ts"
+      ],
+      "shared": [
+        "monitoring/admin-audit.service.ts -> shared/database.provider.ts",
+        "monitoring/approvals.service.ts -> shared/database.provider.ts",
+        "monitoring/approvals.service.ts -> shared/pagination.ts",
+        "monitoring/budget.service.ts -> shared/database.provider.ts",
+        "monitoring/budget.service.ts -> shared/redis.provider.ts",
+        "monitoring/budget.service.ts -> shared/url-validator.ts",
+        "monitoring/cost.service.ts -> shared/database.provider.ts",
+        "monitoring/cost.service.ts -> shared/redis.provider.ts",
+        "monitoring/governance.service.ts -> shared/database.provider.ts",
+        "monitoring/model-pricing-bootstrap.service.ts -> shared/database.provider.ts",
+        "monitoring/rate-limit.service.ts -> shared/env.ts",
+        "monitoring/rate-limit.service.ts -> shared/redis.provider.ts",
+        "monitoring/safety-event.service.ts -> shared/database.provider.ts",
+        "monitoring/safety-event.service.ts -> shared/pagination.ts",
+        "monitoring/sentry.service.ts -> shared/env.ts",
+        "monitoring/spans.service.ts -> shared/clickhouse-deadline.ts",
+        "monitoring/spans.service.ts -> shared/env.ts",
+        "monitoring/spans.service.ts -> shared/redis.provider.ts",
+        "monitoring/spans.service.ts -> shared/telemetry-namespace.ts",
+        "monitoring/tool-audit.service.ts -> shared/database.provider.ts",
+        "monitoring/tool-audit.service.ts -> shared/pagination.ts",
+        "monitoring/trace.service.ts -> shared/clickhouse-deadline.ts",
+        "monitoring/trace.service.ts -> shared/database.provider.ts",
+        "monitoring/utilization.service.ts -> shared/database.provider.ts"
+      ]
+    },
+    "oauth": {
+      "http": [
+        "oauth/oauth.service.ts -> http/mcp-surface.ts"
+      ],
+      "shared": [
+        "oauth/oauth.controller.ts -> shared/database.provider.ts",
+        "oauth/oauth.controller.ts -> shared/env.ts",
+        "oauth/oauth.controller.ts -> shared/url-validator.ts",
+        "oauth/oauth.service.ts -> shared/database.provider.ts",
+        "oauth/oauth.service.ts -> shared/env.ts"
+      ]
+    },
+    "observability": {
+      "privacy": [
+        "observability/observability.service.ts -> privacy/erasure-register.ts",
+        "observability/turn-projection.ts -> privacy/erasure-register.ts",
+        "observability/turn-projection.ts -> privacy/subject-graph.ts"
+      ],
+      "shared": [
+        "observability/observability.service.ts -> shared/database.provider.ts"
+      ]
+    },
+    "openapi": {
+      "http": [
+        "openapi/openapi.controller.ts -> http/api-surface.ts"
+      ]
+    },
+    "performance-evidence": {
+      "http": [
+        "performance-evidence/performance-evidence.controller.ts -> http/api-surface.ts"
+      ]
+    },
+    "privacy": {
+      "http": [
+        "privacy/erasure.controller.ts -> http/api-surface.ts"
+      ],
+      "monitoring": [
+        "privacy/erasure.service.ts -> monitoring/admin-audit.service.ts",
+        "privacy/privacy.module.ts -> monitoring/admin-audit.service.ts"
+      ],
+      "shared": [
+        "privacy/clickhouse-erasure.ts -> shared/telemetry-namespace.ts",
+        "privacy/erasure.service.ts -> shared/database.provider.ts",
+        "privacy/erasure.service.ts -> shared/redis.provider.ts",
+        "privacy/privacy.module.ts -> shared/database.provider.ts",
+        "privacy/privacy.module.ts -> shared/redis.provider.ts"
+      ]
+    },
+    "providers": {
+      "auth": [
+        "providers/provider-key.service.ts -> auth/scope.guard.ts",
+        "providers/provider-registry.service.ts -> auth/scope.guard.ts",
+        "providers/providers.controller.ts -> auth/scope.guard.ts",
+        "providers/scoped-env.service.ts -> auth/scope.guard.ts"
+      ],
+      "http": [
+        "providers/providers.controller.ts -> http/api-surface.ts"
+      ],
+      "shared": [
+        "providers/provider-key.service.ts -> shared/database.provider.ts",
+        "providers/provider-registry.service.ts -> shared/database.provider.ts",
+        "providers/providers.controller.ts -> shared/pagination.ts",
+        "providers/scoped-env.service.ts -> shared/database.provider.ts",
+        "providers/scoped-env.service.ts -> shared/entity-secret.ts"
+      ]
+    },
+    "shared": {
+      "performance-evidence": [
+        "shared/database.provider.ts -> performance-evidence/performance-evidence.prisma.ts",
+        "shared/database.provider.ts -> performance-evidence/performance-evidence.service.ts"
+      ]
+    },
+    "skills": {
+      "agent-runtime": [
+        "skills/official/skill-handlers.ts -> agent-runtime/attachments.service.ts",
+        "skills/skills.controller.ts -> agent-runtime/prompt-cache.service.ts"
+      ],
+      "auth": [
+        "skills/skill-registry.service.ts -> auth/scope.guard.ts",
+        "skills/skills.controller.ts -> auth/scope.guard.ts"
+      ],
+      "http": [
+        "skills/skills.controller.ts -> http/api-surface.ts"
+      ],
+      "memory": [
+        "skills/official/skill-handlers.ts -> memory/memory-scope.ts",
+        "skills/official/skill-handlers.ts -> memory/memory.service.ts",
+        "skills/skills.module.ts -> memory/memory.module.ts"
+      ],
+      "monitoring": [
+        "skills/skill-runtime.service.ts -> monitoring/budget.service.ts",
+        "skills/skill-runtime.service.ts -> monitoring/cost.service.ts",
+        "skills/skills.module.ts -> monitoring/monitoring.module.ts"
+      ],
+      "providers": [
+        "skills/official/skill-handlers.ts -> providers/scoped-env.service.ts",
+        "skills/skill-registry.service.ts -> providers/scoped-env.service.ts",
+        "skills/skills.module.ts -> providers/providers.module.ts"
+      ],
+      "shared": [
+        "skills/official-skills-seeder.service.ts -> shared/database.provider.ts",
+        "skills/official/skill-handlers.ts -> shared/external-trigger-config.ts",
+        "skills/official/skill-handlers.ts -> shared/url-validator.ts",
+        "skills/skill-importer.service.ts -> shared/url-validator.ts",
+        "skills/skill-registry.service.ts -> shared/database.provider.ts",
+        "skills/skills.controller.ts -> shared/pagination.ts"
+      ]
+    },
+    "streaming": {
+      "agent-runtime": [
+        "streaming/streaming.service.ts -> agent-runtime/agent.service.ts"
+      ]
+    },
+    "test": {
+      "auth": [
+        "test/test.controller.ts -> auth/auth.service.ts",
+        "test/test.module.ts -> auth/auth.module.ts"
+      ],
+      "shared": [
+        "test/test.controller.ts -> shared/redis.provider.ts"
+      ],
+      "tool-gateway": [
+        "test/test.controller.ts -> tool-gateway/tool-registry.service.ts",
+        "test/test.module.ts -> tool-gateway/tool-gateway.module.ts"
+      ]
+    },
+    "tool-gateway": {
+      "auth": [
+        "tool-gateway/schema-injector.service.ts -> auth/scope.guard.ts",
+        "tool-gateway/tool-context/postman-context-handle.ts -> auth/scope.guard.ts",
+        "tool-gateway/tool-executor.service.ts -> auth/scope.guard.ts",
+        "tool-gateway/tool-registry.service.ts -> auth/scope.guard.ts",
+        "tool-gateway/tool-router.service.ts -> auth/scope.guard.ts"
+      ],
+      "monitoring": [
+        "tool-gateway/tool-executor.service.ts -> monitoring/approval-keys.ts",
+        "tool-gateway/tool-executor.service.ts -> monitoring/approvals.service.ts",
+        "tool-gateway/tool-executor.service.ts -> monitoring/rate-limit.service.ts",
+        "tool-gateway/tool-executor.service.ts -> monitoring/safety-event.service.ts",
+        "tool-gateway/tool-executor.service.ts -> monitoring/safety.service.ts",
+        "tool-gateway/tool-executor.service.ts -> monitoring/spans.service.ts",
+        "tool-gateway/tool-executor.service.ts -> monitoring/tool-audit.service.ts",
+        "tool-gateway/tool-gateway.module.ts -> monitoring/monitoring.module.ts",
+        "tool-gateway/tool-sync-ws.service.ts -> monitoring/metrics.service.ts"
+      ],
+      "providers": [
+        "tool-gateway/mcp-transport/entity-mcp-discovery.service.ts -> providers/scoped-env.service.ts",
+        "tool-gateway/mcp-transport/mcp-credential.service.ts -> providers/scoped-env.service.ts",
+        "tool-gateway/tool-gateway.module.ts -> providers/providers.module.ts"
+      ],
+      "shared": [
+        "tool-gateway/mcp-transport/entity-mcp-discovery-scheduler.service.ts -> shared/database.provider.ts",
+        "tool-gateway/mcp-transport/entity-mcp-discovery-scheduler.service.ts -> shared/env.ts",
+        "tool-gateway/mcp-transport/entity-mcp-discovery-scheduler.service.ts -> shared/redis.provider.ts",
+        "tool-gateway/mcp-transport/entity-mcp-discovery.service.ts -> shared/database.provider.ts",
+        "tool-gateway/mcp-transport/entity-mcp-discovery.service.ts -> shared/env.ts",
+        "tool-gateway/mcp-transport/entity-mcp-discovery.service.ts -> shared/url-validator.ts",
+        "tool-gateway/mcp-transport/mcp-client-pool.service.ts -> shared/env.ts",
+        "tool-gateway/mcp-transport/mcp-client-pool.service.ts -> shared/url-validator.ts",
+        "tool-gateway/tool-executor.service.ts -> shared/database.provider.ts",
+        "tool-gateway/tool-executor.service.ts -> shared/env.ts",
+        "tool-gateway/tool-executor.service.ts -> shared/redis.provider.ts",
+        "tool-gateway/tool-executor.service.ts -> shared/url-validator.ts",
+        "tool-gateway/tool-registry.service.ts -> shared/database.provider.ts",
+        "tool-gateway/tool-registry.service.ts -> shared/redis.provider.ts",
+        "tool-gateway/tool-sync-ws.service.ts -> shared/database.provider.ts",
+        "tool-gateway/tool-sync-ws.service.ts -> shared/env.ts"
+      ]
+    },
+    "trigger-bridge": {
+      "agent-runtime": [
+        "trigger-bridge/internal-execute-tool.controller.ts -> agent-runtime/agent-task.service.ts",
+        "trigger-bridge/internal-execute-tool.controller.ts -> agent-runtime/subagent-guardrails.ts",
+        "trigger-bridge/trigger-bridge.module.ts -> agent-runtime/agent-runtime.module.ts"
+      ],
+      "auth": [
+        "trigger-bridge/internal-execute-tool.controller.ts -> auth/scope.guard.ts",
+        "trigger-bridge/runs-bridge.service.ts -> auth/scope.guard.ts"
+      ],
+      "connections": [
+        "trigger-bridge/runs-bridge.service.ts -> connections/connections.gateway.ts",
+        "trigger-bridge/trigger-bridge.module.ts -> connections/connections.module.ts"
+      ],
+      "memory": [
+        "trigger-bridge/internal-execute-tool.controller.ts -> memory/conversation.service.ts",
+        "trigger-bridge/trigger-bridge.module.ts -> memory/memory.module.ts"
+      ],
+      "providers": [
+        "trigger-bridge/internal-execute-tool.controller.ts -> providers/scoped-env.service.ts",
+        "trigger-bridge/trigger-bridge.module.ts -> providers/providers.module.ts"
+      ],
+      "shared": [
+        "trigger-bridge/internal-execute-tool.controller.ts -> shared/env.ts",
+        "trigger-bridge/runs-bridge.service.ts -> shared/external-trigger-config.ts"
+      ],
+      "tool-gateway": [
+        "trigger-bridge/internal-execute-tool.controller.ts -> tool-gateway/tool-executor.service.ts",
+        "trigger-bridge/trigger-bridge.module.ts -> tool-gateway/tool-gateway.module.ts"
+      ]
+    },
+    "trigger-tasks": {
+      "agent-runtime": [
+        "trigger-tasks/agent-subrun.task.ts -> agent-runtime/subagent-guardrails.ts",
+        "trigger-tasks/chat-session.task.ts -> agent-runtime/session-scope.ts",
+        "trigger-tasks/durable-turn.task.ts -> agent-runtime/session-scope.ts"
+      ],
+      "monitoring": [
+        "trigger-tasks/budget-alert.task.ts -> monitoring/budget-alert.types.ts",
+        "trigger-tasks/litellm-cost-refresh.task.ts -> monitoring/litellm-catalog-validation.ts"
+      ]
+    }
+  }
+}

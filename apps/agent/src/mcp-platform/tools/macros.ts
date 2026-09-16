@@ -41,7 +41,7 @@ import { RPC_ERRORS } from "../mcp-router";
 import type { McpRouter, McpToolHandler, JsonRpcRequest } from "../mcp-router";
 import type { VerifiedToken } from "../token.service";
 import type { RequestScope } from "../../auth/scope.guard";
-import { resolvePath } from "../../agent-runtime/context-resolver";
+import { resolvePath } from "../../tool-gateway/tool-context/context-resolver";
 import type { ControlDatabaseClient } from "../../shared/database.provider";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;

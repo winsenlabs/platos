@@ -27,7 +27,7 @@ import { randomUUID } from "node:crypto";
 import {
   resolvePostmanContext,
   traceSessionContext,
-} from "./postman-context-handle";
+} from "../tool-gateway/tool-context/postman-context-handle";
 
 /** The one stream event AgentTaskService consumes rather than forwards. */
 type SubAgentUsageEvent = Extract<AgentStreamEvent, { type: "sub_agent_usage" }>;

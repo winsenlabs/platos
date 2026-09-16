@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Body, Req, Res, Logger } from "@nestjs/common";
+import { Controller, Post, Get, Param, Body, Req, Res, Logger, Inject } from "@nestjs/common";
 import { API_VERSION } from "../http/api-surface";
 import type { Request, Response } from "express";
 import {
@@ -6,7 +6,14 @@ import {
   ErasureService,
   ERASURE_POLICY_VERSION,
 } from "./erasure.service";
-import { PlatosMCPTokenService, type VerifiedToken } from "../mcp-platform/token.service";
+// WIN-269 (M4.3) — importing `PlatosMCPTokenService` out of mcp-platform made
+// this controller the last leg of a runtime↔MCP import cycle. It now depends on
+// the port `privacy` owns; `mcp-platform/mcp-port-bindings.module.ts` binds it.
+import {
+  ERASURE_ADMIN_CREDENTIALS,
+  type AdminCredential,
+  type AdminCredentialVerifier,
+} from "./admin-credential.port";
 import type { ErasureAuditActor } from "./erasure-audit";
 
 /**
@@ -27,11 +34,12 @@ export class ErasureController {
 
   constructor(
     private readonly erasure: ErasureService,
-    private readonly credentials: PlatosMCPTokenService
+    @Inject(ERASURE_ADMIN_CREDENTIALS)
+    private readonly credentials: AdminCredentialVerifier
   ) {}
 
   /** Verify the request's organization-bound admin control-plane credential. */
-  private async authorized(req: Request): Promise<VerifiedToken | null> {
+  private async authorized(req: Request): Promise<AdminCredential | null> {
     const authorization = req.headers.authorization;
     if (typeof authorization !== "string" || !authorization.startsWith("Bearer ")) return null;
     const verified = await this.credentials.verify(authorization.slice("Bearer ".length).trim());
@@ -47,7 +55,7 @@ export class ErasureController {
    * credential id is carried alongside so a rotated or revoked token can still
    * be traced back from the audit row.
    */
-  private actor(credential: VerifiedToken): ErasureAuditActor {
+  private actor(credential: AdminCredential): ErasureAuditActor {
     return {
       credentialId: credential.id,
       userId: credential.mintedByUserId ?? null,

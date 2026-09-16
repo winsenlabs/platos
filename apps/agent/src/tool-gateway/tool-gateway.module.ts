@@ -25,19 +25,22 @@ import { MonitoringModule } from "../monitoring/monitoring.module";
 // to resolve linked Credential references used by `{{secret}}`. ProvidersModule imports
 // nothing back into tool-gateway, so no circular module graph.
 import { ProvidersModule } from "../providers/providers.module";
-// Issue #1 — `MCPPermissionGatewayService` is also exported by
-// `McpPlatformModule`, but that module already imports
-// `ToolGatewayModule` (for ToolExecutorService). Importing it back
-// here would create a circular module graph that has to be broken
-// with `forwardRef` on both sides — risky for boot order.
+// WIN-269 (M4.3) — THE IMPORT THAT USED TO STAND HERE IS GONE.
 //
-// The service is stateless (the only constructor dep is PRISMA_TOKEN,
-// which is global via DatabaseModule), so registering it directly as
-// a provider here gives ToolExecutorService a working instance via DI
-// without any circular wiring. Two instances exist in the DI graph;
-// they have identical behaviour because the service holds no state
-// between calls.
-import { MCPPermissionGatewayService } from "../mcp-platform/permission-gateway.service";
+// This module used to import `MCPPermissionGatewayService` out of
+// `../mcp-platform` and register a SECOND instance of it locally, under a
+// comment explaining that importing `McpPlatformModule` back would make the
+// MODULE graph circular. The comment was right about the module graph and
+// silent about the FILE graph: the import itself was the tool->MCP half of the
+// tool↔MCP cycle, and it survived because nothing measured it.
+//
+// `ToolExecutorService` now injects `TOOL_PERMISSION_GATEWAY`, the port this
+// area owns (`tool-permission.port.ts`), and
+// `mcp-platform/mcp-port-bindings.module.ts` — `@Global()` for exactly
+// this reason — binds the token to `MCPPermissionGatewayService`. The running
+// binary and the stdio app both resolve ONE instance of it, and this module
+// imports nothing from mcp-platform. `scripts/arch/agent-area-cycles.mjs`
+// fails if the edge comes back.
 
 @Module({
   // Importing MonitoringModule makes SpansService (Theme E.1) and
@@ -54,11 +57,6 @@ import { MCPPermissionGatewayService } from "../mcp-platform/permission-gateway.
     McpConnectionPool,
     EntityMcpDiscoveryService,
     EntityMcpDiscoverySchedulerService,
-    // Issue #1 — see import comment above. Local registration avoids
-    // a circular import. When the gate is enabled via
-    // PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1, ToolExecutorService now
-    // has a real `MCPPermissionGatewayService` to inject.
-    MCPPermissionGatewayService,
   ],
   exports: [
     ToolRegistryService,

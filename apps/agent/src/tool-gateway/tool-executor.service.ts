@@ -13,13 +13,20 @@ import { SpansService } from "../monitoring/spans.service";
 import { ToolAuditService } from "../monitoring/tool-audit.service";
 import { SafetyService } from "../monitoring/safety.service";
 import { SafetyEventService } from "../monitoring/safety-event.service";
-import { traceSessionContext } from "../agent-runtime/postman-context-handle";
+import { traceSessionContext } from "./tool-context/postman-context-handle";
 import { RateLimitService } from "../monitoring/rate-limit.service";
 // Issue #1 — per-tool approval policy gate. The MCP path already
 // consults the 4-tier resolver before forwarding; the agent-runtime
 // dispatcher historically did not, so prompt-level approval was the
 // only enforcement. Wired here behind a feature flag for safe rollout.
-import { MCPPermissionGatewayService } from "../mcp-platform/permission-gateway.service";
+// WIN-269 (M4.3) — importing the concrete `MCPPermissionGatewayService` here
+// was the tool->MCP half of the tool↔MCP import cycle. The dispatcher now
+// depends on the PORT this module owns; `McpPortBindingsModule`
+// (mcp-platform) binds the token to that service, so the edge runs MCP->tool.
+import {
+  TOOL_PERMISSION_GATEWAY,
+  type ToolPermissionGateway,
+} from "./tool-permission.port";
 // Issue #1 (full pause flow) — when the gate returns `require_approval`
 // we persist a `PlatosAgentApproval` row, publish the `approval_needed`
 // event over Redis (the dashboard's Socket.IO room subscribes), and
@@ -58,7 +65,7 @@ import {
   injectArgs as injectCtxArgs,
   resolvePath as resolveCtxPath,
   type ContextMapping,
-} from "../agent-runtime/context-resolver";
+} from "./tool-context/context-resolver";
 // Theme CTX.6 — 4-tier resolution (constant / session-override / auto-match /
 // LLM). Supersedes the CTX.2 flat-mapping path; the resolver reads the SAME
 // `contextMapping` JSONB + falls back gracefully on legacy-shape rows so this
@@ -67,7 +74,7 @@ import {
   applyResolutions as applyCtxResolutions,
   resolveToolMappings as resolveCtxToolMappings,
   type AgentContextMapping,
-} from "../agent-runtime/context-automap.service";
+} from "./tool-context/context-automap";
 
 interface ToolCallRequest {
   tool: string;
@@ -185,7 +192,9 @@ export class ToolExecutorService {
     // Issue #1 — optional so existing test fixtures keep working.
     // The gate is also feature-flagged: nothing happens unless
     // PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1 is set in the env.
-    @Optional() private readonly permissionGateway?: MCPPermissionGatewayService,
+    @Optional()
+    @Inject(TOOL_PERMISSION_GATEWAY)
+    private readonly permissionGateway?: ToolPermissionGateway,
     // Issue #1 (full pause flow) — optional. When both are wired AND
     // the gate flag is set, `require_approval` starts a real
     // persisted approval + Socket.IO event + BLPOP wait.
@@ -205,10 +214,12 @@ export class ToolExecutorService {
   /**
    * Issue #1 — per-tool approval gate with full pause/resume flow.
    *
-   * When `PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1` is set and the
-   * `MCPPermissionGatewayService` is wired (DI populates it via the
-   * tool-gateway module's providers), every tool dispatch consults
-   * the 4-tier resolver before forwarding to the entity. Behaviour
+   * When `PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1` is set and a
+   * `TOOL_PERMISSION_GATEWAY` implementation is wired (WIN-269: DI binds the
+   * port to `MCPPermissionGatewayService` in
+   * `mcp-platform/mcp-port-bindings.module.ts`, which is `@Global()`
+   * exactly so this module need not import mcp-platform), every tool dispatch
+   * consults the 4-tier resolver before forwarding to the entity. Behaviour
    * depends on the resolved state:
    *
    *   - `auto_allow`       → return `{ kind: "allow" }`; caller dispatches

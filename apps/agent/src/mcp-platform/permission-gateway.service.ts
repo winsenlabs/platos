@@ -4,6 +4,11 @@ import {
   type ControlDatabaseClient,
 } from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
+// WIN-269 (M4.3) — the port `tool-gateway` owns. Declaring `implements` here is
+// what makes the inversion compiler-checked: the MCP side depends on the tool
+// side's published shape, not the other way round, and a change to `resolve`
+// that the dispatcher could not consume fails the build at this file.
+import type { ToolPermissionGateway } from "../tool-gateway/tool-permission.port";
 
 /**
  * Theme K.3 — 4-tier MCP permission gateway.
@@ -461,7 +466,7 @@ type ResolvedOrganization =
   | { readonly ok: false; readonly reason: McpScopeRefusal };
 
 @Injectable()
-export class MCPPermissionGatewayService {
+export class MCPPermissionGatewayService implements ToolPermissionGateway {
   private readonly logger = new Logger(MCPPermissionGatewayService.name);
 
   constructor(@Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient) {}
