@@ -392,10 +392,15 @@ test("protected Platos SDK trees deviate only where a reviewed entry says so", (
       assert.match(change.reason, /\S/u, change.path);
     }
   }
-  // The four trees WIN-270 did not touch are still byte-identical, which is the
-  // half of WIN-253's claim that has not moved.
+  // WIN-270 (M4.4) and WIN-272 (M4.6), the SDK lane: the last two byte-identical
+  // trees are now reviewed too — the platools doc correction and the shared
+  // protocol fixture suites in `packages/platools-js` and `packages/platools-py` —
+  // so NO protected tree is byte-identical any more. What still holds of WIN-253's
+  // claim is the part that was always the point: nothing was deleted, and every
+  // deviation is a reviewed path with a reason, which the three negative controls
+  // below prove are enforced rather than recorded.
   const untouched = report.protectedTrees.filter((tree) => tree.byteIdentical).map((tree) => tree.path);
-  assert.deepEqual(untouched, ["packages/platools-js", "packages/platools-py"]);
+  assert.deepEqual(untouched, []);
   assert.ok(reviewedTotal > 0, "the reviewed-change mechanism must be exercised by the live tree");
 });
 

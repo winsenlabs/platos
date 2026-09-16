@@ -30,7 +30,7 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -41,11 +41,16 @@ import {
   POLICY_PATH,
   MANIFEST_PATH,
   PYTHON_OUTPUT,
+  SSE_TRANSPORT_PATH,
+  STREAM_FRAME_PATH,
   TYPESCRIPT_OUTPUT,
   buildArtifacts,
   classifyTemplate,
+  readEventStreamHandlers,
   readIdempotencyHeader,
   readIdempotencyPolicy,
+  readSseTransport,
+  readStreamVocabulary,
   repositoryRoot,
 } from "./v1-contract.mjs";
 
@@ -55,6 +60,10 @@ const KEYS = {
   manifest: relativeTo(MANIFEST_PATH),
   policy: relativeTo(POLICY_PATH),
   header: relativeTo(POLICY_HEADER_PATH),
+  sse: relativeTo(SSE_TRANSPORT_PATH),
+  streamFrame: relativeTo(STREAM_FRAME_PATH),
+  streamsController: "apps/core-api/src/transports/ws/streams.controller.ts",
+  sessionController: "apps/core-api/src/transports/bff/session.controller.ts",
 };
 
 const sourceText = (key) => readFileSync(join(repositoryRoot, key), "utf8");
@@ -201,6 +210,96 @@ test("classification over templates matches the table it was read from", () => {
   assert.equal(classifyTemplate("GET", "/api/v1/win270/not-a-real-route", policy), "not-applicable");
 });
 
+// WIN-272 (M4.6). WHICH operations are event streams is READ off core-api's handlers,
+// and the wire facts off `sse.ts` and the kernel. Each case perturbs the real file.
+test("an event-stream operation is found on core-api's handlers and emitted as a streaming method", () => {
+  const stream = fixtureOf(baseline).operations.find((entry) => entry.responseKind === "event-stream");
+  assert.ok(stream, "no operation is an event stream; the join to core-api's SSE lane is gone");
+  assert.equal(stream.expected.accept, "text/event-stream");
+  assert.equal(fixtureOf(baseline).operations.filter((entry) => entry.responseKind === "event-stream").length, 1);
+  assert.match(baseline[TYPESCRIPT_OUTPUT], /read\(environmentId: string, streamId: string, options\?: V1StreamOptions\): V1EventStream \{\n\s*return this\.transport\.stream\(/u);
+  assert.doesNotMatch(baseline[TYPESCRIPT_OUTPUT], /transport\.send<void>\(\{\n\s*operation: operation\("get__api_v1_environments_by_environmentId_streams_by_streamId"\)/u);
+  assert.match(baseline[PYTHON_OUTPUT], /def read\(self, environment_id: str, stream_id: str, \*\*options: Any\) -> Any:[\s\S]*?return self\._transport\.stream\(/u);
+
+  // The handler stops opening a stream: the generator refuses rather than emit a JSON call.
+  const withoutOpener = sourceText(KEYS.streamsController).replace(/openEventStream\(response\);/u, "void response;");
+  assert.notEqual(withoutOpener, sourceText(KEYS.streamsController), "the mutation did not apply");
+  assert.throws(() => emit(new Map([[KEYS.streamsController, withoutOpener]])), /calls openEventStream; the event-stream join is gone/u);
+
+  // A void JSON handler starts opening one: it becomes a streaming method in both languages.
+  const session = sourceText(KEYS.sessionController);
+  const opened = session.replace(/(async signOut\([\s\S]*?\): Promise<void> \{)/u, "$1\n    openEventStream(response);");
+  assert.notEqual(opened, session, "the mutation did not apply");
+  const moved = emit(new Map([[KEYS.sessionController, opened]]));
+  const signOut = fixtureOf(moved).operations.find((entry) => entry.operationId === "delete__api_v1_bff_session");
+  assert.equal(signOut.responseKind, "event-stream");
+  assert.match(moved[TYPESCRIPT_OUTPUT], /signOut\(options\?: V1StreamOptions\): V1EventStream/u);
+  assert.match(moved[PYTHON_OUTPUT], /def sign_out\(self, \*\*options: Any\) -> Any:/u);
+});
+
+test("a handler that opens a stream while the document declares a JSON body is a refusal", () => {
+  const path = "apps/core-api/src/transports/rest/organizations.controller.ts";
+  const controller = readFileSync(join(repositoryRoot, path), "utf8");
+  const opened = controller.replace(/(async list\([\s\S]*?\): Promise<[^>]*>> \{)/u, "$1\n    openEventStream(response);");
+  assert.notEqual(opened, controller, "the mutation did not apply");
+  assert.throws(() => emit(new Map([[path, opened]])), /OrganizationsController\.list opens an event stream, but the document declares a JSON response body/u);
+});
+
+test("a call on the AST counts; a mention in a comment or a string does not", () => {
+  const handlers = readEventStreamHandlers(
+    [
+      {
+        path: "probe.ts",
+        text: [
+          "class ProbeController {",
+          "  commented() { /* openEventStream(response) */ }",
+          '  quoted() { return "openEventStream(response)"; }',
+          "  called(response: unknown) { if (response) openEventStream(response); }",
+          "}",
+        ].join("\n"),
+      },
+    ],
+    "openEventStream",
+  );
+  assert.deepEqual([...handlers.keys()], ["ProbeController.called"]);
+});
+
+test("the wire facts are READ off sse.ts and the kernel, and both emitted clients move with them", () => {
+  const facts = readSseTransport(sourceText(KEYS.sse));
+  assert.deepEqual(facts, {
+    opener: "openEventStream",
+    mediaType: "text/event-stream",
+    resumeHeader: "last-event-id",
+    metaEvent: "stream_meta",
+  });
+  assert.deepEqual(fixtureOf(baseline).stream, {
+    mediaType: facts.mediaType,
+    resumeHeader: facts.resumeHeader,
+    metaEvent: facts.metaEvent,
+    ...readStreamVocabulary(sourceText(KEYS.streamFrame)),
+  });
+
+  const header = sourceText(KEYS.sse).replace('request.headers["last-event-id"]', 'request.headers["x-win272-probe-resume"]');
+  assert.notEqual(header, sourceText(KEYS.sse), "the mutation did not apply");
+  const movedHeader = emit(new Map([[KEYS.sse, header]]));
+  assert.match(movedHeader[TYPESCRIPT_OUTPUT], /LAST_EVENT_ID_HEADER = "x-win272-probe-resume"/u);
+  assert.match(movedHeader[PYTHON_OUTPUT], /LAST_EVENT_ID_HEADER = "x-win272-probe-resume"/u);
+
+  const terminal = sourceText(KEYS.streamFrame).replace(
+    /(export const TERMINAL_FRAME_TYPES = Object\.freeze\(\[[^\]]*"stream\.offline",\n)/u,
+    '$1  "turn.cancelled",\n',
+  );
+  assert.notEqual(terminal, sourceText(KEYS.streamFrame), "the mutation did not apply");
+  const movedTerminal = emit(new Map([[KEYS.streamFrame, terminal]]));
+  assert.match(movedTerminal[TYPESCRIPT_OUTPUT], /TERMINAL_FRAME_TYPES = \["turn\.done", "stream\.error", "stream\.offline", "turn\.cancelled"\] as const;/u);
+  assert.match(movedTerminal[PYTHON_OUTPUT], /TERMINAL_FRAME_TYPES: tuple\[str, \.\.\.\] = \("turn\.done", "stream\.error", "stream\.offline", "turn\.cancelled",\)/u);
+
+  assert.throws(
+    () => emit(new Map([[KEYS.streamFrame, sourceText(KEYS.streamFrame).replace(/export const STREAM_SCHEMA_VERSION_MAX = \d+;/u, "")]])),
+    /no longer declares STREAM_SCHEMA_VERSION_MAX/u,
+  );
+});
+
 test("the emitted fixture drives the Python client too", () => {
   const suite = join(
     repositoryRoot,
@@ -236,6 +335,18 @@ test("the emitted fixture drives the Python client too", () => {
   assert.match(run.stderr ?? "", /python V1 contract cases passed/u);
   assert.doesNotMatch(run.stderr ?? "", /^0\//mu, "the Python runner collected no cases");
 
+  // WIN-272 (M4.6): the Python event-stream reader, against the resume fixture the
+  // TypeScript suite joins to core-api's encoders and the kernel. Same restriction.
+  const streamSuite = join(repositoryRoot, "packages", "platos-client-py", "tests", "test_v1_stream.py");
+  assert.ok(existsSync(streamSuite), "the Python stream suite is missing");
+  const streamRun = spawnSync("python3", ["-S", "-I", streamSuite], { encoding: "utf8", cwd: repositoryRoot });
+  assert.equal(
+    streamRun.status,
+    0,
+    `the Python V1 stream suite failed:\n${streamRun.stdout ?? ""}\n${streamRun.stderr ?? ""}`,
+  );
+  assert.match(streamRun.stderr ?? "", /^[1-9]\d*\/\d+ python V1 stream cases passed$/mu);
+
   // AND THE PACKAGE'S OWN ENTRY POINT, under the same restriction. A caller that
   // wants `PlatosError` should not have to install an async HTTP stack, and
   // before WIN-270 it did.
@@ -257,4 +368,56 @@ test("the emitted fixture drives the Python client too", () => {
     `importing platos_client without site-packages failed:\n${entry.stdout ?? ""}\n${entry.stderr ?? ""}`,
   );
   assert.match(entry.stdout ?? "", /PlatosRefusal/u);
+});
+
+// THE SDK GATES ARE WIRED INTO CI, AND NOTHING THERE PUBLISHES.
+//
+// WIN-270 (M4.4). The platools suites, the Python setup they need and the
+// changeset gate are separate steps of the typecheck job, and a step can be
+// deleted in one quiet edit. This file already runs inside the V1 evidence step
+// that `scripts/ci-policy.test.mjs` pins command by command, so asserting the
+// wiring HERE means deleting one of those steps turns a protected gate red.
+// Founder decision D15: publication from this repository stays forbidden, so no
+// workflow step may run a publish.
+test("CI runs both platools suites and the changeset gate, and publishes nothing", async () => {
+  const { parse } = await import("yaml");
+  const workflows = join(repositoryRoot, ".github", "workflows");
+  const ci = parse(readFileSync(join(workflows, "ci.yml"), "utf8"));
+  const steps = ci.jobs.typecheck.steps;
+  const runsOf = (step) =>
+    String(step.run ?? "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+  const stepRunning = (command) => steps.find((step) => runsOf(step).includes(command));
+
+  assert.ok(stepRunning("pnpm --filter @platosdev/platools-sdk test"), "no step runs the platools-js suite");
+
+  const pytest = stepRunning("python -m pytest -p no:cacheprovider");
+  assert.ok(pytest, "no step runs the platools-py suite");
+  assert.equal(pytest["working-directory"], "packages/platools-py");
+  assert.ok(
+    runsOf(pytest).includes("python -m pip install --require-hashes --no-deps -r requirements-ci.txt"),
+    "the platools-py dependencies are not installed from the hashed lock",
+  );
+  const python = steps.findIndex((step) => String(step.uses ?? "").startsWith("actions/setup-python@"));
+  assert.ok(python >= 0 && python < steps.indexOf(pytest), "Python is not set up before the pytest step");
+  assert.match(steps[python].uses, /^actions\/setup-python@[0-9a-f]{40}$/u, "setup-python is not pinned by commit");
+  assert.match(String(steps[python].with?.["python-version"]), /^\d+\.\d+\.\d+$/u, "the interpreter is not pinned exactly");
+
+  const gate = stepRunning('pnpm audit:changesets --base "$CHANGESET_GATE_BASE"');
+  assert.ok(gate, "no step runs the changeset gate");
+  assert.ok(runsOf(gate).includes("pnpm test:changesets"), "the changeset gate's own suite does not run");
+  assert.equal(
+    gate.env?.CHANGESET_GATE_BASE,
+    "${{ github.event.pull_request.base.sha || github.event.before }}",
+  );
+  assert.equal(ci.jobs.typecheck.steps[0].with?.["fetch-depth"], 0, "the merge base needs full history");
+
+  const names = readdirSync(workflows).filter((name) => /\.ya?ml$/u.test(name));
+  assert.ok(names.includes("ci.yml") && names.length > 1, "the workflow directory listing is wrong");
+  for (const name of names) {
+    const text = readFileSync(join(workflows, name), "utf8");
+    assert.doesNotMatch(text, /changeset\s+publish|npm\s+publish|pnpm\s+publish|twine\s+upload|uv\s+publish/u, name);
+  }
 });

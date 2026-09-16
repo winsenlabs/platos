@@ -50,6 +50,7 @@ interface Fixture {
     readonly method: string;
     readonly template: string;
     readonly idempotency: string;
+    readonly responseKind: "json" | "event-stream";
     readonly successStatus: number;
     readonly typescript: { readonly namespace: string; readonly method: string };
     readonly arguments: {
@@ -64,6 +65,7 @@ interface Fixture {
       readonly queryString: string;
       readonly sendsIdempotencyKey: boolean;
       readonly contentType: string | null;
+      readonly accept: string;
     };
   }[];
 }
@@ -88,8 +90,22 @@ function recording(): { readonly sent: V1Request[]; readonly api: V1Api } {
       sent.push(request);
       return undefined as T;
     },
+    // WIN-272 (M4.6): an event-stream operation reaches the transport's `stream`,
+    // never `send`. Recorded the same way; the stream it hands back is empty.
+    stream(request: V1Request) {
+      sent.push(request);
+      return { lastEventId: null, lastSeq: 0, end: null, reconnects: 0, async *[Symbol.asyncIterator]() {} };
+    },
   });
   return { sent, api };
+}
+
+/** A minimal valid event stream: the leading meta frame and a terminal frame. */
+function finishedStream(): Response {
+  return new Response(
+    'event: stream_meta\ndata: {"sv":1,"replayFrom":null}\n\ndata: {"sv":1,"t":"turn.done","seq":1,"ts":1}\n\n',
+    { status: 200, headers: { "content-type": "text/event-stream; charset=utf-8" } },
+  );
 }
 
 /** Invoke one generated method by the names the fixture states. */
@@ -109,7 +125,13 @@ async function drive(api: V1Api, entry: Fixture["operations"][number]): Promise<
   // not compile for them — which is the point: the argument exists because the
   // route cannot be called without it.
   if (entry.arguments.query !== null) args.push(entry.arguments.query);
-  await method.apply(namespace, args);
+  const result = await method.apply(namespace, args);
+  // An event stream sends nothing until it is read, so it is read to its end.
+  if (entry.responseKind === "event-stream") {
+    for await (const _frame of result as AsyncIterable<unknown>) {
+      // drained
+    }
+  }
 }
 
 describe("the generated V1 surface matches the contract it was emitted from", () => {
@@ -151,6 +173,7 @@ describe("the generated V1 surface matches the contract it was emitted from", ()
       expect(request.operation.method).toBe(entry.expected.method);
       expect(request.operation.idempotency).toBe(entry.idempotency);
       expect(request.operation.successStatus).toBe(entry.successStatus);
+      expect(request.operation.responseKind).toBe(entry.responseKind);
       expect(request.path).toBe(entry.expected.path);
       expect(request.body ?? null).toEqual(entry.arguments.body);
       expect(request.query ?? null).toEqual(entry.expected.query);
@@ -166,7 +189,7 @@ describe("the generated V1 surface matches the contract it was emitted from", ()
         operatorToken: "operator-token",
         fetch: (async (url: string, init: RequestInit) => {
           calls.push({ url, init });
-          return new Response(null, { status: 204 });
+          return entry.responseKind === "event-stream" ? finishedStream() : new Response(null, { status: 204 });
         }) as unknown as typeof globalThis.fetch,
       });
       await drive(client, entry);
@@ -178,6 +201,7 @@ describe("the generated V1 surface matches the contract it was emitted from", ()
       expect(calls[0]!.init.method).toBe(entry.expected.method);
       expect(headers["authorization"]).toBe("Bearer operator-token");
       expect(headers["content-type"] ?? null).toBe(entry.expected.contentType);
+      expect(headers["accept"]).toBe(entry.expected.accept);
       expect(IDEMPOTENCY_KEY_HEADER in headers).toBe(entry.expected.sendsIdempotencyKey);
     },
   );

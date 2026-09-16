@@ -20,7 +20,7 @@ can read them via the accessors exposed here:
     def list_orders(customer_id: str) -> list[Order]:
         uid = current_user_id()                # who the LLM is acting on behalf of
         token = current_user_token()           # optional caller access token
-        org, project, env = current_scope()    # trigger.dev scope tuple
+        org, project, env = current_scope()    # Platos tenancy scope
         return db.list_orders(customer_id=customer_id, user_id=uid)
 
 Because `ContextVar` is task-local (asyncio) and thread-local (sync
@@ -243,9 +243,9 @@ def current_call_id() -> str | None:
 def current_scope() -> tuple[str | None, str | None, str | None]:
     """Return the `(organization_id, project_id, environment_id)` tuple.
 
-    Mirrors the trigger.dev 3-axis scope every Platos object is bound to
-    (see spec §3). Any or all components may be `None` outside a
-    dispatched tool call.
+    The Platos tenancy scope: the organization, project and environment
+    ids Platos mints and every Platos object is bound to (see spec §3).
+    Any or all components may be `None` outside a dispatched tool call.
     """
     return (_org_id_var.get(), _project_id_var.get(), _env_id_var.get())
 

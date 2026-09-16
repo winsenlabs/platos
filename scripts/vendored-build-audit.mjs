@@ -185,6 +185,71 @@ const allowedProtectedSdkChanges = [
     reason:
       "WIN-270 (M4.4): three doc comments on published types attributed ids Platos mints, owns and validates to an external vendor's schema. Removing the words also removed three reviewed vocabulary exceptions. No wire-format change.",
   },
+  {
+    path: "packages/platools-js/src/context.ts",
+    reason:
+      "WIN-270 (M4.4): `currentScope()` and the `PlatosCallContext` field table documented organizationId, projectId and environmentId as an external vendor's ids. Platos mints and owns them; the doc comments now say so, and the six vocabulary exception rows that excused the old wording are deleted. Documentation only.",
+  },
+  {
+    path: "packages/platools-js/README.md",
+    reason:
+      "WIN-270 (M4.4): the `currentScope()` example repeated the misdescription the doc comments carried, calling the Platos tenancy scope an external vendor's, and the README ships in the npm tarball. Reworded; its vocabulary exception row is deleted. Documentation only.",
+  },
+  {
+    path: "packages/platools-js/tests/protocol-fixture.test.ts",
+    reason:
+      "WIN-270 (M4.4), cross-language fixtures: drives the real PlatoolsClient through registration and dispatch against `tests/sdk-contract/platools-protocol.json`, the fixture the platools-py suite also reads, and joins its frame keys to the platform's own protocol header.",
+  },
+  {
+    path: "packages/platools-py/platools/context.py",
+    reason:
+      "WIN-270 (M4.4): the Python twin of the platools-js doc correction; `current_scope()` and the module example described Platos tenancy ids as an external vendor's scope. Documentation only.",
+  },
+  {
+    path: "packages/platools-py/README.md",
+    reason:
+      "WIN-270 (M4.4): the Python twin of the platools-js README correction on the `current_scope()` example. Documentation only.",
+  },
+  {
+    path: "packages/platools-py/requirements-ci.in",
+    reason:
+      "WIN-270 (M4.4): the exact pins the CI pytest step resolves, the input to the hashed lock beside it.",
+  },
+  {
+    path: "packages/platools-py/requirements-ci.txt",
+    reason:
+      "WIN-270 (M4.4): the hashed lock `.github/workflows/ci.yml` installs with `--require-hashes --no-deps`, so every distribution the platools-py suite imports in CI is named at an exact version and verified by hash.",
+  },
+  {
+    path: "packages/platools-py/tests/test_protocol_fixture.py",
+    reason:
+      "WIN-270 (M4.4), cross-language fixtures: the pytest half of `tests/sdk-contract/platools-protocol.json`, driving the real PlatoolsClient registration and dispatch path.",
+  },
+  {
+    path: "packages/platos-client/src/v1-stream.ts",
+    reason:
+      "WIN-272 (M4.6): the event-stream reader behind the generated `environmentStreams.read`, which previously went through the JSON transport and threw on every valid stream. WHATWG parsing, the kernel's admitFrame/classifyStreamEnd/isResumable ported and checked against the kernel, and Last-Event-ID resume.",
+  },
+  {
+    path: "packages/platos-client/vitest.config.ts",
+    reason:
+      "WIN-272 (M4.6): test-only. Aliases `@platos/kernel` to its source so `tests/v1-stream.test.ts`, which imports core-api's SSE encoders, loads on a cold checkout instead of only after `build:v1` has produced the kernel's dist.",
+  },
+  {
+    path: "packages/platos-client/tests/v1-stream.test.ts",
+    reason:
+      "WIN-272 (M4.6): drives the reader against `tests/sdk-contract/v1-stream-resume.json` per connection, and joins that fixture to core-api's SSE encoders and the kernel's rules.",
+  },
+  {
+    path: "packages/platos-client-py/platos_client/v1_stream.py",
+    reason:
+      "WIN-272 (M4.6): the Python event-stream reader behind the generated `environment_streams.read`, standard library only, the TypeScript reader's twin.",
+  },
+  {
+    path: "packages/platos-client-py/tests/test_v1_stream.py",
+    reason:
+      "WIN-272 (M4.6): the Python half of `tests/sdk-contract/v1-stream-resume.json`, per connection, runnable with no site-packages by `pnpm test:sdk-v1`.",
+  },
 ];
 const auditOwnedPaths = new Set([
   REPORT_PATH,

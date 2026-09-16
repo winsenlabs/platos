@@ -74,6 +74,25 @@ export {
   createV1Client,
   IDEMPOTENCY_REPLAYED_HEADER,
 } from "./v1-transport.js";
+export {
+  EventStreamReader,
+  PlatosStreamError,
+  SseParser,
+  admitFrame,
+  classifyStreamEnd,
+  isResumable,
+  isTerminalFrameType,
+} from "./v1-stream.js";
+export type {
+  SseEvent,
+  V1EventStream,
+  V1FrameAdmission,
+  V1StreamConnection,
+  V1StreamEnd,
+  V1StreamFrame,
+  V1StreamMeta,
+  V1StreamOptions,
+} from "./v1-stream.js";
 export type { V1ClientOptions, IdempotencyKeyFactory } from "./v1-transport.js";
 
 export type {

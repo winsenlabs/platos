@@ -1,0 +1,113 @@
+{
+  "$comment": [
+    "HAND-WRITTEN, AND READ BY BOTH PLATOOLS SDKS. WIN-270 (M4.4), cross-language fixtures.",
+    "",
+    "packages/platools-js/tests/protocol-fixture.test.ts (vitest) and",
+    "packages/platools-py/tests/test_protocol_fixture.py (pytest) each declare the tool below in",
+    "their own language, drive their own PlatoolsClient through registration and dispatch, and",
+    "compare the FRAMES IT PUTS ON THE WIRE against this file. Two SDKs that disagree about a key,",
+    "a type, a default or an error string cannot both match one fixture.",
+    "",
+    "The frame key sets are also joined to the platform: both suites parse the protocol header of",
+    "apps/agent/src/tool-gateway/tool-sync-ws.service.ts and require `keys` below to equal what the",
+    "server documents, so this file cannot drift away from the consumer the frames are written for.",
+    "A key ending in `?` is optional there and may be absent or null on the wire.",
+    "",
+    "`tool.parameters` is the JSON-Schema MEANING both SDKs must derive, not their spelling: zod and",
+    "pydantic decorate a schema differently (titles, `anyOf` vs a type array), so each suite reads its",
+    "own `input_schema` as, per property in declaration order, the set of JSON types it admits",
+    "(`type` string or array, plus every `anyOf` member's type), whether it is required, and its",
+    "`default` when one is present and not null. A null default on a nullable optional parameter",
+    "states nothing an absent default does not.",
+    "",
+    "The handler both suites register returns",
+    "  { received: { order_id, quantity, gift }, scope: { organizationId, projectId, environmentId } }",
+    "with `scope` read from the SDK's own current-scope accessor, so the expected `tool_result` proves",
+    "the `__platos` envelope reached the call context, the `_context` and `__platos` envelopes never",
+    "reached the handler's arguments, and the declared default for `gift` was applied."
+  ],
+  "server": "apps/agent/src/tool-gateway/tool-sync-ws.service.ts",
+  "tool": {
+    "name": "lookup_order",
+    "description": "Look up one order by id.",
+    "auth": "user",
+    "roles": ["support", "admin"],
+    "annotations": { "category": "orders" },
+    "parameters": [
+      { "name": "order_id", "types": ["string"], "required": true },
+      { "name": "quantity", "types": ["integer"], "required": true },
+      { "name": "gift", "types": ["boolean"], "required": false, "default": false },
+      { "name": "note", "types": ["null", "string"], "required": false }
+    ]
+  },
+  "frames": {
+    "tool_register": {
+      "direction": "sdk-to-platform",
+      "keys": ["type", "tools"],
+      "toolKeys": ["name", "description", "input_schema", "output_schema", "auth", "roles", "annotations"],
+      "expected": {
+        "type": "tool_register",
+        "tools": [
+          {
+            "name": "lookup_order",
+            "description": "Look up one order by id.",
+            "output_schema": null,
+            "auth": "user",
+            "roles": ["support", "admin"],
+            "annotations": { "category": "orders" }
+          }
+        ]
+      }
+    },
+    "tool_call": {
+      "direction": "platform-to-sdk",
+      "keys": ["type", "call_id", "tool_name", "params"],
+      "wire": {
+        "type": "tool_call",
+        "call_id": "call-fixture-0001",
+        "tool_name": "lookup_order",
+        "params": {
+          "order_id": "ord-1042",
+          "quantity": 3,
+          "__platos": {
+            "organizationId": "org_fixture_alpha",
+            "projectId": "proj_fixture_alpha",
+            "environmentId": "env_fixture_alpha_prod",
+            "entityId": "entity-fixture",
+            "userId": "end-user-fixture",
+            "agentId": "agent-fixture",
+            "threadId": "thread-fixture",
+            "callId": "call-fixture-0001",
+            "timestamp": "2026-09-15T00:00:00.000Z",
+            "nonce": "nonce-fixture-0001",
+            "signature": "signature-fixture"
+          },
+          "_context": { "user.id": "end-user-fixture" }
+        }
+      }
+    },
+    "tool_result": {
+      "direction": "sdk-to-platform",
+      "keys": ["type", "call_id", "result", "latency_ms"],
+      "expected": {
+        "type": "tool_result",
+        "call_id": "call-fixture-0001",
+        "result": {
+          "received": { "order_id": "ord-1042", "quantity": 3, "gift": false },
+          "scope": {
+            "organizationId": "org_fixture_alpha",
+            "projectId": "proj_fixture_alpha",
+            "environmentId": "env_fixture_alpha_prod"
+          }
+        }
+      },
+      "latencyMs": "a non-negative integer; its value is the clock's, so only its type is compared"
+    },
+    "tool_error": {
+      "direction": "sdk-to-platform",
+      "keys": ["type", "call_id", "error", "traceback?"],
+      "call": { "type": "tool_call", "call_id": "call-fixture-0002", "tool_name": "no_such_tool", "params": {} },
+      "expected": { "type": "tool_error", "call_id": "call-fixture-0002", "error": "unknown tool: no_such_tool" }
+    }
+  }
+}

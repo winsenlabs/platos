@@ -1627,7 +1627,29 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `MagicLinkDelivery` port, the administration gate and two tenancy read models
     // (context source 730 -> 734) and three suites (context test 363 -> 366). NO
     // LEDGER RULE CHANGED.
-    packages: 1569,
+    //
+    // THE SDK LANE — 1569 -> 1577 integrated. EIGHT files:
+    // `packages/platools-js/tests/protocol-fixture.test.ts` and
+    // `packages/platools-py/tests/test_protocol_fixture.py` (the two readers of the
+    // shared platools protocol fixture, on `packages.test.suites`);
+    // `packages/platools-py/requirements-ci.{in,txt}` (the hashed pytest lock CI
+    // installs, on the ONE new rule `packages.python.ci-requirements`, because no
+    // existing packages rule matched a requirements file);
+    // `packages/platos-client/src/v1-stream.ts` (`packages.source.typescript`) and
+    // `packages/platos-client/tests/v1-stream.test.ts` (`packages.test.suites`);
+    // `packages/platos-client-py/platos_client/v1_stream.py`
+    // (`packages.python.sources`) and `packages/platos-client-py/tests/test_v1_stream.py`
+    // (`packages.test.suites`).
+    //
+    // THE SDK LANE, ROUND 2 — 1577 -> 1578. ONE file:
+    // `packages/platos-client/vitest.config.ts`, on the existing
+    // `packages.config.build` rule beside the other packages' vitest configs. It
+    // aliases the kernel to its source so the stream suite loads on a cold checkout.
+    //
+    // 1578 IS RE-MEASURED ON THE MERGED TREE. The sdk lane pinned 1565 because it
+    // added its nine to 1556, a head without the identity/tenancy remainder's
+    // thirteen: 1556 + 13 + 9 = 1578.
+    packages: 1578,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2166,7 +2188,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and `scripts/lib/shipping-components.mjs`, the one derivation of each shipping
     // image's component set that the SBOM and the advisory scan share, on
     // `root-infra.tooling.scripts`. NO LEDGER RULE CHANGED.
-    "root-infra": 95,
+    //
+    // WIN-270 (M4.4) / WIN-272 (M4.6), THE SDK LANE — 95 -> 102. SEVEN files:
+    // `scripts/sdk/changeset-gate.mjs` and its suite; the two hand-stated
+    // cross-language fixtures `tests/sdk-contract/platools-protocol.json` and
+    // `tests/sdk-contract/v1-stream-resume.json`; and three changesets
+    // (`.changeset/platools-sdk-tenancy-id-docs.md`,
+    // `platos-client-post-retry-guard.md`, `platos-client-v1-event-streams.md`).
+    // All on existing root-infra rules. 95 + 7 = 102.
+    "root-infra": 102,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2480,7 +2510,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // `packages`. Re-measured on the integrated tree, not summed from the lane
   // report (which read 1824 against a tree without the factory entries or the
   // gates): 18 + 1 + 126 + 4 + 10 + 1569 + 26 + 95 = 1849.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1849);
+  //
+  // AND THE SDK LANE — 1849 -> 1865. SIXTEEN files, itemised on their areas' deltas
+  // above: nine in `packages` (eight in round 1, the client's vitest config in round
+  // 2) and seven in `root-infra`. Re-measured on the integrated tree, not summed
+  // from the lane report (which read 1819 against a tree with none of the three
+  // earlier lanes in it): 18 + 1 + 126 + 4 + 10 + 1578 + 26 + 102 = 1865.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1865);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2797,7 +2833,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // both area deltas: apps-agent +3 and apps-core-api +2, summed per area here.
     // AND THE IDENTITY/TENANCY REST REMAINDER — 1828 -> 1849, moved in the same edit
     // as the total and both area deltas: eight apps-core-api files, thirteen packages.
-    rulesDocument.baseline.totalFiles + 1849
+    // AND THE SDK LANE — 1849 -> 1865, moved in the same edit as the total and both
+    // area deltas: nine packages files and seven root-infra files.
+    rulesDocument.baseline.totalFiles + 1865
   );
 });
 

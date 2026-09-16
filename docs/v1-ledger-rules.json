@@ -851,6 +851,20 @@
         "evidence": "Python packaging metadata read by the build and publish steps."
       },
       {
+        "id": "packages.python.ci-requirements",
+        "match": [
+          "packages/*/requirements-ci.in",
+          "packages/*/requirements-ci.txt"
+        ],
+        "kind": "config",
+        "owner_capability": "Public SDKs",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "WIN-270 (M4.4): the hashed lock .github/workflows/ci.yml installs with --require-hashes --no-deps before running the package's pytest suite, and the exact pins it is compiled from."
+      },
+      {
         "id": "packages.doc.package",
         "match": [
           "packages/*/**/*.md"
@@ -2108,7 +2122,7 @@
     ]
   },
   "expected": {
-    "totalFiles": 5318,
+    "totalFiles": 5334,
     "areaCounts": {
       "apps-agent": 532,
       "apps-core-api": 137,
@@ -2116,26 +2130,26 @@
       "apps-webapp": 184,
       "docs-content": 746,
       "internal-packages": 1174,
-      "packages": 2206,
-      "root-infra": 331
+      "packages": 2215,
+      "root-infra": 338
     },
     "kindCounts": {
       "asset": 155,
-      "config": 318,
+      "config": 324,
       "doc": 613,
       "fixture": 6,
       "generated": 48,
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2176,
-      "test": 1089
+      "source": 2180,
+      "test": 1095
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1693,
+      "move-refactor": 1706,
       "regenerate": 43,
-      "retain": 3573,
+      "retain": 3576,
       "unresolved": 2
     },
     "protectedCount": 1642,
@@ -2234,7 +2248,7 @@
       "packages.adapters.fixture": 3,
       "packages.adapters.source": 284,
       "packages.adapters.test": 196,
-      "packages.config.build": 29,
+      "packages.config.build": 30,
       "packages.contexts.config": 37,
       "packages.contexts.doc": 17,
       "packages.contexts.source": 734,
@@ -2246,11 +2260,12 @@
       "packages.kernel.source": 23,
       "packages.kernel.test": 7,
       "packages.legal.attribution": 11,
+      "packages.python.ci-requirements": 2,
       "packages.python.metadata": 4,
-      "packages.python.sources": 39,
-      "packages.source.typescript": 299,
+      "packages.python.sources": 40,
+      "packages.source.typescript": 300,
       "packages.style.sheet": 1,
-      "packages.test.suites": 64,
+      "packages.test.suites": 68,
       "packages.tooling.scripts": 1,
       "root-infra.automation.renovate": 1,
       "root-infra.build.workspace": 6,
@@ -2272,13 +2287,13 @@
       "root-infra.lockfile.workspace": 1,
       "root-infra.pin.public-proxy-example": 1,
       "root-infra.pin.submodule-index": 1,
-      "root-infra.release.changesets": 16,
-      "root-infra.test.harness": 72,
+      "root-infra.release.changesets": 19,
+      "root-infra.test.harness": 74,
       "root-infra.test.script-suites": 35,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 121,
+      "root-infra.tooling.scripts": 123,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "67a41e87d50f0d4c0358992c4a1564e1d17d42b5238b4f6f5396ace26b319972"
+    "classificationSha256": "dad38e9db4865531a4bf1fd83fdf24136de676a87e7b5b78c00c6d3bbc87dfa6"
   }
 }

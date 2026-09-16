@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "354dd23af94289a4f9490c27fd0c862286b204f5d2e1a4131ba1446aa3d63e48"
+      "sha256": "ad54bb3baaabfb83666d1c95dbfbfbbd078e67d678aa58ed931f69c3a9a855f8"
     },
     {
       "path": "LICENSE",
@@ -968,7 +968,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "bc971b5bc43ae392ce331045fa02e46d033bdf050ae238dda46952ad4945842e"
+      "sha256": "0b0a46cdaea81a5ee2058e70b58dfa7fb1163134ff3f501fce8b06a3b7e05254"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1053,12 +1053,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "e09adcac4e097d1896436792897df5af0688d0a2e4eab32afd4a9f81d121d061"
+      "sha256": "7306cdd149f2ddc11d98b888114bc22b5db0c3653ae77da2129e8e6a230662c5"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "4af0d01977ba316c29825397fe253783701590cc90de54d2ade1d8e5dfa74e31"
+      "sha256": "e8f6b167a4e367ef581f780d4abe3b2d3e6be685a1815fe1e6cb52a42b58826a"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1098,7 +1098,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "206d5404d3a6c40ffcf0716190575e63ec68718ed1977c118f2817f01036213f"
+      "sha256": "5871d3ef44b949d1b364485d51e0eb7c0e7eb8b7e46276612ad085b8b30c02b1"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1108,12 +1108,12 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "d9d4742d13e395f434b95e80480deabe3e4866c0c9c453919340c486aba208a5"
+      "sha256": "ffffb09ce65842b5b68ab4250a59cec6139cc905a6b9b2f6d98f961b87af80ad"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
       "mode": "100644",
-      "sha256": "5497dc2db453828f74037cc90d3fc5254b5737858547b026da31f9982f336f31"
+      "sha256": "ccf6d8c074f7195ea7cc26c148156f556dc315aa28e02c5e842c39c0b833b39e"
     },
     {
       "path": "docs/authentication.md",
@@ -3098,7 +3098,7 @@
     {
       "path": "docs/sdk-v1-migration.md",
       "mode": "100644",
-      "sha256": "2850437e85f511e8d5e1de864e784af8e0874c86ea9cc3e9bd1cbd37f10b3948"
+      "sha256": "0267582abaf0a4cc5610f8c3fd37d0808a6cd2d1841291687ddedf6210e7712c"
     },
     {
       "path": "docs/security-audit-2026-07-16.md",
@@ -3528,7 +3528,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "828f19f74d9b5885f42940a80bfde92969fb33e74a604131091ba5d7cd8c67cd"
+      "sha256": "fa0135ddf6b570c61459abdb73cf78d517bcbf7407f5521cdb9f8e62768e1ec8"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3553,7 +3553,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "45d17386113bdc6d5f1ae18c0954e04f078d98565030aa1f5ca3cfeeb6b5e5d9"
+      "sha256": "fa6cdaae4168aae22835cb4ccb70c5fb4179ebc0167a77453117bd16bb1298dd"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3703,7 +3703,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "c7a02e26b1561afe98074b49a570bdfc33cb7a75cce1f5142b9ec110c8eccf3b"
+      "sha256": "3d2f170523efc6a7466e9dd85c03b945f22a219e4382af71779ca44626fcc638"
     },
     {
       "path": "pnpm-lock.yaml",
@@ -3968,7 +3968,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "14dfcf1cbd8c7e570825520b6ecfea7fc84b0ffaf1e8cdb09f13a915d2505242"
+      "sha256": "60a04fa5b58ae2c900ede499c3a0f5bb686d8646e6608219e6db5bca98ec7f7a"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
@@ -4003,7 +4003,7 @@
     {
       "path": "scripts/vocabulary-boundary.test.mjs",
       "mode": "100644",
-      "sha256": "6e5f53d004c82c69c5e9480cd59e864f2c44d033b7f8b3843cc3207266c42c10"
+      "sha256": "9862c2035c03ee40c3f52310b303b45c6126a0f8391ee91f8431f3f4bb257990"
     },
     {
       "path": "scripts/workspace-reachability.mjs",

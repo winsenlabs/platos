@@ -792,7 +792,36 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         Compose an inline comment as the secret's value, and it now says "task
   //         workers" alone. The one vendor row for that word is removed by
   //         `--write`, not by hand, and every other `.env.example` row is unchanged.
-  assert.equal(manifest.exceptions.length, 19456);
+  //
+  //         THE SDK LANE REMOVES SIX MORE, taking it to 19450. Four rows in
+  //         `packages/platools-js/src/context.ts` and two in
+  //         `packages/platools-py/platools/context.py` excused doc comments that
+  //         described Platos-owned tenancy ids as an external vendor's ids, classified
+  //         `vendor`. The ids are Platos's, so the classification was wrong rather
+  //         than stale: the comments were reworded and `--write` removed exactly those
+  //         six as resolved. No row was added.
+  //
+  //         AND TWO MORE, taking it to 19448: the same misdescription survived in the
+  //         `currentScope()` / `current_scope()` example of each package README, which
+  //         ships in the npm tarball and the PyPI distribution beside the doc comments
+  //         it repeats. Both lines now name the Platos tenancy scope and `--write`
+  //         removed the two `vendor` rows.
+  //
+  //         19448 IS RE-MEASURED ON THE MERGED TREE. The sdk lane pinned 19446 because
+  //         it subtracted its eight from 19454, a head that had neither the delegated-
+  //         decisions ADR's three nor the integration's one removal in it.
+  //         19454 + 3 - 1 - 8 = 19448.
+  //
+  //         STILL OPEN, and PRE-EXISTING rather than a lane regression: many rows keyed
+  //         by line and column point at the wrong text in files the lanes edited —
+  //         .github/workflows/ci.yml 4 of 4, scripts/vocabulary-boundary.test.mjs 59 of
+  //         60, scripts/vendored-build-audit.mjs 7 of 8, scripts/vendored-build-audit.test.mjs
+  //         6 of 6, scripts/v1-ledger.test.mjs 1 of 2. This gate matches rows by CONTEXT
+  //         HASH and not by position, so it stays green and the count above is honest;
+  //         only the diagnostic a reader is shown points at the wrong line. Re-keying
+  //         them is a separate change, because `--write` moves every row it re-keys and
+  //         that diff would bury whatever else it travelled with.
+  assert.equal(manifest.exceptions.length, 19448);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

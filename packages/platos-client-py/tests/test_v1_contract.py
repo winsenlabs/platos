@@ -42,6 +42,7 @@ from platos_client.generated.v1 import (  # noqa: E402
     WIRE_ERROR_CODES,
     V1Api,
 )
+from platos_client.v1_stream import StreamAnswer  # noqa: E402
 from platos_client.v1_transport import (  # noqa: E402
     HttpAnswer,
     V1HttpTransport,
@@ -100,6 +101,11 @@ class Recorder:
         self.sent.append(request)
         return None
 
+    def stream(self, request, **_options):  # noqa: ANN001, ANN003, ANN201 - matches the generated Protocol
+        # WIN-272 (M4.6): an event-stream operation reaches `stream`, never `send`.
+        self.sent.append(request)
+        return iter(())
+
 
 def drive(api: V1Api, entry: dict):  # noqa: ANN201
     """Invoke one generated method by the names the fixture states."""
@@ -114,9 +120,29 @@ def drive(api: V1Api, entry: dict):  # noqa: ANN201
     # publish typed query parameters and one of them is required, so a driver that
     # stopped at path and body would raise for them.
     query = entry["arguments"]["pythonQuery"]
-    if query is not None:
-        return method(*args, **query)
-    return method(*args)
+    result = method(*args, **query) if query is not None else method(*args)
+    # An event stream sends nothing until it is read, so it is read to its end.
+    if entry["responseKind"] == "event-stream":
+        for _frame in result:
+            pass
+    return result
+
+
+FINISHED_STREAM = (
+    'event: stream_meta\ndata: {"sv":1,"replayFrom":null}\n\n'
+    'data: {"sv":1,"t":"turn.done","seq":1,"ts":1}\n\n'
+)
+
+
+def stream_openers(status: int, body: str, content_type: str):  # noqa: ANN201
+    """A stream opener that records every call and answers each with the same body."""
+    calls: list[tuple] = []
+
+    def opener(method, url, headers, _idle_timeout_s):  # noqa: ANN001
+        calls.append((method, url, dict(headers), None))
+        return StreamAnswer(status, {"content-type": content_type}, iter([body.encode("utf-8")]))
+
+    return calls, opener
 
 
 def openers(answers):  # noqa: ANN001, ANN201
@@ -171,6 +197,7 @@ def test_generated_methods_produce_the_fixture_requests() -> None:
         assert request["operation"]["method"] == entry["expected"]["method"], where
         assert request["operation"]["idempotency"] == entry["idempotency"], where
         assert request["operation"]["successStatus"] == entry["successStatus"], where
+        assert request["operation"]["responseKind"] == entry["responseKind"], where
         assert request["path"] == entry["expected"]["path"], where
         assert request["body"] == entry["arguments"]["body"], where
 
@@ -179,12 +206,17 @@ def test_the_transport_sends_the_fixture_headers() -> None:
     for entry in OPERATIONS:
         where = entry["operationId"]
         calls, opener = openers([HttpAnswer(204, "")])
+        stream_calls, stream_opener = stream_openers(200, FINISHED_STREAM, "text/event-stream; charset=utf-8")
         api = create_v1_client(
             "https://platos.example.com",
             operator_token="operator-token",
             opener=opener,
+            stream_opener=stream_opener,
         )
         drive(api, entry)
+        if entry["responseKind"] == "event-stream":
+            assert calls == [], where
+            calls = stream_calls
         assert len(calls) == 1, where
         method, url, headers, _body = calls[0]
         expected_url = (
@@ -196,6 +228,7 @@ def test_the_transport_sends_the_fixture_headers() -> None:
         assert method == entry["expected"]["method"], where
         assert headers["authorization"] == "Bearer operator-token", where
         assert headers.get("content-type") == entry["expected"]["contentType"], where
+        assert headers.get("accept") == entry["expected"]["accept"], where
         assert (IDEMPOTENCY_KEY_HEADER in headers) is entry["expected"]["sendsIdempotencyKey"], where
 
 
@@ -271,7 +304,8 @@ def test_an_unauthenticated_caller_gets_a_coded_refusal() -> None:
     for entry in OPERATIONS:
         where = entry["operationId"]
         _calls, opener = openers([HttpAnswer(401, json.dumps(UNAUTHENTICATED_ENVELOPE))])
-        api = create_v1_client("https://platos.example.com", opener=opener)
+        _stream_calls, stream_opener = stream_openers(401, json.dumps(UNAUTHENTICATED_ENVELOPE), "application/json")
+        api = create_v1_client("https://platos.example.com", opener=opener, stream_opener=stream_opener)
         try:
             drive(api, entry)
         except PlatosRefusal as refusal:
