@@ -986,7 +986,15 @@ test("the live selectors scan an exact nonzero source census", () => {
   // is outside every selector here.
   //
   // ALL FIVE, RE-MEASURED ON THE MERGED TREE: 1653 + 2 + 20 + 18 + 3 + 1 = 1697.
-  assert.equal(result.fileCount, 1697);
+  //
+  // THE `/tools/sync` RECONNECT TRANSPORT (M4.3) -- 1655 -> 1659 alone. FOUR files
+  // inside selectors: CONTEXTS +2 (the two published writers) and APPS-TRANSPORTS
+  // +2 (`tools/tool-sync.controller.ts` and `tool-sync-body.ts`). The harness and
+  // the two integration suites are under `src/composition/`, which no selector
+  // here names.
+  //
+  // ALL SIX, RE-MEASURED ON THE MERGED TREE: 1653 + 2 + 20 + 18 + 3 + 1 + 4 = 1701.
+  assert.equal(result.fileCount, 1701);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -1109,6 +1117,14 @@ test("the live selectors scan an exact nonzero source census", () => {
       // the 500-line error threshold. Every other file that round touched is an
       // EDIT, and the agent-side files it added are outside every selector here.
       1
+ +
+      // THE `/tools/sync` RECONNECT TRANSPORT (M4.3): CONTEXTS 2 (the published
+      // writers) and APPS-TRANSPORTS 2, under `apps/core-api/src/transports/tools/`:
+      // `tool-sync.controller.ts` and `tool-sync-body.ts`. THE SPLIT IS THIS GATE'S
+      // DOING: one file carrying the route, its wire reader and every field refusal
+      // would have crossed the 500-line budget, so the reader is its own module and
+      // is exercisable without a Nest application.
+      4
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1361,7 +1377,16 @@ test("the live selectors scan an exact nonzero source census", () => {
   //
   // ALL FIVE TOGETHER, RE-MEASURED ON THE MERGED TREE:
   // 30 + 1101 + 498 + 22 + 46 = 1697.
-  assert.equal(result.fileCount, 30 + 1101 + 498 + 22 + 46);
+  //
+  // THE `/tools/sync` RECONNECT TRANSPORT (M4.3), +4, IN TWO TERMS: CONTEXTS
+  // 1101 -> 1103 (the two published writers) and APPS-TRANSPORTS 46 -> 48 (the
+  // controller and the body reader it is split from). `KERNEL`, `ADAPTERS` and
+  // `APPS-HTTP` are flat: `http/http.module.ts` and the adapter row narrowing are
+  // EDITS, and `composition/` is outside every selector here.
+  //
+  // ALL SIX TOGETHER, RE-MEASURED ON THE MERGED TREE:
+  // 30 + 1103 + 498 + 22 + 48 = 1701.
+  assert.equal(result.fileCount, 30 + 1103 + 498 + 22 + 48);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

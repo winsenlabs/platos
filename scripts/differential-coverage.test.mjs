@@ -64,7 +64,14 @@ test("the denominator matches the M0 censuses exactly", () => {
   // 2026-09-15 313 -> 322: the identity/tenancy REST remainder's NINE routes (2026-09-15): the magic-link pair, the member listing and role change, the invitation issue and accept, the scope by slugs, and the variable listing and write. UNCOVERED by the harness for the
   // reason the thirteen before them are: it twin-runs STORES against the oracle, and
   // the oracle for these is Remix route code rather than a REST operation to twin.
-  assert.equal(summary.bySurface.rest.total, 322, "WIN-247 counted 300 REST operations; WIN-267 R1 adds 8, WIN-272 one more, M4 finish one more, WIN-268 M4.2 three more, the identity/tenancy remainder nine more");
+  // THE `/tools/sync` RECONNECT TRANSPORT (M4.3) 322 -> 323: `POST
+  // /api/v1/tools/sync`. UNCOVERED by the differential harness, and the reason is
+  // sharper than for the thirteen before it: the harness twin-runs STORES against
+  // the oracle over a REST surface, and this route's oracle counterpart is a
+  // WEBSOCKET. There is no REST operation on the frozen side to twin against,
+  // which is why the lane proves its parity with a characterization test against
+  // the live socket instead.
+  assert.equal(summary.bySurface.rest.total, 323, "WIN-247 counted 300 REST operations; WIN-267 R1 adds 8, WIN-272 one more, M4 finish one more, WIN-268 M4.2 three more, the identity/tenancy remainder nine more");
   assert.equal(summary.bySurface.mcp.total, 202, "WIN-247 counted 202 MCP tools");
   // WIN-267 G1: 93 -> 94. `EvalRun` is the canonical row `governance`'s
   // `EvalRunQueue` port enqueues into — ADR M0.3 §1 row 14's "eval runs enqueue
@@ -470,8 +477,13 @@ test("BASELINE: the committed matrix agrees root by root, and BOTH roots now car
   // `row.agrees` above is what says so.
   // 2026-09-15 19 -> 28: the identity/tenancy REST remainder's NINE routes (2026-09-15): the magic-link pair, the member listing and role change, the invitation issue and accept, the scope by slugs, and the variable listing and write. Both enumerators moved to 28 on their
   // own, and `row.agrees` above is what says so.
-  assert.equal(core.enumeratedOperations, 28);
-  assert.equal(core.independentOperations, 28);
+  // THE `/tools/sync` RECONNECT TRANSPORT (M4.3) 28 -> 29: one route under a base
+  // path no controller in this tree had, so the operation count and the CONTROLLER
+  // count move together. Both enumerators moved to 29 on their own -- the
+  // generator's AST walk and the independent census's glob -- and `row.agrees`
+  // above is what says so.
+  assert.equal(core.enumeratedOperations, 29);
+  assert.equal(core.independentOperations, 29);
   // AND THE PER-ROOT SUM CARRIES THE SURPLUS TERM. A root sum counts an
   // operation once per root that serves it, and the two mints are served by
   // both, so the sum exceeds the unique denominator by exactly the surplus the
@@ -493,5 +505,12 @@ test("BASELINE: the committed matrix agrees root by root, and BOTH roots now car
   // already served, so it gained a SECOND implementation and no new operation
   // entered the surface -- the unique denominator does not move. An equality with a
   // published term reports that; a tolerance would have absorbed it.
+  //
+  // AND WIN-269 LEAVES IT AT 7, which is the opposite reading and worth having both
+  // in one place. `/tools/sync` on the oracle is a WebSocket upgrade in a file with
+  // no `@Controller`, so neither enumerator has ever seen an agent binding for this
+  // operation; the route is served by this deployable alone, the surplus cannot
+  // move, and the unique denominator does. The equality above is what carries both
+  // cases without a tolerance.
   assert.equal(document.reconciledAgainst.independentCrossRootBindings, 7);
 });

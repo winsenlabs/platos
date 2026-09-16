@@ -22,8 +22,8 @@
     ]
   },
   "sourceDigests": {
-    "apps/agent/src/openapi/openapi.generated.json": "c180bc86b6577986",
-    "apps/agent/src/control-plane/operation-manifest.generated.json": "a21e981a5b318e87",
+    "apps/agent/src/openapi/openapi.generated.json": "96fcffeaf6da4183",
+    "apps/agent/src/control-plane/operation-manifest.generated.json": "ba1517cd779330f4",
     "apps/core-api/src/http/idempotency-policy.ts": "fe4daadf7e1e2547",
     "apps/core-api/src/http/idempotency-errors.ts": "768dd58139007391",
     "apps/core-api/src/transports/ws/sse.ts": "9141f65f27cb4756",
@@ -72,6 +72,7 @@
     "ItemEnvelope_PolicyDeletionResource",
     "ItemEnvelope_ProviderKeyResource",
     "ItemEnvelope_RevokedTokenResource",
+    "ItemEnvelope_ToolSyncResource",
     "ItemMeta",
     "MagicLinkRequestResource",
     "MagicLinkSessionResource",
@@ -96,6 +97,12 @@
     "SetOrganizationPolicyBody",
     "StartMagicLinkBody",
     "TenantNodeResource",
+    "ToolHealthResource",
+    "ToolSyncBody",
+    "ToolSyncDeclaration",
+    "ToolSyncDeclaration_paramSchema",
+    "ToolSyncHealthReport",
+    "ToolSyncResource",
     "WireError",
     "WireError_fields_item"
   ],
@@ -1034,6 +1041,49 @@
       "expected": {
         "method": "POST",
         "path": "/api/v1/projects",
+        "query": null,
+        "queryString": "",
+        "sendsIdempotencyKey": true,
+        "contentType": "application/json",
+        "accept": "application/json"
+      }
+    },
+    {
+      "operationId": "post__api_v1_tools_sync",
+      "method": "POST",
+      "template": "/api/v1/tools/sync",
+      "pathParameters": [],
+      "requestSchema": "ToolSyncBody",
+      "responseSchema": "ItemEnvelope_ToolSyncResource",
+      "successStatus": 200,
+      "idempotency": "accepted",
+      "responseKind": "json",
+      "queryParameters": "none-declared",
+      "typescript": {
+        "namespace": "toolSync",
+        "method": "sync"
+      },
+      "python": {
+        "namespace": "tool_sync",
+        "method": "sync"
+      },
+      "arguments": {
+        "pathParameters": {},
+        "body": {
+          "environmentId": "sample-ToolSyncBody.environmentId",
+          "entityId": "sample-ToolSyncBody.entityId",
+          "externalEntityId": "sample-ToolSyncBody.externalEntityId",
+          "tools": [],
+          "callbackUrl": null,
+          "connectionStatus": null,
+          "health": []
+        },
+        "query": null,
+        "pythonQuery": null
+      },
+      "expected": {
+        "method": "POST",
+        "path": "/api/v1/tools/sync",
         "query": null,
         "queryString": "",
         "sendsIdempotencyKey": true,

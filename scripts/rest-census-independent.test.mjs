@@ -318,10 +318,14 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // (`bff/magic-link`, `organizations/:organizationId/members`, the pathless
   // invitations controller carrying both of its routes, `environments` for the slug
   // resolver, `environments/:environmentId/variables`).
-  assert.equal(core.sourceControllers, 15);
-  assert.equal(core.sourceDecorators, 28);
-  assert.equal(core.expandedOperations, 28);
-  assert.equal(core.manifestOperations, 28);
+  // THE `/tools/sync` RECONNECT TRANSPORT (M4.3): 15 -> 16 controllers and 28 -> 29
+  // decorators, the SAME shape as the rotation above and for the same reason --
+  // `POST /api/v1/tools/sync` sits under a base path, `tools`, that no controller
+  // in this tree had, so one route costs one class.
+  assert.equal(core.sourceControllers, 16);
+  assert.equal(core.sourceDecorators, 29);
+  assert.equal(core.expandedOperations, 29);
+  assert.equal(core.manifestOperations, 29);
   // 301 + 14 = 315 BINDINGS, and the manifest's `summary.restOperations` is 313
   // UNIQUE operations: the two mints are served by both deployables, so each is
   // counted under both roots. The census publishes that surplus and the identity
@@ -344,10 +348,16 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   //
   // 2026-09-15: 320 -> 329 bindings, surplus unmoved at 7, unique 313 -> 322 — nine
   // operations served by one deployable only. 329 - 7 = 322.
-  assert.equal(agent.manifestOperations + core.manifestOperations, 329);
+  // THE `/tools/sync` RECONNECT TRANSPORT (M4.3): 329 -> 330 bindings, surplus
+  // unmoved at 7, unique 322 -> 323. The oracle's `/tools/sync` is a WebSocket
+  // upgrade in `apps/agent/src/tool-gateway/tool-sync-ws.service.ts`, a file that
+  // carries no `@Controller` and is therefore invisible to BOTH enumerations. So
+  // there is no agent binding for this operation to share, the surplus cannot move,
+  // and the surface genuinely grows by one. 330 - 7 = 323.
+  assert.equal(agent.manifestOperations + core.manifestOperations, 330);
   const totals = manifestCensus();
   assert.equal(totals.crossRootBindings, 7);
-  assert.equal(totals.totalOps - totals.crossRootBindings, 322);
+  assert.equal(totals.totalOps - totals.crossRootBindings, 323);
 });
 
 test("BASELINE: the process-edge exclusion still describes the file it excludes", () => {

@@ -143,6 +143,14 @@ const CORE_API_MOUNTED_CONTROLLERS = {
   InvitationsController: "http/http.module.ts",
   EnvironmentScopeController: "http/http.module.ts",
   EnvironmentVariablesController: "http/http.module.ts",
+
+  // WIN-269 (M4.3) — `/tools/sync`, the reconnect transport, and the first entry
+  // here that lives under `transports/tools`. Listed for the same reason as its
+  // nine siblings: this root is STRICT, so a controller under
+  // `apps/core-api/src/transports` that is not in this allowlist fails
+  // generation by name rather than quietly leaving the census — which is
+  // exactly how it failed when the class landed without this line.
+  ToolSyncController: "http/http.module.ts",
 };
 
 /**
@@ -2045,6 +2053,12 @@ function buildOpenApi(manifest, contract) {
       componentSchemas: Object.keys(schemas).length,
       canonicalErrorCodes: schemas.WireError.properties.code.enum.length,
       queryParametersNotDerived: coverage.queryNotDerived,
+      // WIN-269 (M4.3). The properties emitted as a free-form object because
+      // their value is a caller-owned JSON document, read back from the
+      // derivation rather than restated here. See `OPEN_JSON_PROPERTIES` in
+      // `rest-schema-derivation.mjs` for why an index signature is otherwise a
+      // generation failure.
+      openJsonProperties: contract.openJsonProperties ?? [],
     },
   };
 }

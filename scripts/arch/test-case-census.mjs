@@ -2877,7 +2877,18 @@ export const EXPECTED = Object.freeze({
   // table is an array literal so this census counts its rows rather than refusing it.
   //
   // 400 + 9 + 4 + 2 = 415; 21 files.
-  "packages/contexts/tools": { files: 21, cases: 415 },
+  //
+  // THE `/tools/sync` RECONNECT TRANSPORT (M4.3) 415 -> 417: two cases in the
+  // package's own suites. `tenancy/application/record-entity-connection.ts` and
+  // `tools/application/record-tool-health.ts` therefore add FILES to their
+  // packages and almost no case to this census, which is correct: their behaviour
+  // is proved against a REAL PostgreSQL in
+  // `apps/core-api/src/composition/tool-sync-writers.integration.test.ts`, and
+  // `apps/core-api` is outside `PACKAGE_ROOTS`. A reader taking this number as the
+  // measure of what that lane proved would be reading a small part of it.
+  //
+  // 400 + 9 + 4 + 2 + 2 = 417; 21 files.
+  "packages/contexts/tools": { files: 21, cases: 417 },
   // M2 INTEGRATION: kernel 3 + 1 + 2 = 6 files, 44 + 16 (the redactor's
   // two-sided suite) + 69 (retry and the transaction-outcome behaviour) = 129.
   //
@@ -3844,7 +3855,15 @@ export const EXPECTED = Object.freeze({
 // merge rather than on the lane.
 //
 // INTEGRATED AND RE-MEASURED: 8359 + 47 + 110 + 15 + 2 = 8533 over 564 + 5 = 569 files.
-export const EXPECTED_RUNTIME_TOTAL = 8533;
+//
+// AND THE `/tools/sync` RECONNECT TRANSPORT (M4.3): +2 on
+// `packages/contexts/tools`, files unmoved. The lane's fourteen real-database
+// cases and its thirteen reconnect cases move NOT ONE NUMBER here: they live in
+// `apps/core-api`, which is outside `PACKAGE_ROOTS`. The asymmetry the paragraphs
+// above record applies once more.
+//
+// INTEGRATED AND RE-MEASURED: 8359 + 47 + 110 + 15 + 2 + 2 = 8535 over 569 files.
+export const EXPECTED_RUNTIME_TOTAL = 8535;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

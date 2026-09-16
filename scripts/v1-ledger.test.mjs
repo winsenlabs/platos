@@ -627,7 +627,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // 25 IS RE-MEASURED ON THE MERGED TREE: the lane pinned 22 against a head with
     // neither the gates lane's three files nor this merge in it; 18 + 7 = 25.
-    "apps-agent": 25,
+    //
+    // THE `/tools/sync` RECONNECT TRANSPORT (M4.3) 25 -> 26. ONE file on the existing
+    // `apps-agent.test.suites` rule:
+    // `tool-gateway/tool-sync-characterization.integration.test.ts`, which drives the
+    // LIVE `/tools/sync` WebSocket against a real client and a real PostgreSQL over
+    // the same fixture the V1 route's reconnect suite uses, so the two transports
+    // that now write those rows are joined by one committed expectation.
+    // `tool-sync-ws.service.ts` is NOT touched -- the socket keeps serving.
+    // NO LEDGER RULE CHANGED.
+    "apps-agent": 26,
     // WIN-272 (M4.6) 0 -> 1. `test/publicGuestBoundary.test.ts`: the public-guest
     // and embed boundary over two real `node:http` listeners with `fetch`
     // unstubbed. It is the FIRST file this programme has added under
@@ -957,7 +966,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // The lane pinned 105 against a tree without the factory entries, the gates or
     // the REST remainder; 126 + 8 = 134 is what THIS merge produces and the
     // regenerated `docs/v1-ledger-rules.json` is the authority for it.
-    "apps-core-api": 134,
+    //
+    // THE `/tools/sync` RECONNECT TRANSPORT (M4.3) 134 -> 139. FIVE files, no ledger
+    // rule changed:
+    //   `transports/tools/tool-sync.controller.ts` and `tool-sync-body.ts` on
+    //   `apps-core-api.source.transport` -- the `/tools/sync` route and the one place
+    //   a platools wire frame becomes a command, split so neither breaches the
+    //   ADR M0.3 §6 budget;
+    //   `composition/tool-sync-legacy.ts` on the support rule its six sibling
+    //   harnesses already sit on;
+    //   `composition/tool-sync-reconnect.integration.test.ts` and
+    //   `tool-sync-writers.integration.test.ts` on `apps-core-api.test.suites`.
+    // `http/http.module.ts`, `http/idempotency-policy.test.ts` and
+    // `transports/rest/operator.ts` are EDITS.
+    "apps-core-api": 139,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1541,7 +1563,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 20260909120000_win267_eval_run_queue/migration.sql`, the row the store
     // above writes. `schema.prisma`, `src/json.ts`, `src/source-model-manifest.ts`
     // and the three suites that pin the model count are edits.
-    "internal-packages": 10,
+    // WIN-269 (M4.3) 10 -> 11. ONE file: `tenancy-database/scripts/seed-legacy-installation.mjs`,
+    // which puts a database into the state a LEGACY installation is in from
+    // OUTSIDE any application. It is a process rather than a module because
+    // `tenancy-prisma-only` bans `@platos/tenancy-database` from `apps/core-api`,
+    // and a copy of the fixture there would be a second fixture. `upgrade-fixture.ts`
+    // gains the `ToolHealth` row and the published declaration as an EDIT.
+    "internal-packages": 11,
     //   +6  packages/adapters/postgres-tenancy (WIN-267 G2) -- FOUR source,
     //       `governance-read-seams.ts`, `governance-seam-guards.ts`,
     //       `governance-seam-conversations.ts` and `governance-seam-activity.ts`,
@@ -1704,7 +1732,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // unmoved. NO LEDGER RULE CHANGED.
     //
     // 1600 IS RE-MEASURED ON THE MERGED TREE: 1556 + 13 + 9 + 21 + 1 = 1600.
-    packages: 1600,
+    //
+    // THE `/tools/sync` RECONNECT TRANSPORT (M4.3) 1600 -> 1602. TWO files, one per
+    // context, both the published form of a write the `/tools/sync` socket had been
+    // making through Prisma directly:
+    // `contexts/tenancy/application/record-entity-connection.ts` and
+    // `contexts/tools/application/record-tool-health.ts`. Their contracts, domains
+    // and the postgres-tenancy row narrowing are EDITS.
+    packages: 1602,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2615,7 +2650,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // integrated tree, not summed from the lane report (which read 1815 against a
   // tree with none of the six earlier lanes in it):
   // 25 + 1 + 134 + 4 + 10 + 1600 + 27 + 107 = 1908.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1908);
+  //
+  // AND THE `/tools/sync` RECONNECT TRANSPORT (M4.3) -- 1908 -> 1917. NINE files,
+  // itemised on their areas' deltas above: two in `packages` (the published
+  // writers), five in `apps-core-api` (the route, its body reader, the legacy
+  // harness and two integration suites), one in `internal-packages` (the
+  // legacy-installation seed) and one in `apps-agent` (the live-socket
+  // characterization). Re-measured on the integrated tree, not summed from the lane
+  // report (which read 1837 against a tree with none of the seven earlier lanes in
+  // it): 26 + 1 + 139 + 4 + 11 + 1602 + 27 + 107 = 1917.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1917);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2942,7 +2986,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // AND THE MCP CONFORMANCE LANE, BOTH ROUNDS — 1897 -> 1908, moved in the same
     // edit as the total and four area deltas: seven agent files, one packages
     // fixture, one receipt and two scripts, summed per area here.
-    rulesDocument.baseline.totalFiles + 1908
+    // AND THE `/tools/sync` RECONNECT TRANSPORT (M4.3) -- 1908 -> 1917, moved in the
+    // same edit as the total and as four area deltas: packages +2, apps-core-api +5,
+    // internal-packages +1 and apps-agent +1, summed per area here. THE POINT OF THE
+    // SECOND SUM is that it is derived differently from the first, so the two can
+    // disagree and be caught -- which is why both halves move together or not at all.
+    rulesDocument.baseline.totalFiles + 1917
   );
 });
 

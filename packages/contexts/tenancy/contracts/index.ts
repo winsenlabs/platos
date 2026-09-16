@@ -13,6 +13,7 @@ import type { EnvironmentScope, TenantScope } from "@platos/kernel";
 import type {
   AncestryLevel,
   EmailAddress,
+  EntityConnectionStatus,
   EntityRecord,
   EnvironmentAccess,
   EnvironmentOperatorAuthorization,
@@ -40,11 +41,25 @@ export {
   authorizes,
 } from "../domain/authorization.js";
 
+/**
+ * The two values `Entity.connectionStatus` may hold, published as DATA.
+ *
+ * A caller writing this column needs the vocabulary at run time — a transport
+ * validating a wire frame cannot narrow against a type — and the alternative is
+ * each of them spelling `"connected"` for itself. See `domain/entity.ts` for why
+ * the set is exactly two and why it is lower case.
+ */
+export {
+  ENTITY_CONNECTION_STATUSES,
+  isEntityConnectionStatus,
+} from "../domain/entity.js";
+
 // --- published types ---------------------------------------------------------
 
 export type {
   AncestryLevel,
   EmailAddress,
+  EntityConnectionStatus,
   ProjectVisibility,
   EntityRecord,
   EnvironmentAccess,
@@ -257,6 +272,26 @@ export interface OperatorEnvironmentView {
   readonly environments: readonly EnvironmentRecord[];
 }
 
+/**
+ * The command `recordEntityConnection` takes.
+ *
+ * `authorization` IS `unknown` FOR THE REASON `verifyAuthorization` EXISTS. It
+ * reaches this method from a transport, where its type was erased, and the only
+ * thing that makes it proof is this context's own mint register.
+ *
+ * There is NO `projectId` and NO `environmentId` here, and that is the
+ * authorization decision. The project the entity is checked against is the one
+ * the grant re-derived from the environment's ancestry when it was minted, so a
+ * caller has nothing to substitute — the same property
+ * `authorizeEnvironmentOperator` gets from taking only the leaf.
+ */
+export interface RecordEntityConnectionCommand {
+  readonly authorization: unknown;
+  readonly entityId: EntityId;
+  /** `"connected"` or `"disconnected"`. Validated, not narrowed by the type. */
+  readonly status: EntityConnectionStatus | string;
+}
+
 export interface RevokeAccessKeyGenerationRequest {
   readonly environmentId: EnvironmentId;
   readonly expectedGeneration?: number;
@@ -403,6 +438,34 @@ export interface TenancyContract {
   listProjectEntities(projectId: ProjectId): Promise<Result<readonly EntityRecord[]>>;
 
   findEntity(entityId: EntityId): Promise<Result<EntityRecord>>;
+
+  /**
+   * Record that an entity's backend connected, or that its last connection
+   * closed.
+   *
+   * THE ONLY WRITER OF `Entity.connectionStatus` OUTSIDE THE ORACLE. That column
+   * is tenancy's — `Entity` is this context's fourth aggregate — and until this
+   * method the only thing in the product that wrote it was
+   * `apps/agent/src/tool-gateway/tool-sync-ws.service.ts`, reaching the row
+   * through Prisma directly.
+   * `docs/audits/win-269-tool-lifecycle-reach.json` records both of that file's
+   * `Entity.update` sites as `blockedOnContract` for exactly that reason.
+   *
+   * IT IS AUTHORIZED AND THE SOCKET'S WRITE IS NOT, which is the one thing this
+   * method adds rather than copies. The socket reaches its write only after its
+   * own handshake; a published method has no such guarantee, and a caller holding
+   * an entity id could otherwise flip any installation's entity to
+   * `disconnected` and take its tools out of every model's reach.
+   *
+   * WHO DECIDES `disconnected` STAYS WITH THE CALLER. The oracle marks an entity
+   * disconnected only when NO environment connection for it remains, and it
+   * answers that from its own in-memory connection map — a fact about one
+   * process that cannot be re-derived from the database. So this method records
+   * the transition it is told.
+   */
+  recordEntityConnection(
+    command: RecordEntityConnectionCommand,
+  ): Promise<Result<EntityRecord>>;
 
   /**
    * Advance `Environment.accessKeyRevocationVersion`.

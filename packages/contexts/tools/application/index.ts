@@ -18,6 +18,7 @@ export * from "./ports/index.js";
 export * from "./dependencies.js";
 export * from "./authorization.js";
 export * from "./register-tools.js";
+export * from "./record-tool-health.js";
 export * from "./read-tools.js";
 export * from "./resolve-permission.js";
 export * from "./resolve-transport.js";

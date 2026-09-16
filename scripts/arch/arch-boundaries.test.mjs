@@ -1447,7 +1447,26 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // EXPECTED_FILE_COUNT is the second independent copy and reads 1767, three
     // short of nothing: it does not read `.mjs` files, so `scripts/dev.mjs` is in
     // this census and not in that one.
-    assert.equal(result.fileCount, 1768, "the generated V1 source census must stay exact");
+    //
+    // THE `/tools/sync` RECONNECT TRANSPORT (M4.3), 1721 -> 1728 alone. SEVEN files:
+    // the two published writers under `packages/contexts` and five under
+    // `apps/core-api` -- the `/tools/sync` controller, the body reader it is split
+    // from, the shared legacy harness and the two integration suites. `apps/agent`
+    // and `internal-packages` are outside this census, so the socket
+    // characterization suite and the seeding script do not count.
+    //
+    // AND ONE FILE THE PREVIOUS MERGE OWED THIS CENSUS. The MCP conformance lane
+    // added `packages/contexts/tools/adapters/sdk-builds.test-fixture.ts` -- the two
+    // SDK server builds, moved out of the dispatch suite when the 500-line budget
+    // caught it -- and that merge moved `max-file-lines` for it and did not run
+    // THIS census or `env-access`. It is inside `packages/contexts`, so it belongs
+    // in both, and it is added here rather than left to be discovered later:
+    // 1768 + 1 + 7 = 1776.
+    //
+    // 1776 IS RE-MEASURED ON THIS MERGED TREE, and `scripts/arch/env-access.mjs`
+    // reads 1775 for the reason stated there: it reads `.ts` only, so
+    // `apps/core-api/scripts/dev.mjs` is in this census and not in that one.
+    assert.equal(result.fileCount, 1776, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1558,7 +1577,20 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // suite), transports 1 (`session-cookie-transport.test.ts`), composition 1
       // (`compose-readiness.test.ts`) and the package's `scripts/dev.mjs` 1.
       // 2 + 1 + 2 + 1 + 1 + 1 = 8, and NOTHING under `packages/`.
-      2 + 1 + 2 + 1 + 1 + 1);
+      2 + 1 + 2 + 1 + 1 + 1 +
+      // THE `/tools/sync` RECONNECT TRANSPORT (M4.3): contexts 2 (the published
+      // writers `tenancy/application/record-entity-connection.ts` and
+      // `tools/application/record-tool-health.ts`) and FIVE under
+      // `apps/core-api/src/`: transports 2 (`tools/tool-sync.controller.ts` and the
+      // body reader it is split from) and composition 3 (the shared legacy harness
+      // and the two integration suites). NOTHING under `packages/adapters/`: the
+      // `ToolHealth` row narrowing is an EDIT, and so are `http/http.module.ts` and
+      // every contract and domain file the two writers landed in.
+      7 +
+      // AND THE ONE FILE THE PREVIOUS MERGE OWED THIS CENSUS: contexts 1 --
+      // `tools/adapters/sdk-builds.test-fixture.ts`, which that merge counted in
+      // `max-file-lines` and not here.
+      1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

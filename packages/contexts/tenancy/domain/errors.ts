@@ -196,6 +196,51 @@ export function tenantNotFound(kind: "organization" | "project" | "environment" 
   return domainError("TENANCY_NOT_FOUND", "not_found", `No such ${kind}`, { details: { kind } });
 }
 
+/**
+ * A genuine authorization, offered for an entity that is not inside it.
+ *
+ * DISTINCT FROM `TENANCY_NOT_FOUND` ON PURPOSE. "There is no such entity" and
+ * "there is such an entity and it hangs off a project this grant does not cover"
+ * are different facts and send an operator to different places: the first to
+ * their entity id, the second to the environment they authorized against. They
+ * were one code while nothing wrote an `Entity`, and the first writer
+ * (`recordEntityConnection`) is what makes the difference reachable.
+ *
+ * It is ALSO distinct from `TENANCY_AUTHORIZATION_FORGED`, which is the refusal
+ * for a value this context never minted. A forged grant never reaches the
+ * project comparison at all, so the two guards can never answer for each other.
+ */
+export function entityNotInScope(entityId: string, projectId: string): DomainError {
+  return domainError(
+    "TENANCY_ENTITY_NOT_IN_SCOPE",
+    "forbidden",
+    "That entity does not hang off the project this authorization covers",
+    { details: { entityId, projectId } },
+  );
+}
+
+/**
+ * `Entity.connectionStatus` was offered a value the running product never
+ * writes. See `domain/entity.ts` for why the vocabulary is exactly two.
+ */
+export function invalidConnectionStatus(value: string): DomainError {
+  return domainError(
+    "TENANCY_INVALID_CONNECTION_STATUS",
+    "invalid_input",
+    "An entity is either connected or disconnected",
+    {
+      fields: [
+        {
+          field: "status",
+          code: "TENANCY_INVALID_CONNECTION_STATUS",
+          message: "must be connected or disconnected",
+        },
+      ],
+      details: { value },
+    },
+  );
+}
+
 export function slugTaken(kind: "organization" | "project" | "environment"): DomainError {
   return domainError("TENANCY_SLUG_TAKEN", "conflict", `That ${kind} slug is already in use`, {
     details: { kind },

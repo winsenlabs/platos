@@ -804,6 +804,21 @@
         ],
         "type": "object"
       },
+      "ItemEnvelope_ToolSyncResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ToolSyncResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
       "ItemMeta": {
         "properties": {
           "contractVersion": {
@@ -1418,6 +1433,212 @@
         ],
         "type": "object"
       },
+      "ToolHealthResource": {
+        "properties": {
+          "avgLatencyMs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "externalEntityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failCount": {
+            "type": "number"
+          },
+          "lastCalledAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "toolId": {
+            "type": "string"
+          },
+          "totalCalls": {
+            "type": "number"
+          },
+          "totalFailures": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "avgLatencyMs",
+          "externalEntityId",
+          "failCount",
+          "lastCalledAt",
+          "lastStatus",
+          "toolId",
+          "totalCalls",
+          "totalFailures"
+        ],
+        "type": "object"
+      },
+      "ToolSyncBody": {
+        "properties": {
+          "callbackUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "connectionStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "externalEntityId": {
+            "type": "string"
+          },
+          "health": {
+            "items": {
+              "$ref": "#/components/schemas/ToolSyncHealthReport"
+            },
+            "type": "array"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/ToolSyncDeclaration"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "callbackUrl",
+          "connectionStatus",
+          "entityId",
+          "environmentId",
+          "externalEntityId",
+          "health",
+          "tools"
+        ],
+        "type": "object"
+      },
+      "ToolSyncDeclaration": {
+        "properties": {
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "paramSchema": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "category",
+          "description",
+          "name",
+          "paramSchema"
+        ],
+        "type": "object"
+      },
+      "ToolSyncHealthReport": {
+        "properties": {
+          "avgLatencyMs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "avgLatencyMs",
+          "status",
+          "toolName"
+        ],
+        "type": "object"
+      },
+      "ToolSyncResource": {
+        "properties": {
+          "connectionStatus": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "externalEntityId": {
+            "type": "string"
+          },
+          "health": {
+            "items": {
+              "$ref": "#/components/schemas/ToolHealthResource"
+            },
+            "type": "array"
+          },
+          "lastConnectedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "newTools": {
+            "type": "number"
+          },
+          "pruned": {
+            "type": "number"
+          },
+          "registered": {
+            "type": "number"
+          },
+          "unknownToolNames": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "updated": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "connectionStatus",
+          "entityId",
+          "environmentId",
+          "externalEntityId",
+          "health",
+          "lastConnectedAt",
+          "newTools",
+          "pruned",
+          "registered",
+          "unknownToolNames",
+          "updated"
+        ],
+        "type": "object"
+      },
       "WireError": {
         "properties": {
           "body": {
@@ -1654,7 +1875,6 @@
               "IDENTITY_STORE_UNAVAILABLE",
               "IMPERSONATION_FORBIDDEN",
               "INVALID_ACCESS_KEY_MATERIAL",
-              "INVALID_EMAIL_ADDRESS",
               "INVALID_END_USER_FILTER",
               "INVALID_GRANT",
               "INVALID_KEY_RING",
@@ -1690,8 +1910,6 @@
               "JOB_SERVICE_UNAVAILABLE",
               "JOB_TIMEOUT",
               "LEGACY_ENVELOPE_UNREADABLE",
-              "MAGIC_LINK_DELIVERY_FAILED",
-              "MAGIC_LINK_DELIVERY_UNAVAILABLE",
               "MCP_ENTITY_ENVIRONMENT_MISMATCH",
               "MCP_TOKEN_MINT_WHILE_IMPERSONATING",
               "MEMORY_AGENT_AMBIGUOUS",
@@ -1723,12 +1941,6 @@
               "MEMORY_UNTRUSTED_SOURCE",
               "MFA_REQUIRED",
               "MISSING_PERMISSION",
-              "NOTIFIER_EMAIL_CONFIGURATION_INVALID",
-              "NOTIFIER_EMAIL_INSECURE_AUTH_REFUSED",
-              "NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED",
-              "NOTIFIER_EMAIL_MESSAGE_REFUSED",
-              "NOTIFIER_EMAIL_RELAY_REFUSED",
-              "NOTIFIER_EMAIL_RELAY_UNREACHABLE",
               "OBSERVABILITY_AUDIT_ACTION_INVALID",
               "OBSERVABILITY_AUDIT_STATE_NOT_AN_OBJECT",
               "OBSERVABILITY_AUDIT_SUBJECT_INVALID",
@@ -1803,7 +2015,6 @@
               "PROVIDERS_UNKNOWN_PROVIDER",
               "RATE_LIMITED",
               "RATE_LIMITER_UNAVAILABLE",
-              "RATE_LIMIT_FAILED_CLOSED",
               "RETRY_POLICY_BASE_DELAY_INVALID",
               "RETRY_POLICY_CEILING_BELOW_BASE",
               "RETRY_POLICY_JITTER_FRACTION_INVALID",
@@ -1847,19 +2058,17 @@
               "TENANCY_ARCHIVED",
               "TENANCY_AUTHORIZATION_FORGED",
               "TENANCY_CROSS_TENANT_MEMBERSHIP",
+              "TENANCY_ENTITY_NOT_IN_SCOPE",
               "TENANCY_ENVIRONMENT_FORBIDDEN",
-              "TENANCY_INVALID_EMAIL",
+              "TENANCY_INVALID_CONNECTION_STATUS",
               "TENANCY_INVALID_NAME",
-              "TENANCY_INVALID_ROLE",
               "TENANCY_INVALID_SLUG",
               "TENANCY_INVITATION_ALREADY_ACTIVE",
               "TENANCY_INVITATION_CONSUMED",
               "TENANCY_INVITATION_EMAIL_MISMATCH",
-              "TENANCY_INVITATION_FORBIDDEN",
               "TENANCY_INVITATION_INVALID",
               "TENANCY_LAST_OWNER",
               "TENANCY_MEMBERSHIP_FORBIDDEN",
-              "TENANCY_MEMBER_LIST_FORBIDDEN",
               "TENANCY_NOT_FOUND",
               "TENANCY_PROJECT_CREATE_FORBIDDEN",
               "TENANCY_SLUG_TAKEN",
@@ -1879,6 +2088,7 @@
               "TOOLS_ENTITY_NOT_IN_SCOPE",
               "TOOLS_ENVIRONMENT_NOT_IN_SCOPE",
               "TOOLS_EXPOSURE_NOT_FOUND",
+              "TOOLS_HEALTH_REPORT_INVALID",
               "TOOLS_MCP_DISABLED",
               "TOOLS_MCP_TRANSPORT_INVALID",
               "TOOLS_MCP_TRANSPORT_UNIMPLEMENTED",
@@ -1894,9 +2104,7 @@
               "TRANSPORT_CONTEXT_UNAVAILABLE",
               "TRANSPORT_REQUEST_INVALID",
               "TRANSPORT_ROUTE_NOT_FOUND",
-              "TRANSPORT_SESSION_COOKIE_REQUIRES_TLS",
               "TRANSPORT_SHUTTING_DOWN",
-              "TRANSPORT_STORE_UNAVAILABLE",
               "TRANSPORT_UNHANDLED_FAULT",
               "UNAUTHENTICATED",
               "UNKNOWN_CLIENT"
@@ -2885,6 +3093,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ItemEnvelope_CreatedProjectResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/api/v1/tools/sync": {
+      "post": {
+        "operationId": "post__api_v1_tools_sync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolSyncBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_ToolSyncResource"
                 }
               }
             },

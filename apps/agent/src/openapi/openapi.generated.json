@@ -814,6 +814,21 @@
           "meta"
         ]
       },
+      "ItemEnvelope_ToolSyncResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ToolSyncResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
       "ItemMeta": {
         "type": "object",
         "properties": {
@@ -1428,6 +1443,212 @@
           "slug"
         ]
       },
+      "ToolHealthResource": {
+        "type": "object",
+        "properties": {
+          "toolId": {
+            "type": "string"
+          },
+          "externalEntityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastCalledAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failCount": {
+            "type": "number"
+          },
+          "totalCalls": {
+            "type": "number"
+          },
+          "totalFailures": {
+            "type": "number"
+          },
+          "avgLatencyMs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "avgLatencyMs",
+          "externalEntityId",
+          "failCount",
+          "lastCalledAt",
+          "lastStatus",
+          "toolId",
+          "totalCalls",
+          "totalFailures"
+        ]
+      },
+      "ToolSyncBody": {
+        "type": "object",
+        "properties": {
+          "environmentId": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "externalEntityId": {
+            "type": "string"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolSyncDeclaration"
+            }
+          },
+          "callbackUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "connectionStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "health": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolSyncHealthReport"
+            }
+          }
+        },
+        "required": [
+          "callbackUrl",
+          "connectionStatus",
+          "entityId",
+          "environmentId",
+          "externalEntityId",
+          "health",
+          "tools"
+        ]
+      },
+      "ToolSyncDeclaration": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "paramSchema": {
+            "type": "object"
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "category",
+          "description",
+          "name",
+          "paramSchema"
+        ]
+      },
+      "ToolSyncHealthReport": {
+        "type": "object",
+        "properties": {
+          "toolName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "avgLatencyMs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "avgLatencyMs",
+          "status",
+          "toolName"
+        ]
+      },
+      "ToolSyncResource": {
+        "type": "object",
+        "properties": {
+          "entityId": {
+            "type": "string"
+          },
+          "externalEntityId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "connectionStatus": {
+            "type": "string"
+          },
+          "lastConnectedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registered": {
+            "type": "number"
+          },
+          "newTools": {
+            "type": "number"
+          },
+          "updated": {
+            "type": "number"
+          },
+          "pruned": {
+            "type": "number"
+          },
+          "health": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolHealthResource"
+            }
+          },
+          "unknownToolNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "connectionStatus",
+          "entityId",
+          "environmentId",
+          "externalEntityId",
+          "health",
+          "lastConnectedAt",
+          "newTools",
+          "pruned",
+          "registered",
+          "unknownToolNames",
+          "updated"
+        ]
+      },
       "WireError": {
         "type": "object",
         "properties": {
@@ -1663,7 +1884,6 @@
               "IDENTITY_STORE_UNAVAILABLE",
               "IMPERSONATION_FORBIDDEN",
               "INVALID_ACCESS_KEY_MATERIAL",
-              "INVALID_EMAIL_ADDRESS",
               "INVALID_END_USER_FILTER",
               "INVALID_GRANT",
               "INVALID_KEY_RING",
@@ -1699,8 +1919,6 @@
               "JOB_SERVICE_UNAVAILABLE",
               "JOB_TIMEOUT",
               "LEGACY_ENVELOPE_UNREADABLE",
-              "MAGIC_LINK_DELIVERY_FAILED",
-              "MAGIC_LINK_DELIVERY_UNAVAILABLE",
               "MCP_ENTITY_ENVIRONMENT_MISMATCH",
               "MCP_TOKEN_MINT_WHILE_IMPERSONATING",
               "MEMORY_AGENT_AMBIGUOUS",
@@ -1732,12 +1950,6 @@
               "MEMORY_UNTRUSTED_SOURCE",
               "MFA_REQUIRED",
               "MISSING_PERMISSION",
-              "NOTIFIER_EMAIL_CONFIGURATION_INVALID",
-              "NOTIFIER_EMAIL_INSECURE_AUTH_REFUSED",
-              "NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED",
-              "NOTIFIER_EMAIL_MESSAGE_REFUSED",
-              "NOTIFIER_EMAIL_RELAY_REFUSED",
-              "NOTIFIER_EMAIL_RELAY_UNREACHABLE",
               "OBSERVABILITY_AUDIT_ACTION_INVALID",
               "OBSERVABILITY_AUDIT_STATE_NOT_AN_OBJECT",
               "OBSERVABILITY_AUDIT_SUBJECT_INVALID",
@@ -1812,7 +2024,6 @@
               "PROVIDERS_UNKNOWN_PROVIDER",
               "RATE_LIMITED",
               "RATE_LIMITER_UNAVAILABLE",
-              "RATE_LIMIT_FAILED_CLOSED",
               "RETRY_POLICY_BASE_DELAY_INVALID",
               "RETRY_POLICY_CEILING_BELOW_BASE",
               "RETRY_POLICY_JITTER_FRACTION_INVALID",
@@ -1856,19 +2067,17 @@
               "TENANCY_ARCHIVED",
               "TENANCY_AUTHORIZATION_FORGED",
               "TENANCY_CROSS_TENANT_MEMBERSHIP",
+              "TENANCY_ENTITY_NOT_IN_SCOPE",
               "TENANCY_ENVIRONMENT_FORBIDDEN",
-              "TENANCY_INVALID_EMAIL",
+              "TENANCY_INVALID_CONNECTION_STATUS",
               "TENANCY_INVALID_NAME",
-              "TENANCY_INVALID_ROLE",
               "TENANCY_INVALID_SLUG",
               "TENANCY_INVITATION_ALREADY_ACTIVE",
               "TENANCY_INVITATION_CONSUMED",
               "TENANCY_INVITATION_EMAIL_MISMATCH",
-              "TENANCY_INVITATION_FORBIDDEN",
               "TENANCY_INVITATION_INVALID",
               "TENANCY_LAST_OWNER",
               "TENANCY_MEMBERSHIP_FORBIDDEN",
-              "TENANCY_MEMBER_LIST_FORBIDDEN",
               "TENANCY_NOT_FOUND",
               "TENANCY_PROJECT_CREATE_FORBIDDEN",
               "TENANCY_SLUG_TAKEN",
@@ -1888,6 +2097,7 @@
               "TOOLS_ENTITY_NOT_IN_SCOPE",
               "TOOLS_ENVIRONMENT_NOT_IN_SCOPE",
               "TOOLS_EXPOSURE_NOT_FOUND",
+              "TOOLS_HEALTH_REPORT_INVALID",
               "TOOLS_MCP_DISABLED",
               "TOOLS_MCP_TRANSPORT_INVALID",
               "TOOLS_MCP_TRANSPORT_UNIMPLEMENTED",
@@ -1903,9 +2113,7 @@
               "TRANSPORT_CONTEXT_UNAVAILABLE",
               "TRANSPORT_REQUEST_INVALID",
               "TRANSPORT_ROUTE_NOT_FOUND",
-              "TRANSPORT_SESSION_COOKIE_REQUIRES_TLS",
               "TRANSPORT_SHUTTING_DOWN",
-              "TRANSPORT_STORE_UNAVAILABLE",
               "TRANSPORT_UNHANDLED_FAULT",
               "UNAUTHENTICATED",
               "UNKNOWN_CLIENT"
@@ -11456,6 +11664,61 @@
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
     },
+    "/api/v1/tools/sync": {
+      "post": {
+        "operationId": "post__api_v1_tools_sync",
+        "summary": "ToolSyncController.sync",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_ToolSyncResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolSyncBody"
+              }
+            }
+          }
+        },
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
+      }
+    },
     "/internal/batch-turn": {
       "post": {
         "operationId": "post__internal_batch_turn",
@@ -13373,15 +13636,18 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 322,
+  "x-platos-rest-operation-count": 323,
   "x-platos-mcp-tool-count": 202,
   "x-platos-schema-coverage": {
-    "derivedOperations": 28,
+    "derivedOperations": 29,
     "undeclaredOperations": 294,
     "undeclaredReason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)",
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
-    "componentSchemas": 62,
-    "canonicalErrorCodes": 475,
-    "queryParametersNotDerived": []
+    "componentSchemas": 68,
+    "canonicalErrorCodes": 462,
+    "queryParametersNotDerived": [],
+    "openJsonProperties": [
+      "ToolSyncDeclaration.paramSchema"
+    ]
   }
 }

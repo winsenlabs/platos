@@ -776,6 +776,16 @@ jobs:
         # whole stream lane over a real socket — with no new line needed, because
         # that script selects the package rather than the file.
         #
+        # WIN-269 (M4.3) ADDS TWO MORE CORE-API SUITES AND, AGAIN, NO LINE.
+        # `tool-sync-reconnect.integration.test.ts` and
+        # `tool-sync-writers.integration.test.ts` are selected by the same
+        # package-level run. Both start a PostgreSQL of their own and put it into
+        # the state a LEGACY installation is in — the frozen baseline SQL, the
+        # fixture written through the release's own rebuilt client, then the
+        # ordered migration set — so "existing entities reconnect without
+        # reconfiguration" is proved against rows this branch's code did not
+        # create. They FAIL when Docker is absent, like everything else here.
+        #
         # `scripts/ci-policy.test.mjs` now joins this step to the FILESYSTEM: it
         # enumerates every V1 integration suite on disk and fails if any package
         # holding one is not selected by some job here. Deleting any line below
@@ -930,6 +940,18 @@ jobs:
     # membership check fails when a name is renamed away. Deleting a suite is then
     # a red gate rather than a silent drop — which is the same gate-darkness
     # pattern this job was created to close, one turn later.
+    #
+    # WIN-269 (M4.3) IS THE FIRST SUITE TO ARRIVE THAT WAY AND THE FIRST TO BE
+    # DELEGATED HERE ON PURPOSE. `tool-sync-characterization.integration.test.ts`
+    # drives the LIVE `/tools/sync` WebSocket against a real client and a real
+    # database, over the same fixture `apps/core-api`'s reconnect suite uses, so
+    # the two transports that now write those rows are joined by one committed
+    # expectation. It imports `tool-sync-ws.service`, which the WIN-272 clause in
+    # the `typecheck` job gates — and that job has no database, where this suite
+    # would gate itself off and report nothing. So the WIN-272 entry in
+    # `scripts/ci-policy.test.mjs` DELEGATES it here by name, and a case there
+    # proves the delegation: this step must exist, must be unconditional, must run
+    # the walking script, and the script's own roots must reach the file.
     #
     # A SKIP IS A FAILURE HERE. Every one of these suites gates itself on its own
     # `*_REQUIRED` environment variable so a laptop with no PostgreSQL skips

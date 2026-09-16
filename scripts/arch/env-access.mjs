@@ -293,6 +293,33 @@ export const ALLOWED = Object.freeze([
     why: "Real-PostgreSQL, real-Redis and real-SMTP integration suite for the identity/tenancy REST remainder. It copies and freezes the ambient environment once, at module load, and reads the supplied PostgreSQL url, the psql binary override and the inherited environment the ORM's migration CLI is spawned with out of the copy. Nothing skips.",
   }),
   Object.freeze({
+    // WIN-269 (M4.3) — the tool-sync harness the two reconnect suites share.
+    //
+    // IT IS THE SHARED SUPPORT FILE AND NOT A SUITE, which is the one thing worth
+    // reading twice here: `tool-sync-reconnect.integration.test.ts` and
+    // `tool-sync-writers.integration.test.ts` both start a legacy installation and
+    // neither reads the environment itself. Two suites each holding their own
+    // `{ ...process.env }` would be two doors into the same room; this is one, and
+    // a suite that reached past it would appear here as a SECOND reader.
+    //
+    // FOUR VALUES COME OUT OF THE COPY, and each is a decision that belongs to the
+    // RUNNER rather than to a fixture: the supplied Redis url (absent, it points
+    // the process at a Redis it cannot reach, because nothing under test needs
+    // one and the idempotency gate's fail-closed refusal is itself measured), and
+    // the inherited environment handed to TWO spawned processes — the legacy
+    // installation seeder and, through it, the ORM's own migration CLI, which
+    // needs `PATH`.
+    //
+    // THE SIX CONFIGURATION VARIABLES IT SETS ARE NOT READS, for the reason the
+    // entry above gives: they are a plain object handed to
+    // `loadPlatformConfiguration`, so the process under test takes nothing from
+    // the machine it happens to run on.
+    path: "apps/core-api/src/composition/tool-sync-legacy.ts",
+    role: "test-support",
+    reads: 1,
+    why: "The shared harness behind the WIN-269 reconnect and writer suites. It copies and freezes the ambient environment once, at module load, and reads values out of the copy: the supplied Redis url, and the inherited environment it spawns the legacy-installation seeder with, which in turn spawns the ORM's migration CLI. It starts its own PostgreSQL and fails when Docker is absent rather than skipping.",
+  }),
+  Object.freeze({
     // WIN-272 (M4.6) — the stream-lane suite. The identity-REST entry above with
     // an SSE reader on the end, and it reads the environment in exactly the same
     // ONE place and for the same reason: `prisma migrate deploy` is a spawned
@@ -855,7 +882,26 @@ export const VIOLATION_CODES = Object.freeze({
  * census — this one reads `.ts` only — which is why this pin lands on 1767 while
  * `arch-boundaries.test.mjs` lands on 1768.
  */
-export const EXPECTED_FILE_COUNT = 1767;
+/**
+ * THE `/tools/sync` RECONNECT TRANSPORT (M4.3), 1767 -> 1774. SEVEN files enter
+ * this scan: the two published writers in `packages/contexts`, the `/tools/sync`
+ * controller and its body reader, and the shared legacy harness and two
+ * integration suites in `apps/core-api`. The agent characterization suite and the
+ * seeding script are NOT here -- this scan's roots are the V1 source tree, and
+ * neither `apps/agent/src` nor `internal-packages/` is in it. ONE DOOR OPENED, the
+ * harness declared above.
+ *
+ * AND ONE FILE THE PREVIOUS MERGE OWED THIS SCAN, 1774 -> 1775. The MCP
+ * conformance lane added `packages/contexts/tools/adapters/sdk-builds.test-fixture.ts`
+ * and that merge moved `max-file-lines` for it without running this scan or
+ * `arch-boundaries.test.mjs`. It reads NO variable -- it resolves two SDK stores by
+ * manifest path -- so the scan grows and the declared read count does not.
+ *
+ * 1767 + 1 + 7 = 1775, three short of `arch-boundaries.test.mjs`'s 1776 for the
+ * standing reason: this scan reads `.ts` only, and `apps/core-api/scripts/dev.mjs`
+ * is in that census and not in this one.
+ */
+export const EXPECTED_FILE_COUNT = 1775;
 
 function listSourceFiles(root) {
   const found = [];

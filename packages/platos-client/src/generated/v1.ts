@@ -242,7 +242,6 @@ export const WIRE_ERROR_CODES = [
   "IDENTITY_STORE_UNAVAILABLE",
   "IMPERSONATION_FORBIDDEN",
   "INVALID_ACCESS_KEY_MATERIAL",
-  "INVALID_EMAIL_ADDRESS",
   "INVALID_END_USER_FILTER",
   "INVALID_GRANT",
   "INVALID_KEY_RING",
@@ -278,8 +277,6 @@ export const WIRE_ERROR_CODES = [
   "JOB_SERVICE_UNAVAILABLE",
   "JOB_TIMEOUT",
   "LEGACY_ENVELOPE_UNREADABLE",
-  "MAGIC_LINK_DELIVERY_FAILED",
-  "MAGIC_LINK_DELIVERY_UNAVAILABLE",
   "MCP_ENTITY_ENVIRONMENT_MISMATCH",
   "MCP_TOKEN_MINT_WHILE_IMPERSONATING",
   "MEMORY_AGENT_AMBIGUOUS",
@@ -311,12 +308,6 @@ export const WIRE_ERROR_CODES = [
   "MEMORY_UNTRUSTED_SOURCE",
   "MFA_REQUIRED",
   "MISSING_PERMISSION",
-  "NOTIFIER_EMAIL_CONFIGURATION_INVALID",
-  "NOTIFIER_EMAIL_INSECURE_AUTH_REFUSED",
-  "NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED",
-  "NOTIFIER_EMAIL_MESSAGE_REFUSED",
-  "NOTIFIER_EMAIL_RELAY_REFUSED",
-  "NOTIFIER_EMAIL_RELAY_UNREACHABLE",
   "OBSERVABILITY_AUDIT_ACTION_INVALID",
   "OBSERVABILITY_AUDIT_STATE_NOT_AN_OBJECT",
   "OBSERVABILITY_AUDIT_SUBJECT_INVALID",
@@ -391,7 +382,6 @@ export const WIRE_ERROR_CODES = [
   "PROVIDERS_UNKNOWN_PROVIDER",
   "RATE_LIMITED",
   "RATE_LIMITER_UNAVAILABLE",
-  "RATE_LIMIT_FAILED_CLOSED",
   "RETRY_POLICY_BASE_DELAY_INVALID",
   "RETRY_POLICY_CEILING_BELOW_BASE",
   "RETRY_POLICY_JITTER_FRACTION_INVALID",
@@ -435,19 +425,17 @@ export const WIRE_ERROR_CODES = [
   "TENANCY_ARCHIVED",
   "TENANCY_AUTHORIZATION_FORGED",
   "TENANCY_CROSS_TENANT_MEMBERSHIP",
+  "TENANCY_ENTITY_NOT_IN_SCOPE",
   "TENANCY_ENVIRONMENT_FORBIDDEN",
-  "TENANCY_INVALID_EMAIL",
+  "TENANCY_INVALID_CONNECTION_STATUS",
   "TENANCY_INVALID_NAME",
-  "TENANCY_INVALID_ROLE",
   "TENANCY_INVALID_SLUG",
   "TENANCY_INVITATION_ALREADY_ACTIVE",
   "TENANCY_INVITATION_CONSUMED",
   "TENANCY_INVITATION_EMAIL_MISMATCH",
-  "TENANCY_INVITATION_FORBIDDEN",
   "TENANCY_INVITATION_INVALID",
   "TENANCY_LAST_OWNER",
   "TENANCY_MEMBERSHIP_FORBIDDEN",
-  "TENANCY_MEMBER_LIST_FORBIDDEN",
   "TENANCY_NOT_FOUND",
   "TENANCY_PROJECT_CREATE_FORBIDDEN",
   "TENANCY_SLUG_TAKEN",
@@ -467,6 +455,7 @@ export const WIRE_ERROR_CODES = [
   "TOOLS_ENTITY_NOT_IN_SCOPE",
   "TOOLS_ENVIRONMENT_NOT_IN_SCOPE",
   "TOOLS_EXPOSURE_NOT_FOUND",
+  "TOOLS_HEALTH_REPORT_INVALID",
   "TOOLS_MCP_DISABLED",
   "TOOLS_MCP_TRANSPORT_INVALID",
   "TOOLS_MCP_TRANSPORT_UNIMPLEMENTED",
@@ -749,6 +738,11 @@ export interface ItemEnvelope_RevokedTokenResource {
   readonly "meta": ItemMeta;
 }
 
+export interface ItemEnvelope_ToolSyncResource {
+  readonly "data": ToolSyncResource;
+  readonly "meta": ItemMeta;
+}
+
 export interface ItemMeta {
   readonly "contractVersion": string;
   readonly "degraded"?: DegradedNotice;
@@ -914,6 +908,57 @@ export interface TenantNodeResource {
   readonly "id": string;
   readonly "slug": string;
   readonly "name": string;
+}
+
+export interface ToolHealthResource {
+  readonly "toolId": string;
+  readonly "externalEntityId": string | null;
+  readonly "lastCalledAt": string | null;
+  readonly "lastStatus": string | null;
+  readonly "failCount": number;
+  readonly "totalCalls": number;
+  readonly "totalFailures": number;
+  readonly "avgLatencyMs": number | null;
+}
+
+export interface ToolSyncBody {
+  readonly "environmentId": string;
+  readonly "entityId": string;
+  readonly "externalEntityId": string;
+  readonly "tools": readonly ToolSyncDeclaration[];
+  readonly "callbackUrl": string | null;
+  readonly "connectionStatus": string | null;
+  readonly "health": readonly ToolSyncHealthReport[];
+}
+
+export interface ToolSyncDeclaration_paramSchema {
+}
+
+export interface ToolSyncDeclaration {
+  readonly "name": string;
+  readonly "description": string;
+  readonly "paramSchema": ToolSyncDeclaration_paramSchema;
+  readonly "category": string | null;
+}
+
+export interface ToolSyncHealthReport {
+  readonly "toolName": string;
+  readonly "status": string;
+  readonly "avgLatencyMs": number | null;
+}
+
+export interface ToolSyncResource {
+  readonly "entityId": string;
+  readonly "externalEntityId": string;
+  readonly "environmentId": string;
+  readonly "connectionStatus": string;
+  readonly "lastConnectedAt": string | null;
+  readonly "registered": number;
+  readonly "newTools": number;
+  readonly "updated": number;
+  readonly "pruned": number;
+  readonly "health": readonly ToolHealthResource[];
+  readonly "unknownToolNames": readonly string[];
 }
 
 export interface WireError_fields_item {
@@ -1119,6 +1164,15 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     template: "/api/v1/projects",
     pathParameters: [],
     successStatus: 201,
+    idempotency: "accepted",
+    responseKind: "json",
+  },
+  {
+    operationId: "post__api_v1_tools_sync",
+    method: "POST",
+    template: "/api/v1/tools/sync",
+    pathParameters: [],
+    successStatus: 200,
     idempotency: "accepted",
     responseKind: "json",
   },
@@ -1534,6 +1588,21 @@ export class ProjectsV1Api {
 
 }
 
+export class ToolSyncV1Api {
+  constructor(private readonly transport: V1Transport) {}
+
+  /** POST /api/v1/tools/sync */
+  async sync(body: ToolSyncBody): Promise<ItemEnvelope_ToolSyncResource> {
+    return this.transport.send<ItemEnvelope_ToolSyncResource>({
+      operation: operation("post__api_v1_tools_sync"),
+      path: "/api/v1/tools/sync",
+      body: body,
+      query: undefined,
+    });
+  }
+
+}
+
 export class McpEntityTokensV1Api {
   constructor(private readonly transport: V1Transport) {}
 
@@ -1653,6 +1722,7 @@ export class V1Api {
   readonly organizations: OrganizationsV1Api;
   readonly organizationMembers: OrganizationMembersV1Api;
   readonly projects: ProjectsV1Api;
+  readonly toolSync: ToolSyncV1Api;
   readonly mcpEntityTokens: McpEntityTokensV1Api;
   readonly mcpOrganizationPolicies: McpOrganizationPoliciesV1Api;
   readonly mcpPlatformTokens: McpPlatformTokensV1Api;
@@ -1670,6 +1740,7 @@ export class V1Api {
     this.organizations = new OrganizationsV1Api(transport);
     this.organizationMembers = new OrganizationMembersV1Api(transport);
     this.projects = new ProjectsV1Api(transport);
+    this.toolSync = new ToolSyncV1Api(transport);
     this.mcpEntityTokens = new McpEntityTokensV1Api(transport);
     this.mcpOrganizationPolicies = new McpOrganizationPoliciesV1Api(transport);
     this.mcpPlatformTokens = new McpPlatformTokensV1Api(transport);

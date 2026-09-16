@@ -27,6 +27,7 @@ export * from "./operator-read-models.js";
 export * from "./organization-members.js";
 export * from "./resolve-operator-environment.js";
 export * from "./archive-tenant.js";
+export * from "./record-entity-connection.js";
 export * from "./revoke-access-key-generation.js";
 export * from "./tenancy-service.js";
 export * from "./testing/fakes.js";

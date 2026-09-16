@@ -6089,6 +6089,29 @@ const M4_GATE_STEPS = Object.freeze([
     name: "WIN-272 legacy SSE terminal-frame and duplicate tool-result suites",
     suites: ["src/streaming/streaming-terminal-frame.test.ts", "src/tool-gateway/tool-sync-ws.test.ts"],
     subjects: ["src/streaming/streaming.service", "src/tool-gateway/tool-sync-ws.service"],
+    // WIN-269 (M4.3) — THE SECOND FORM OF THIS CLAUSE'S GATE, AND WHY IT IS NOT A
+    // LINE ON THE STEP ABOVE.
+    //
+    // `tool-sync-characterization.integration.test.ts` is a suite about
+    // `tool-sync-ws.service`, so the clause-step rule below wants it named here.
+    // It cannot be: it needs a REAL PostgreSQL, and the `typecheck` job has no
+    // database service. Naming it on that step would run it with no server, where
+    // it gates itself off and reports nothing — a silent skip, which is precisely
+    // the state this whole table exists to end.
+    //
+    // It runs in `agent-tenancy-postgres`, which HAS the server and whose step
+    // selects suites by WALKING `apps/agent/src/tool-gateway` — so the suite joins
+    // that job by existing, and that runner refuses any report containing a
+    // pending test or suite. `walkedBy` records that, and the case below proves it
+    // rather than trusting it: the named step must exist, must run the walking
+    // script, and the script's own `SUITE_ROOTS` must contain the suite's
+    // directory. A suite listed here that the walk does not reach fails the gate.
+    walkedBy: {
+      job: "agent-tenancy-postgres",
+      name: "MCP-surface and tool-lifecycle real-PostgreSQL suites",
+      script: "pnpm test:agent-tenancy-postgres:integration",
+      suites: ["src/tool-gateway/tool-sync-characterization.integration.test.ts"],
+    },
     after: ["pnpm --filter @platos/tenancy-database build", "pnpm --filter @internal/workload-identity build"],
   },
   {
@@ -6134,6 +6157,24 @@ const M4_GATE_STEPS = Object.freeze([
       "src/mcp-platform/tools/end-users-tenancy-postgres.integration.test.ts",
     ],
     subjects: ["src/http/request-body-limits"],
+    // THE CONFORMANCE MATRIX IMPORTS THIS SUBJECT AND IS NOT A BODY-CAP SUITE.
+    // `mcp-protocol-conformance.integration.test.ts` reads `resolveUnauthBodyCaps`
+    // to state, in its harness-fidelity case, exactly which piece of the production
+    // `/mcp` path the harness does NOT mount. That import is a real dependency and
+    // the subject join is right to see it -- but the suite belongs to the
+    // conformance clause, not this one, and it needs a real PostgreSQL and a real
+    // Redis. It already runs in THIS job, selected by the walking script's roots,
+    // which is the same shape the clause above delegates with and is checked by the
+    // same five rules: the step exists, is unconditional and fail-fast, runs the
+    // walking script, the walk's own roots reach the file, and the file still reads
+    // a `*_REQUIRED` flag so the walk's refusal of a pending suite has something to
+    // refuse with.
+    walkedBy: {
+      job: "agent-tenancy-postgres",
+      name: "MCP-surface and tool-lifecycle real-PostgreSQL suites",
+      script: "pnpm test:agent-tenancy-postgres:integration",
+      suites: ["src/mcp-platform/mcp-protocol-conformance.integration.test.ts"],
+    },
     // D21's core-api mirror is the same clause in the other deployable, so it is
     // the step's SECOND command rather than a line in another job.
     coreApiSuites: ["src/http/mcp-body-cap.test.ts"],
@@ -6291,7 +6332,12 @@ function agentSuitesOffTheirClauseStep(workflowText, readFile = readAgentSuite) 
         const step = workflowSteps(jobs.get(spec.job)).find((candidate) => candidate.name === spec.name);
         return typeof step?.run === "string" ? normalizedShellCommands(step.run).flatMap(agentVitestFiles) : [];
       });
-      if (!named.includes(suite)) missing.push([suite, gate.name]);
+      // THE CLAUSE'S OTHER FORM. A suite this gate delegates to its `walkedBy`
+      // step is satisfied there and not here; `walkedByStepCovers` is what proves
+      // that step exists, runs the walking script, and reaches this suite.
+      if (named.includes(suite)) continue;
+      if ((gate.walkedBy?.suites ?? []).includes(suite)) continue;
+      missing.push([suite, gate.name]);
     }
   }
   return missing;
@@ -6340,6 +6386,55 @@ test("M4 gates: the three dark clauses are each named by one fail-fast step, aft
     "END_USER_TENANCY_REQUIRED",
     "MCP_FORGED_SCOPE_REQUIRED",
   ]);
+});
+
+test("M4 gates: a clause delegated to a walking step is really reached by that walk", () => {
+  // WIN-269 (M4.3). `walkedBy` is an ESCAPE FROM THE NAMING RULE, so it has to
+  // cost more than the rule does. Four things are checked, and a delegated suite
+  // that fails any of them is worse off than one that was simply unnamed.
+  const violations = [];
+  const workflow = parseWorkflow(ciWorkflowText(), ".github/workflows/ci.yml", violations);
+  assert.deepEqual(violations, []);
+  const jobs = workflowJobs(workflow);
+  const delegating = M4_GATE_STEPS.filter((gate) => gate.walkedBy !== undefined);
+  // NON-VACUITY: something is delegated, or this case asserts nothing at all.
+  assert.ok(delegating.length > 0, "no clause delegates to a walking step; this case is dead");
+
+  const walkRoots = AGENT_TENANCY_SUITE_ROOTS;
+  for (const gate of delegating) {
+    const { job, name, script, suites } = gate.walkedBy;
+    // (1) THE STEP EXISTS, in the job that has the database.
+    const step = workflowSteps(jobs.get(job)).find((candidate) => candidate.name === name);
+    assert.ok(step !== undefined, `${gate.name} delegates to "${name}" in ${job}, which does not exist`);
+    // (2) IT IS UNCONDITIONAL AND FAIL-FAST, like every other gate step here.
+    assert.equal(step.if, undefined, `"${name}" must be unconditional`);
+    assert.equal(step["continue-on-error"], undefined, `"${name}" must be fail-fast`);
+    // (3) IT RUNS THE WALKING SCRIPT. A step that had been rewritten to name
+    // files would no longer reach a suite by existing, and the delegation would
+    // be a hole.
+    assert.deepEqual(normalizedShellCommands(step.run ?? ""), [script]);
+    for (const suite of suites) {
+      // (4) THE SUITE EXISTS AND THE WALK'S OWN ROOTS REACH IT. The roots are read
+      // from the script, not restated here.
+      assert.ok(
+        readdirSync(path.join(repositoryRoot, AGENT_PACKAGE_ROOT, path.posix.dirname(suite))).includes(
+          path.posix.basename(suite)
+        ),
+        `${gate.name} delegates ${suite}, which does not exist`
+      );
+      const absolute = path.posix.join(AGENT_PACKAGE_ROOT, suite);
+      assert.ok(
+        walkRoots.some((root) => absolute.startsWith(`${root}/`)),
+        `${suite} is delegated to a walk whose roots (${walkRoots.join(", ")}) do not reach it`
+      );
+      // (5) AND IT STILL GATES ITSELF, so the walk's refusal of a pending suite
+      // has something to refuse with.
+      assert.ok(
+        requiredGateFlagsIn([readAgentSuite(suite)]).length > 0,
+        `${suite} is delegated to a walking step and reads no *_REQUIRED flag, so it can skip silently`
+      );
+    }
+  }
 });
 
 test("M4 gates: every agent suite importing a gated subject is named on its clause's step", () => {
