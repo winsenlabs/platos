@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "fdef1530d35e2eb2a9d0c854b2ff521600d21702ddefeb799d27d6dc4bb32811",
+  "evidenceSha256": "d2c3709cc69d005465f827e6a11db00ff7f2144faa9a50751c65974f1170c157",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 42,
@@ -121,7 +121,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "00832b5a1adcfc73fab35b08f6c761014dbee3f54ffdc9d56b7f71818d9d8437",
+    "aggregateSha256": "41bcaf3aaadd33b9bda62de0ad3035734c4c2cdff2f0f6b69de87b8e4a94466c",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2729,7 +2729,7 @@
       },
       {
         "path": "apps/core-api/src/config/platform.test.ts",
-        "sha256": "b9d9e8736a0c137a53af666e934e1ef19335ef1fb7ae39fb885862bd2296bd29"
+        "sha256": "2b49097be8ebc6afaeec60be3d3490110c8ace75da0edd8e458e21977588c020"
       },
       {
         "path": "apps/core-api/src/config/platform.ts",
@@ -11697,7 +11697,7 @@
       },
       {
         "path": "packages/adapters/channel-telegram/src/telegram-transport.test.ts",
-        "sha256": "c415dceb39be8bb036495c8f10b503e8205a5868e6360a06c3b6a010d7877237"
+        "sha256": "759e80e0ce75f6977ac0f6f141a8330b50a356888aa4d332be7d2543bf8aff91"
       },
       {
         "path": "packages/adapters/channel-telegram/src/vendor.ts",
@@ -11793,7 +11793,7 @@
       },
       {
         "path": "packages/adapters/channel-whatsapp/src/whatsapp-transport.test.ts",
-        "sha256": "7c8cc4cff3a3a490e9c008d77fd8c9f4a740e9e7ae395ba6c531715440692473"
+        "sha256": "0bed9fe02762302df48cb70d3af123f7ae0808a0cb2f2148da5008beae692fd9"
       },
       {
         "path": "packages/adapters/channel-whatsapp/tsconfig.json",
@@ -20885,11 +20885,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "e815b922df5fb4fb5c7500dd3022134e68feb4629a625590685361a5b7c6804a"
+        "sha256": "cd4f1b0e9e76604fe50129aeab42fa01049f0721195c4c5e1006ac5024c6f5d9"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "d553e9eb6e89f7ad429ef1c7d3f509fd4e68e3559cb6b4968ed9707731815f33"
+        "sha256": "742be5394d3c9b027d5ada1f1609318cf35e85054e86980b4d83d4b3503b9746"
       },
       {
         "path": "scripts/arch/tool-lifecycle-reach.mjs",
@@ -21140,6 +21140,10 @@
         "sha256": "269c4c7e5a6410f25cf18d56c01076d3e6eb177b8188b959201f03d60aa204a7"
       },
       {
+        "path": "scripts/mutations-win271-channels-rest.json",
+        "sha256": "9e0120a5f3aa9754b764ffa7abfdf8b6d02d9384bf6d76717c437bc91f34be10"
+      },
+      {
         "path": "scripts/mutations-win271-discord.json",
         "sha256": "6466838b300f774ab23a7a6387492e460ba45704e9634dfb2df234a8d0957ea8"
       },
@@ -21217,7 +21221,7 @@
       },
       {
         "path": "scripts/run-win271-mutations.mjs",
-        "sha256": "78271b00b859fe4806f0df71d512e5ed5051c3fac2bf776e41d73d5fb0401a30"
+        "sha256": "bbbbf37ebea93b7150d3baf7a91cefebba6fd0b208cac60118216be8f929317f"
       },
       {
         "path": "scripts/run-win272-mutations.mjs",
@@ -21358,6 +21362,10 @@
       {
         "path": "scripts/webapp-inventory-contract.test.mjs",
         "sha256": "b9f4170117ef040283323959f81829d320fbbfe1e3e7089af1d8be43a890048a"
+      },
+      {
+        "path": "scripts/win271-channels-rest-mutation-plan.json",
+        "sha256": "3f0f694431078f326559041d4e9f6b9d91b0ee5b27f85cad99a048be52a7e898"
       },
       {
         "path": "scripts/win271-discord-mutation-plan.json",
