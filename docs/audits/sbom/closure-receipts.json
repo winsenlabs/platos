@@ -74,7 +74,7 @@
         },
         {
           "file": "package.json",
-          "sha256": "3d2f170523efc6a7466e9dd85c03b945f22a219e4382af71779ca44626fcc638"
+          "sha256": "dbb4b09ea4b5aa44e6d4123ce502f7850c47db814e47e5f7848b7ae3e544bbd0"
         },
         {
           "file": "pnpm-lock.yaml",
@@ -89,7 +89,7 @@
           "sha256": "360b978afaf1d522a5b98479b5ab6f44e6b007e6cb71655f5c6ae55178f9fff7"
         }
       ],
-      "buildInputsSha256": "8e25492cb31eb6bb532f9c2b1b32c3fd034c69dfa042d3213a804d2e0e8c6621"
+      "buildInputsSha256": "56178db153a79a42ab29d3481cee97251f3aae07d4ec287c66b64f76fa8ae03d"
     },
     "core-api": {
       "file": "docs/audits/sbom/platos-core-api.cdx.json",

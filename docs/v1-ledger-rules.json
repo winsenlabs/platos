@@ -2135,37 +2135,37 @@
     ]
   },
   "expected": {
-    "totalFiles": 5387,
+    "totalFiles": 5402,
     "areaCounts": {
-      "apps-agent": 540,
+      "apps-agent": 546,
       "apps-core-api": 150,
       "apps-mcp-stdio": 8,
       "apps-webapp": 184,
-      "docs-content": 747,
+      "docs-content": 751,
       "internal-packages": 1175,
       "packages": 2240,
-      "root-infra": 343
+      "root-infra": 348
     },
     "kindCounts": {
       "asset": 155,
-      "config": 326,
-      "doc": 614,
+      "config": 327,
+      "doc": 616,
       "fixture": 6,
-      "generated": 49,
+      "generated": 51,
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2211,
+      "source": 2221,
       "test": 1113
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1720,
-      "regenerate": 44,
-      "retain": 3614,
+      "move-refactor": 1730,
+      "regenerate": 46,
+      "retain": 3617,
       "unresolved": 2
     },
-    "protectedCount": 1643,
+    "protectedCount": 1647,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2174,7 +2174,7 @@
       "apps-agent.entry.process": 1,
       "apps-agent.generated.contract-artifacts": 2,
       "apps-agent.infra.container": 1,
-      "apps-agent.source.runtime": 284,
+      "apps-agent.source.runtime": 290,
       "apps-agent.test.suites": 221,
       "apps-agent.tooling.scripts": 13,
       "apps-core-api.config.package": 8,
@@ -2211,8 +2211,8 @@
       "docs-content.design.provenance": 1,
       "docs-content.evidence.adr": 3,
       "docs-content.evidence.audit-history": 13,
-      "docs-content.evidence.audit-notes": 14,
-      "docs-content.evidence.audit-receipts": 24,
+      "docs-content.evidence.audit-notes": 16,
+      "docs-content.evidence.audit-receipts": 26,
       "docs-content.evidence.lifecycle-controls": 2,
       "docs-content.generated.audit": 2,
       "docs-content.governance.root-manifest": 2,
@@ -2286,7 +2286,7 @@
       "root-infra.ci.repository-meta": 7,
       "root-infra.ci.workflows": 4,
       "root-infra.compose.stacks": 2,
-      "root-infra.config.dotfiles": 7,
+      "root-infra.config.dotfiles": 8,
       "root-infra.deps.patches": 5,
       "root-infra.doc.root-notes": 3,
       "root-infra.doc.self-host": 1,
@@ -2305,9 +2305,9 @@
       "root-infra.test.harness": 74,
       "root-infra.test.script-suites": 36,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 127,
+      "root-infra.tooling.scripts": 131,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "d247e1c3ddecb4909b289a0c9ff855147b06ba82eb7ecd7d6fa709002fcfa999"
+    "classificationSha256": "99fb50f7e4ecba166214f17bd7e7892af1499115aa07267f03b230692b3f43d7"
   }
 }

@@ -157,6 +157,25 @@ export const EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS = Object.freeze([
   // POINT-IN-TIME classification would say the opposite of what the artifact is.
   "docs/audits/win-269-tool-lifecycle-reach.json",
   "docs/audits/win-269-tool-lifecycle-reach.md",
+  // WIN-268 (M4.2). The MCP DISPOSITION REGISTER, ACCEPTED rather than
+  // POINT-IN-TIME for the reason its two siblings above are, and for one that is
+  // sharper: it records no date and nothing in it is a scan result. Every row is
+  // re-derived on every run from the control-plane manifest the servers
+  // themselves produce, from the store-ownership register's contract methods and
+  // from the docs controller's own AST, and `audit:mcp-disposition-register`
+  // fails when the committed file and that derivation disagree. Classifying it as
+  // a snapshot would say the opposite of what the artifact is: the counts move as
+  // contexts are composed and the whole point is that they stay reconciled.
+  "docs/audits/win-268-mcp-disposition-register.json",
+  "docs/audits/win-268-mcp-disposition-register.md",
+  // WIN-269 (M4.3). The apps/agent LAYERING register. ACCEPTED, and the reason is
+  // the one above with a twist: the file records which upward import edges exist
+  // RIGHT NOW and which single one is allowlisted to M3.1. The moment M3.1
+  // removes that import the register must change, and `audit:agent-area-cycles`
+  // fails until it does — so a snapshot classification would let the tree claim a
+  // cycle that is gone, or hide one that came back.
+  "docs/audits/win-269-agent-area-cycles.json",
+  "docs/audits/win-269-agent-area-cycles.md",
   "docs/audits/win253-removals/clickhouse-split.json",
   "docs/audits/win253-removals/clickhouse-split.md",
   "docs/audits/win253-removals/vendored-build.json",

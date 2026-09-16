@@ -636,7 +636,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // that now write those rows are joined by one committed expectation.
     // `tool-sync-ws.service.ts` is NOT touched -- the socket keeps serving.
     // NO LEDGER RULE CHANGED.
-    "apps-agent": 26,
+    // AND THE MCP REGISTER LANE (M4.2/M4.3) 26 -> 32. SIX files, and none of them
+    // is a moved module: `context-resolver.ts`, `context-automap.service.ts` and
+    // `postman-context-handle.ts` MOVED out of `agent-runtime` into
+    // `tool-gateway/tool-context/` and are the same rows at new paths, so they add
+    // nothing. What is new is three RE-EXPORT SHIMS left at the old paths (the two
+    // consumers are M3.1's `agent.controller.ts` and `agent.service.ts`, which this
+    // tranche may not edit) plus three files that carry the inversion:
+    // `tool-gateway/tool-permission.port.ts`, `privacy/admin-credential.port.ts`
+    // and `mcp-platform/mcp-port-bindings.module.ts`. The shims are deleted when
+    // M3.1 repoints its two files, and this count drops to 29 when they are.
+    "apps-agent": 32,
     // WIN-272 (M4.6) 0 -> 1. `test/publicGuestBoundary.test.ts`: the public-guest
     // and embed boundary over two real `node:http` listeners with `fetch`
     // unstubbed. It is the FIRST file this programme has added under
@@ -2110,7 +2120,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // result of asking the adopted SDK and the candidate the same questions, on the
     // existing `docs-content.evidence.audit-receipts` rule (23 -> 24), under
     // `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
-    "docs-content": 27,
+    // AND THE MCP REGISTER LANE (M4.2/M4.3) 27 -> 31. FOUR files, two registers:
+    // `docs/audits/win-268-mcp-disposition-register.{json,md}` and
+    // `docs/audits/win-269-agent-area-cycles.{json,md}`. Both are wholly generated
+    // and both are pinned ACCEPTED in `scripts/evidence-lifecycle.mjs`, which is
+    // the edit that let `generate:evidence-lifecycle` classify them at all.
+    "docs-content": 31,
     // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
     // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
     // for the same reason T0's ledger took it — the blanket rule's verdict
@@ -2316,7 +2331,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `agent-tenancy-postgres` job reruns with `--check`, on
     // `root-infra.tooling.scripts`, and its suite on
     // `root-infra.test.script-suites`. NO LEDGER RULE CHANGED.
-    "root-infra": 107,
+    // AND THE MCP REGISTER LANE (M4.2/M4.3) 107 -> 112. FIVE files: the two
+    // generators and their two suites (`scripts/arch/mcp-disposition-register.mjs`,
+    // `scripts/arch/agent-area-cycles.mjs` and the `.test.mjs` beside each) plus
+    // `.dependency-cruiser.agent-areas.cjs`, the config the layering gate emits so
+    // dependency-cruiser's circular detection can be pointed at the same graph
+    // without dependency-cruiser becoming a dependency of this repository.
+    "root-infra": 112,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2671,7 +2692,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // AND THE POOL-EVICTION FIX THIS ROUND CARRIED IN -- 1917 -> 1918. ONE file, in
   // `packages` and itemised on that area's delta above:
   // 26 + 1 + 139 + 4 + 11 + 1603 + 27 + 107 = 1918.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1918);
+  //
+  // AND THE MCP REGISTER LANE (M4.2/M4.3) -- 1918 -> 1933. FIFTEEN files in three
+  // areas, each itemised on its delta above: `apps-agent` +6 (three re-export
+  // shims and three inversion files; the three moved modules add nothing),
+  // `docs-content` +4 (two generated registers) and `root-infra` +5 (two
+  // generators, two suites and the emitted dependency-cruiser config). Re-measured
+  // on the integrated tree, not summed from the lane report:
+  // 32 + 1 + 139 + 4 + 11 + 1603 + 31 + 112 = 1933.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1933);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -3005,7 +3034,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // disagree and be caught -- which is why both halves move together or not at all.
     // AND THE POOL-EVICTION FIX -- 1917 -> 1918, moved in the same edit as the
     // total and as `expectedDeltas.packages`: one suite file.
-    rulesDocument.baseline.totalFiles + 1918
+    // AND THE MCP REGISTER LANE (M4.2/M4.3) -- 1918 -> 1933, moved in the same edit
+    // as the total and as three area deltas: apps-agent +6, docs-content +4 and
+    // root-infra +5, summed per area here. The three modules that MOVED between
+    // areas contribute nothing to either sum, which is the case this second
+    // derivation is best at catching: a move counted as an addition would agree
+    // with itself in the first sum and disagree here.
+    rulesDocument.baseline.totalFiles + 1933
   );
 });
 
