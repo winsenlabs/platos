@@ -3968,7 +3968,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "550acf94bf437bfb4a13fe7f95d345c6a35022ffae21de262430af7d71ff93a3"
+      "sha256": "39cd8b7e8c5ab45ef73a0eab8d877970a47a44a4f1c246a4a7cf0a993cc5a7e1"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
