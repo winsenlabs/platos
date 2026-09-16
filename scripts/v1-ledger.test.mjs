@@ -1655,7 +1655,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // 1599 IS RE-MEASURED ON THE MERGED TREE: each lane added its own delta to
     // 1556, and 1556 + 13 + 9 + 21 = 1599 is what the four together produce.
-    packages: 1599,
+    //
+    // WIN-271 (M4.5), D10, THE REMAINING TWO PROVIDERS — 1599 -> 1640. FORTY-ONE
+    // files, all under `packages/adapters/channel-whatsapp/` (twenty-two: three
+    // generator-owned scaffolding files and nineteen under `src/` — fourteen
+    // modules and five suites) and `packages/adapters/channel-telegram/`
+    // (nineteen: three scaffolding and sixteen under `src/` — twelve modules and
+    // four suites). TWO NEW directories, so again no generated placeholders are
+    // netted against them. NOT ONE under `packages/contexts/`, for the SECOND and
+    // THIRD time, which is the clause these directories evidence. They land on the
+    // existing `packages.adapters.*` rules; NO LEDGER RULE CHANGED.
+    packages: 1640,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2534,7 +2544,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // +21 and `root-infra` +2. Re-measured on the integrated tree, not summed from
   // the lane report (which read 1827 against a tree with none of the four earlier
   // lanes in it): 18 + 1 + 126 + 4 + 10 + 1599 + 26 + 104 = 1888.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1888);
+  //
+  // AND THE REMAINING TWO (WIN-271 (M4.5), D10) — 1888 -> 1929. FORTY-ONE files in
+  // ONE area, itemised on its delta above: `packages` +41 and nothing anywhere
+  // else. `root-infra` does NOT move this time, which is the difference from the
+  // second runtime: that one brought a `discord-interactions` devDependency and so
+  // a lockfile edit counted there, and these two bring no vendor dependency at all
+  // — `node:crypto` and `fetch` are the whole of both.
+  // 18 + 1 + 126 + 4 + 10 + 1640 + 26 + 104 = 1929.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1929);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2855,7 +2873,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // area deltas: nine packages files and seven root-infra files.
     // AND THE SECOND CHANNEL RUNTIME — 1865 -> 1888, moved in the same edit as the
     // total and both area deltas: twenty-one packages files and two root-infra files.
-    rulesDocument.baseline.totalFiles + 1888
+    // AND THE REMAINING TWO — 1888 -> 1929, moved in the same edit as the total and
+    // the ONE area delta: forty-one packages files and nothing in root-infra.
+    rulesDocument.baseline.totalFiles + 1929
   );
 });
 
