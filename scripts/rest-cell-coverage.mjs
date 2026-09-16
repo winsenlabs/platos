@@ -38,12 +38,24 @@
 //              or a `: XController` annotation — and calls `.<handler>(`. This
 //              is how every apps/agent controller suite in this tree is
 //              written.
-//   `http`     the test file issues a request whose METHOD and PATH normalise
+//   `http`     the test file ISSUES A REQUEST whose METHOD and PATH normalise
 //              onto the cell's route template. A literal segment in the
 //              template must be matched EXACTLY; only a `:param` segment
 //              accepts an arbitrary value. A path that matches more than one
 //              cell joins NONE of them and is recorded as ambiguous, so a
 //              vague URL can never inflate two rows at once.
+//
+//              "ISSUES A REQUEST" IS ASSERTED, NOT ASSUMED. A round-2 review
+//              found that the first version of this kind matched any
+//              string-literal method beside any string-literal path — which is
+//              also the shape of an `it.each` tuple table and of a call to a
+//              pure predicate. Fourteen cells sat in `covered` on the strength
+//              of `scope.guard.test.ts`, a file that issues no request at all
+//              and several of whose matching tuples are NEAR-MISS rows
+//              asserting the route is NOT public. So the kind now requires the
+//              file to contain a request PRIMITIVE, and requires the pair to be
+//              in a request SHAPE — see REQUEST_PRIMITIVES and CALL_SITE_KINDS.
+//              An array element is a data table, not a call.
 //
 // NEITHER KIND PROVES AN ASSERTION. A test that calls a handler and asserts
 // nothing joins here exactly as one that asserts everything does. That is a
@@ -104,13 +116,18 @@ export const EVIDENCE_KINDS = Object.freeze([
   Object.freeze({
     id: "http",
     derivation:
-      "the test file issues a request whose method and normalised path land on the cell's route template; literal " +
-      "template segments must match exactly and a path matching more than one cell joins none",
+      "the test file contains a request primitive (fetch, inject, supertest, a WebSocket, an http.request or a raw " +
+      "socket write), and a method+path pair reaches one of six request SHAPES — a call to a helper the file " +
+      "itself declares, a supertest-style .post(), a {method,url} option object, a bare fetch(), or an HTTP/1.1 " +
+      "request line — whose normalised path lands on the cell's route template; literal template segments must " +
+      "match exactly and a path matching more than one cell joins none",
     limit:
       "a URL composed at run time from values this parser cannot see is invisible, so a tested cell can read as " +
-      "residue; that is the safe direction. The other direction is real too and is narrower: this is a text scan, " +
-      "so a route written in a COMMENT counts exactly as one written in code, and a file whose subject is this " +
-      "parser has to keep its fixtures fictional",
+      "residue; that is the safe direction, and it is now taken twice over — a helper IMPORTED from a shared test " +
+      "module is not a declared name, and a method/path pair written as an ARRAY ELEMENT is treated as a data " +
+      "table rather than a request, because whether a table drives a request is beyond a text scan. The other " +
+      "direction is real too and is narrower: this is a text scan, so a route written in a COMMENT counts exactly " +
+      "as one written in code, and a file whose subject is this parser has to keep its fixtures fictional",
   }),
 ]);
 
@@ -244,46 +261,157 @@ export function normalisePathExpression(expression, templates = new Map()) {
   return text === "" ? null : text;
 }
 
-const CALL_SITE_PATTERNS = Object.freeze([
-  // call("POST", "/bff/session"), request("GET", `${PREFIX}/projects`)
-  new RegExp(String.raw`["'](${HTTP_METHODS.join("|")})["']\s*,\s*${STRING_LITERAL}`, "gu"),
-  // call("GET", variables(ID.env)) — the path is a local builder, not a literal
-  new RegExp(String.raw`["'](${HTTP_METHODS.join("|")})["']\s*,\s*([A-Za-z_$][\w$]*)\s*\(`, "gu"),
-  // supertest and friends: request(app).post("/mcp/platform/tokens")
-  new RegExp(String.raw`\.(${HTTP_METHODS.map((method) => method.toLowerCase()).join("|")})\(\s*${STRING_LITERAL}`, "gu"),
-  // fetch/inject option objects: { method: "PUT", url: "/x" }
-  new RegExp(
-    String.raw`method\s*:\s*["'](${HTTP_METHODS.join("|")})["'][\s\S]{0,200}?url\s*:\s*${STRING_LITERAL}`,
-    "gu",
-  ),
-  // `fetch(url)` with no method is a GET, by the fetch standard. The method is
-  // a constant of the FORM rather than a token in the source, so it is written
-  // into the pattern as one — omitting this kind would make every plain
-  // `fetch` invisible and put genuinely exercised GET cells in the residue.
-  new RegExp(String.raw`\b(fetch)\(\s*${STRING_LITERAL}`, "gu"),
+/**
+ * How a test in THIS repository actually issues an HTTP request.
+ *
+ * WHY THIS GATE EXISTS. `"GET", "/some/path"` is not the shape of a request. It
+ * is the shape of a request ARGUMENT LIST, and it is equally the shape of an
+ * `it.each` tuple table and of a call to a pure predicate. Three files in this
+ * tree are made entirely of the latter — `apps/agent/src/auth/scope.guard.test.ts`
+ * drives `isPublicOAuthRoute`/`isPublicChannelCallback` over tuple tables, several
+ * of which are NEAR-MISS tables whose whole assertion is that the route is NOT
+ * public; `apps/core-api/src/http/idempotency-policy.test.ts` calls
+ * `classifyRequest("POST", "/api/v1/bff/magic-link")`; and
+ * `packages/platos-client/tests/generated-contracts.test.ts` is a route table.
+ * Counting those as requests put 14 cells in `covered` on the strength of files
+ * that never spoke to a server — including `GET /.well-known/oauth-authorization-server`,
+ * which no test in this tree calls at all. That is the OVER-counting direction,
+ * the one this register exists to refuse.
+ *
+ * So a file yields `http` evidence only if it contains a request primitive. The
+ * list is the ways this repository issues a request, and it includes a RAW
+ * SOCKET WRITE because two body-cap suites and the stream lane speak HTTP/1.1
+ * onto a socket by hand rather than through `fetch`.
+ */
+export const REQUEST_PRIMITIVES = Object.freeze([
+  String.raw`\bfetch\s*\(`,
+  String.raw`\.inject\s*\(`,
+  String.raw`\bsupertest\s*\(`,
+  String.raw`\bnew\s+WebSocket\s*\(`,
+  String.raw`\b(?:http|https|http2)\.request\s*\(`,
+  String.raw`\b(?:net\.)?(?:createConnection|connect)\s*\(`,
+  String.raw`\.write\s*\(\s*(?:head|request|raw)\b`,
+  String.raw`\bsocket\.write\s*\(`,
 ]);
 
-/** The capture groups of the `fetch(` pattern carry a function name, not a method. */
-const IMPLICIT_GET = "FETCH";
+const REQUEST_PRIMITIVE = new RegExp(REQUEST_PRIMITIVES.join("|"), "u");
 
-const BUILDER_CALL = new RegExp(String.raw`^["'](${HTTP_METHODS.join("|")})["']\s*,\s*([A-Za-z_$][\w$]*)\s*\($`, "u");
+/** Does this file speak to a server at all? */
+export function issuesRequests(text) {
+  return REQUEST_PRIMITIVE.test(text);
+}
+
+/**
+ * Every function name this file DECLARES.
+ *
+ * The second half of the gate. A method/path pair passed to a name the file
+ * declares is a call to that file's own request helper — `call`, `head`,
+ * `refusal` — which is how every request-issuing suite here is written. A pair
+ * passed to an IMPORTED name is a call into somebody else's module, and the two
+ * imported names this mistake was actually made with (`classifyRequest`,
+ * `isPublicChannelCallback`) are pure predicates. Requiring the callee to be
+ * local is a text fact, not a judgement, and it errs by under-counting: a suite
+ * that drives requests through a helper imported from a shared test module is
+ * invisible here, and reads as residue rather than as false coverage.
+ */
+export function declaredNames(text) {
+  const names = new Set();
+  for (const match of text.matchAll(/\b(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/gu)) {
+    if (match[1] !== undefined) names.add(match[1]);
+  }
+  for (const match of text.matchAll(
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;\n]+)?=\s*(?:async\s+)?(?:\(|function\b|[A-Za-z_$][\w$]*\s*=>)/gu,
+  )) {
+    if (match[1] !== undefined) names.add(match[1]);
+  }
+  return names;
+}
+
+const LOWER_METHODS = HTTP_METHODS.map((method) => method.toLowerCase()).join("|");
+const UPPER_METHODS = HTTP_METHODS.join("|");
+
+/**
+ * The shapes a request is written in, each with what it needs to be believed.
+ *
+ * `localCallee: true` means the method/path pair must be the argument list of a
+ * call to a name this file declares. An ARRAY ELEMENT — `["POST", "/x"]` — is a
+ * data table, not a call, and matches none of these: whether a table drives a
+ * request is beyond a text scan, so the table is not counted.
+ */
+const CALL_SITE_KINDS = Object.freeze([
+  {
+    id: "local-helper-literal",
+    // call("POST", "/bff/session"), head("GET", `${PREFIX}/projects`, headers)
+    localCallee: true,
+    pattern: new RegExp(
+      String.raw`\b([A-Za-z_$][\w$]*)\s*\(\s*["'](${UPPER_METHODS})["']\s*,\s*${STRING_LITERAL}`,
+      "gu",
+    ),
+    read: (match) => ({ callee: match[1], method: match[2], expression: match[3] ?? match[4] ?? match[5] }),
+  },
+  {
+    id: "local-helper-builder",
+    // call("GET", variables(ID.env)) — the path is a local builder, not a literal
+    localCallee: true,
+    pattern: new RegExp(
+      String.raw`\b([A-Za-z_$][\w$]*)\s*\(\s*["'](${UPPER_METHODS})["']\s*,\s*([A-Za-z_$][\w$]*)\s*\(`,
+      "gu",
+    ),
+    read: (match) => ({ callee: match[1], method: match[2], builder: match[3] }),
+  },
+  {
+    id: "method-call",
+    // supertest and friends: request(app).post("/mcp/platform/tokens")
+    localCallee: false,
+    pattern: new RegExp(String.raw`\.(${LOWER_METHODS})\(\s*${STRING_LITERAL}`, "gu"),
+    read: (match) => ({ method: match[1], expression: match[2] ?? match[3] ?? match[4] }),
+  },
+  {
+    id: "option-object",
+    // fetch/inject option objects: { method: "PUT", url: "/x" }
+    localCallee: false,
+    pattern: new RegExp(
+      String.raw`method\s*:\s*["'](${UPPER_METHODS})["'][\s\S]{0,200}?url\s*:\s*${STRING_LITERAL}`,
+      "gu",
+    ),
+    read: (match) => ({ method: match[1], expression: match[2] ?? match[3] ?? match[4] }),
+  },
+  {
+    id: "implicit-get",
+    // `fetch(url)` with no method is a GET, by the fetch standard. The method is
+    // a constant of the FORM rather than a token in the source, so it is written
+    // into the pattern as one — omitting this kind would make every plain
+    // `fetch` invisible and put genuinely exercised GET cells in the residue.
+    localCallee: false,
+    pattern: new RegExp(String.raw`\bfetch\(\s*${STRING_LITERAL}`, "gu"),
+    read: (match) => ({ method: "GET", expression: match[1] ?? match[2] ?? match[3] }),
+  },
+  {
+    id: "request-line",
+    // `GET ${streamPath(ENVIRONMENT, "live")} HTTP/1.1\r\n` — the stream lane and
+    // the two body-cap suites write their request line onto a socket by hand.
+    // A request LINE is the least ambiguous request shape there is: nothing but
+    // a request is written in it.
+    localCallee: false,
+    pattern: new RegExp(String.raw`\b(${UPPER_METHODS}) ((?:\$\{[^{}]*\}|\S)+) HTTP/1\.1`, "gu"),
+    read: (match) => ({ method: match[1], expression: match[2] }),
+  },
+]);
 
 /** Every (method, path) request this test file issues, as far as the source says. */
 export function extractHttpCallSites(text) {
+  if (!issuesRequests(text)) return [];
   const templates = extractLocalTemplates(text);
+  const local = declaredNames(text);
   const sites = [];
-  for (const pattern of CALL_SITE_PATTERNS) {
-    pattern.lastIndex = 0;
-    for (const match of text.matchAll(pattern)) {
-      const token = (match[1] ?? "").toUpperCase();
-      const method = token === IMPLICIT_GET ? "GET" : token;
+  for (const kind of CALL_SITE_KINDS) {
+    kind.pattern.lastIndex = 0;
+    for (const match of text.matchAll(kind.pattern)) {
+      const read = kind.read(match);
+      const method = (read.method ?? "").toUpperCase();
       if (!HTTP_METHODS.includes(method)) continue;
-      let expression = match[2] ?? match[3] ?? match[4];
-      const builder = BUILDER_CALL.exec(match[0]);
-      if (builder !== null) {
-        expression = templates.get(builder[2] ?? "");
-        if (expression === undefined) continue;
-      }
+      if (kind.localCallee && !local.has(read.callee ?? "")) continue;
+      const expression = read.builder === undefined ? read.expression : templates.get(read.builder);
       if (expression === undefined) continue;
       const path = normalisePathExpression(expression, templates);
       if (path === null) continue;
@@ -442,8 +570,10 @@ export function buildRegister(input) {
         row.reason =
           "no tracked test file yields either join: none binds an implementing controller and calls its handler, " +
           "and no resolvable request site lands on this route template. A suite that composes its URL at run time " +
-          "from a value this parser cannot read reaches here too, which is why the row states what was MEASURED " +
-          "rather than claiming nothing exercises the cell";
+          "from a value this parser cannot read reaches here too, and so does one that drives its route from a " +
+          "TABLE — `for (const [method, path] of cases)` — because an array element is not a call and whether a " +
+          "table drives a request is beyond a text scan. That is why the row states what was MEASURED rather than " +
+          "claiming nothing exercises the cell";
       }
       return row;
     })
