@@ -736,6 +736,25 @@ const expectedDifferentialHarnessCommands = [
 const expectedDifferentialConservationJob = "differential-state-conservation";
 const expectedDifferentialConservationCommand = "pnpm test:differential-harness:store";
 
+// WIN-259. THE EMITTED-LOG HALF OF SECRET SCANNING. The artifact half has run in
+// CI since WIN-236; nothing scanned what the serving process PRINTS, and the
+// issue records that half as NOT MET. The gate starts the shipped
+// `apps/core-api/dist/main.js` against real infrastructure, so it lives in the
+// job that already has a Docker daemon AND already builds the core-api graph —
+// putting it anywhere else would mean a second build of the same 32 projects.
+//
+// Both commands are pinned. The first controls the decisions that make a green
+// result mean anything (an empty corpus, a lifecycle-only corpus, an unaccepted
+// plant, an unattributable sentinel, an uncaptured sink — each REFUSED); the
+// second is the run. A gate whose refusals can be deleted separately from its
+// run is a gate that can be hollowed out one command at a time.
+const expectedLogSecretScanJob = "postgres-tenancy-repository";
+const expectedLogSecretScanStepName = "WIN-259 emitted-log secret scan and its negative control";
+const expectedLogSecretScanCommands = [
+  "node --test tests/log-secret-scan/scanner.test.mjs",
+  "node tests/log-secret-scan/run.mjs",
+];
+
 // M4 finish — THE FOURTH GATE-DARKNESS INSTANCE. The MCP-surface and
 // tool-lifecycle real-PostgreSQL suites ran in NO job at all; this job runs them,
 // and it selects them by WALKING two roots rather than by naming files, so a new
@@ -1917,6 +1936,30 @@ function policyViolations(input) {
     JSON.stringify(reviewedHarness.commands) !== JSON.stringify(expectedDifferentialHarnessCommands)
   ) {
     violations.push("WIN-284 harness script must contain only the exact reviewed command sequence");
+  }
+
+  // WIN-259 — the emitted-log secret scan. One step, unconditional, in the job
+  // that has both a Docker daemon and the built core-api graph, running exactly
+  // the two reviewed commands.
+  const logScanSteps = workflowSteps(ciJobs.get(expectedLogSecretScanJob)).filter(
+    (step) => step.name === expectedLogSecretScanStepName
+  );
+  if (logScanSteps.length !== 1)
+    violations.push("CI must contain exactly one WIN-259 emitted-log secret scan step");
+  const logScanStep = logScanSteps[0] ?? {};
+  if (
+    logScanStep.if !== undefined ||
+    logScanStep["continue-on-error"] !== undefined ||
+    logScanStep.shell !== undefined
+  ) {
+    violations.push("WIN-259 emitted-log secret scan step must be unconditional and fail-fast");
+  }
+  const reviewedLogScan = reviewedTopLevelCommands(logScanStep.run);
+  if (
+    !reviewedLogScan.valid ||
+    JSON.stringify(reviewedLogScan.commands) !== JSON.stringify(expectedLogSecretScanCommands)
+  ) {
+    violations.push("WIN-259 emitted-log secret scan script must contain only the exact reviewed command sequence");
   }
 
   // WIN-284 — the twin-store conservation job needs a Docker daemon, so it is a
@@ -3637,6 +3680,43 @@ test("CI policy controls fail under generated semantic source mutations", async 
           "        run: echo skipped"
         ),
     },
+    // WIN-259 (+3). The emitted-log scan: the step deleted, the step made
+    // conditional, and its refusal controls dropped while the run stays. The
+    // third matters most — a run whose refusals have been removed reports green
+    // over an empty corpus, which is the exact failure the refusals exist for.
+    {
+      name: "WIN-259 emitted-log secret scan cannot be deleted from CI",
+      expected: "CI must contain exactly one WIN-259 emitted-log secret scan step",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `      - name: ${expectedLogSecretScanStepName}`,
+          "      - name: WIN-259 renamed away"
+        ),
+    },
+    {
+      name: "WIN-259 emitted-log secret scan cannot be made conditional",
+      expected: "WIN-259 emitted-log secret scan step must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `      - name: ${expectedLogSecretScanStepName}`,
+          `      - name: ${expectedLogSecretScanStepName}\n        if: false`
+        ),
+    },
+    {
+      name: "WIN-259 scanner refusal controls cannot be dropped from the step",
+      expected: "WIN-259 emitted-log secret scan script must contain only the exact reviewed command sequence",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `          ${expectedLogSecretScanCommands[0]}`,
+          `          echo skipped # ${expectedLogSecretScanCommands[0]}`
+        ),
+    },
     {
       // THE CONTROL FOR THE FOURTH GATE-DARKNESS INSTANCE. Deleting the step is
       // exactly how the three suites this job runs came to run nowhere, so the
@@ -5162,12 +5242,16 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   concealment control. Four rather than two because a gate that can be commented
   //   out and a gate that can be buried in a subshell are different deletions, and a
   //   scan that only greps for the text catches neither.
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 2 + 4 = 400. The
+  //   EMITTED-LOG SECRET SCAN (WIN-259), +3. The step deleted, the step made
+  //   conditional, and the refusal controls dropped while the run stays. The third
+  //   is the one worth having: a scan whose refusals have gone reports green over an
+  //   empty corpus, and an empty corpus is exactly what a broken capture produces.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 2 + 4 + 3 = 403. The
   // count is pinned rather than derived so that a control silently disappearing is a
   // failure rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    400,
+    403,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

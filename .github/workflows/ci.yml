@@ -751,6 +751,34 @@ jobs:
         # ASSERTION rather than failing to LOAD.
         run: pnpm --filter "@platos/core-api..." build
 
+      - name: WIN-259 emitted-log secret scan and its negative control
+        # THE EMITTED-LOG HALF OF "logs/artifacts are scanned". The ARTIFACT half
+        # has existed since WIN-236: `tests/browser-evidence/verify-artifacts.mjs`
+        # rejects bearer tokens and secret-bearing keys in browser evidence.
+        # Nothing scanned what the SERVING PROCESS PRINTS, which is the half the
+        # issue records as not met and the half a log aggregator receives.
+        #
+        # It starts `apps/core-api/dist/main.js` — the shipped entry point, which
+        # is why this step sits after the build above rather than composing the
+        # app in a test runner's own process — against a real PostgreSQL, a real
+        # Redis and a real SMTP relay, plants known material through the mints,
+        # the provider-key rotation, the environment-variable write and a
+        # magic-link sign-in, then scans everything the process printed for every
+        # planted value in five encodings.
+        #
+        # TWO COMMANDS AND BOTH ARE PINNED. The first controls the decisions that
+        # make a green result mean anything — an empty corpus, a corpus of
+        # lifecycle lines only, a plant the process never accepted, a sentinel too
+        # short to attribute, and a log destination the capture does not read are
+        # each REFUSED rather than reported clean. The second is the run. Deleting
+        # either is how a gate stops being one, so each is separately falsifiable.
+        #
+        # It FAILS when Docker is absent rather than skipping, exactly as the step
+        # below does.
+        run: |
+          node --test tests/log-secret-scan/scanner.test.mjs
+          node tests/log-secret-scan/run.mjs
+
       - name: Redis-backed adapter and composition-root integration suites
         # WIN-267. FOUR suites that ran in NO job at all, and the count is four
         # rather than the three the hand-off named: `redis-cache` carries an
