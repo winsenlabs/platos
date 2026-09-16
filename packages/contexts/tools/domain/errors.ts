@@ -57,6 +57,7 @@ export const TOOLS_ERROR_CODES = [
   "TOOLS_CALL_SEQUENCE_CONFLICT",
   "TOOLS_CALL_TRANSITION_INVALID",
   "TOOLS_SCOPE_MISMATCH",
+  "TOOLS_HEALTH_REPORT_INVALID",
   "TOOLS_REPOSITORY_UNAVAILABLE",
 ] as const;
 
@@ -337,6 +338,38 @@ export function scopeMismatch(expectedPath: string, grantedPath: string): Domain
   return domainError("TOOLS_SCOPE_MISMATCH", "forbidden", "authorization does not belong to the requested scope", {
     details: { expectedPath, grantedPath },
   });
+}
+
+/**
+ * A heartbeat named a liveness value the SDKs cannot send.
+ *
+ * DISTINCT FROM `TOOLS_DECLARATION_INVALID`, which is about a tool's SHAPE, and
+ * distinct from every dispatch code, which is about a call. This one says the
+ * frame was a heartbeat and its `status` was not one of `healthy`, `degraded`
+ * or `down` — the closed set both `platools-js` and `platools-py` type. A
+ * transport told this knows the SDK on the other end is not a platools client,
+ * or is not the version it claims, which is the one thing it can act on.
+ *
+ * The rejected value travels in `details`, never in the message: it arrived from
+ * a wire frame, and the header of this file explains why a caller-supplied
+ * string does not go anywhere a transport might render it.
+ */
+export function healthReportInvalid(toolName: string, value: string): DomainError {
+  return domainError(
+    "TOOLS_HEALTH_REPORT_INVALID",
+    "invalid_input",
+    "a tool health report is healthy, degraded or down",
+    {
+      fields: [
+        {
+          field: "status",
+          code: "TOOLS_HEALTH_REPORT_INVALID",
+          message: "must be healthy, degraded or down",
+        },
+      ],
+      details: { toolName, value },
+    },
+  );
 }
 
 export function repositoryUnavailable(reason: string): DomainError {

@@ -11678,6 +11678,23 @@
         ]
       },
       {
+        "id": "POST /api/v1/tools/sync",
+        "method": "POST",
+        "path": "/api/v1/tools/sync",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "ToolSyncController",
+            "handler": "sync",
+            "source": "apps/core-api/src/transports/tools/tool-sync.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
         "id": "POST /internal/batch-turn",
         "method": "POST",
         "path": "/internal/batch-turn",
@@ -12675,8 +12692,8 @@
       "MAPPED": 82,
       "MCP_ONLY": 120
     },
-    "restOperations": 313,
-    "restRouteBindings": 320,
+    "restOperations": 314,
+    "restRouteBindings": 321,
     "ambiguousRestOperations": 7,
     "crossDeployableRestOperations": 7,
     "restClassifications": {
@@ -12684,7 +12701,7 @@
       "INTERNAL": 14,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
-      "REST_ONLY": 157
+      "REST_ONLY": 158
     },
     "restScanRoots": [
       {
@@ -12699,9 +12716,9 @@
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
         "strict": true,
-        "registeredControllers": 10,
-        "operations": 19,
-        "routeBindings": 19
+        "registeredControllers": 11,
+        "operations": 20,
+        "routeBindings": 20
       }
     ]
   }

@@ -225,7 +225,33 @@ export const DISPOSITIONS = Object.freeze({
   "apps/agent/src/tool-gateway/tool-sync-ws.service.ts": {
     contexts: ["tenancy", "secrets", "tools"],
     waitingOn: "contract-method",
-    note: "The `/tools/sync` socket authenticates a wire backend and pushes its declaration into the same `registerTools` write discovery uses, so its registration half is already published. What is NOT published is the socket's own lifecycle: `Entity.connectionStatus` is a liveness fact `tenancy` owns the row for and publishes no writer of, and the `ToolHealth` upsert is `tools`'. THIS FILE NAMES NO METHOD AND ITS `registerTools` CLAIM WAS REMOVED when `movable` landed: the registration half has no ORM site HERE — it goes through `tool-registry.service.ts` — so the only `tools` site in this file is that `ToolHealth` upsert, and `registerTools` does not serve it. Health folding is `executeTool`'s. Naming it would have reported a site as movable that nothing can serve.",
+    // WIN-269 (M4.3). THE FILE NAMES METHODS FOR THE FIRST TIME, and it names
+    // exactly the two that were written because this file had no published form.
+    //
+    //   `tenancy: ["recordEntityConnection"]` covers BOTH of this file's tenancy
+    //   sites and nothing else. They are the `entity.update` pair — the
+    //   `{ connectionStatus: "connected", lastConnectedAt }` write after the
+    //   handshake and the `{ connectionStatus: "disconnected" }` write on the
+    //   last close — and one method serves both because the transition is the
+    //   method's argument. The rule above is that naming a method asserts EVERY
+    //   site of that owner in this file is served; two of two is why this is
+    //   allowed to be here.
+    //
+    //   `tools: ["recordToolHealth"]` covers this file's ONE tools site, the
+    //   `toolHealth.upsert` in the heartbeat handler. `registerTools` is still NOT
+    //   named, and the removal note below still holds for exactly the reason it
+    //   gave: the registration half has no ORM site in this file.
+    //
+    // `secrets` IS STILL UNNAMED AND THE FILE IS STILL `contract-method`. Its one
+    // site is the `credential.findMany` that resolves an `ENTITY_SECRET` by hash,
+    // and `SecretsContract` publishes no lookup of a credential BY DIGEST — the
+    // authentication half of this socket, which is also why the V1 transport that
+    // now serves this file's writes authenticates an OPERATOR instead.
+    methods: {
+      tenancy: ["recordEntityConnection"],
+      tools: ["recordToolHealth"],
+    },
+    note: "The `/tools/sync` socket authenticates a wire backend and pushes its declaration into the same `registerTools` write discovery uses, so its registration half is already published. WHAT WAS NOT PUBLISHED IS THE SOCKET'S OWN LIFECYCLE, AND WIN-269 (M4.3) PUBLISHED IT: `Entity.connectionStatus` is a liveness fact `tenancy` owns the row for, and `TenancyContract.recordEntityConnection` is now its writer — authorized, which the socket's own write is not; the `ToolHealth` upsert is `tools`', and `ToolsContract.recordToolHealth` is now its recorder, folding a heartbeat REPORT rather than a call OUTCOME because `domain/health.ts` keeps the two vocabularies apart. Both sites of each are served, so all three are MOVABLE. `registerTools` IS STILL NOT CLAIMED, for the reason it was removed when `movable` landed: the registration half has no ORM site HERE — it goes through `tool-registry.service.ts`. WHAT HOLDS THE FILE IS `secrets`: the `Credential.findMany` that resolves an `ENTITY_SECRET` by sha256 digest is this socket's AUTHENTICATION, and `SecretsContract` publishes no lookup of a credential by digest. THE ROUTE IS NOT DELETED. `apps/core-api/src/transports/tools/tool-sync.controller.ts` serves the same three writes over the REST chassis and the one operator seam; this socket keeps serving the entity-secret credential until whoever repoints the SDK retires it.",
   },
   "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts": {
     contexts: ["tools", "tenancy"],

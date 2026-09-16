@@ -614,6 +614,11 @@ export interface ItemEnvelope_RevokedTokenResource {
   readonly "meta": ItemMeta;
 }
 
+export interface ItemEnvelope_ToolSyncResource {
+  readonly "data": ToolSyncResource;
+  readonly "meta": ItemMeta;
+}
+
 export interface ItemMeta {
   readonly "contractVersion": string;
   readonly "degraded"?: DegradedNotice;
@@ -741,6 +746,57 @@ export interface SetOrganizationPolicyBody {
   readonly "state": "auto_allow" | "require_approval" | "block";
 }
 
+export interface ToolHealthResource {
+  readonly "toolId": string;
+  readonly "externalEntityId": string | null;
+  readonly "lastCalledAt": string | null;
+  readonly "lastStatus": string | null;
+  readonly "failCount": number;
+  readonly "totalCalls": number;
+  readonly "totalFailures": number;
+  readonly "avgLatencyMs": number | null;
+}
+
+export interface ToolSyncBody {
+  readonly "environmentId": string;
+  readonly "entityId": string;
+  readonly "externalEntityId": string;
+  readonly "tools": readonly ToolSyncDeclaration[];
+  readonly "callbackUrl": string | null;
+  readonly "connectionStatus": string | null;
+  readonly "health": readonly ToolSyncHealthReport[];
+}
+
+export interface ToolSyncDeclaration_paramSchema {
+}
+
+export interface ToolSyncDeclaration {
+  readonly "name": string;
+  readonly "description": string;
+  readonly "paramSchema": ToolSyncDeclaration_paramSchema;
+  readonly "category": string | null;
+}
+
+export interface ToolSyncHealthReport {
+  readonly "toolName": string;
+  readonly "status": string;
+  readonly "avgLatencyMs": number | null;
+}
+
+export interface ToolSyncResource {
+  readonly "entityId": string;
+  readonly "externalEntityId": string;
+  readonly "environmentId": string;
+  readonly "connectionStatus": string;
+  readonly "lastConnectedAt": string | null;
+  readonly "registered": number;
+  readonly "newTools": number;
+  readonly "updated": number;
+  readonly "pruned": number;
+  readonly "health": readonly ToolHealthResource[];
+  readonly "unknownToolNames": readonly string[];
+}
+
 export interface WireError_fields_item {
   readonly "field": string;
   readonly "code": string;
@@ -850,6 +906,14 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     template: "/api/v1/projects",
     pathParameters: [],
     successStatus: 201,
+    idempotency: "accepted",
+  },
+  {
+    operationId: "post__api_v1_tools_sync",
+    method: "POST",
+    template: "/api/v1/tools/sync",
+    pathParameters: [],
+    successStatus: 200,
     idempotency: "accepted",
   },
   {
@@ -1125,6 +1189,21 @@ export class ProjectsV1Api {
 
 }
 
+export class ToolSyncV1Api {
+  constructor(private readonly transport: V1Transport) {}
+
+  /** POST /api/v1/tools/sync */
+  async sync(body: ToolSyncBody): Promise<ItemEnvelope_ToolSyncResource> {
+    return this.transport.send<ItemEnvelope_ToolSyncResource>({
+      operation: operation("post__api_v1_tools_sync"),
+      path: "/api/v1/tools/sync",
+      body: body,
+      query: undefined,
+    });
+  }
+
+}
+
 export class McpEntityTokensV1Api {
   constructor(private readonly transport: V1Transport) {}
 
@@ -1239,6 +1318,7 @@ export class V1Api {
   readonly identitySession: IdentitySessionV1Api;
   readonly organizations: OrganizationsV1Api;
   readonly projects: ProjectsV1Api;
+  readonly toolSync: ToolSyncV1Api;
   readonly mcpEntityTokens: McpEntityTokensV1Api;
   readonly mcpOrganizationPolicies: McpOrganizationPoliciesV1Api;
   readonly mcpPlatformTokens: McpPlatformTokensV1Api;
@@ -1251,6 +1331,7 @@ export class V1Api {
     this.identitySession = new IdentitySessionV1Api(transport);
     this.organizations = new OrganizationsV1Api(transport);
     this.projects = new ProjectsV1Api(transport);
+    this.toolSync = new ToolSyncV1Api(transport);
     this.mcpEntityTokens = new McpEntityTokensV1Api(transport);
     this.mcpOrganizationPolicies = new McpOrganizationPoliciesV1Api(transport);
     this.mcpPlatformTokens = new McpPlatformTokensV1Api(transport);

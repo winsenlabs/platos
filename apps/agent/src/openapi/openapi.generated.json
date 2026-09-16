@@ -498,6 +498,21 @@
           "meta"
         ]
       },
+      "ItemEnvelope_ToolSyncResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ToolSyncResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
       "ItemMeta": {
         "type": "object",
         "properties": {
@@ -977,6 +992,212 @@
         "required": [
           "pattern",
           "state"
+        ]
+      },
+      "ToolHealthResource": {
+        "type": "object",
+        "properties": {
+          "toolId": {
+            "type": "string"
+          },
+          "externalEntityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastCalledAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failCount": {
+            "type": "number"
+          },
+          "totalCalls": {
+            "type": "number"
+          },
+          "totalFailures": {
+            "type": "number"
+          },
+          "avgLatencyMs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "avgLatencyMs",
+          "externalEntityId",
+          "failCount",
+          "lastCalledAt",
+          "lastStatus",
+          "toolId",
+          "totalCalls",
+          "totalFailures"
+        ]
+      },
+      "ToolSyncBody": {
+        "type": "object",
+        "properties": {
+          "environmentId": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "externalEntityId": {
+            "type": "string"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolSyncDeclaration"
+            }
+          },
+          "callbackUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "connectionStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "health": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolSyncHealthReport"
+            }
+          }
+        },
+        "required": [
+          "callbackUrl",
+          "connectionStatus",
+          "entityId",
+          "environmentId",
+          "externalEntityId",
+          "health",
+          "tools"
+        ]
+      },
+      "ToolSyncDeclaration": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "paramSchema": {
+            "type": "object"
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "category",
+          "description",
+          "name",
+          "paramSchema"
+        ]
+      },
+      "ToolSyncHealthReport": {
+        "type": "object",
+        "properties": {
+          "toolName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "avgLatencyMs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "avgLatencyMs",
+          "status",
+          "toolName"
+        ]
+      },
+      "ToolSyncResource": {
+        "type": "object",
+        "properties": {
+          "entityId": {
+            "type": "string"
+          },
+          "externalEntityId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "connectionStatus": {
+            "type": "string"
+          },
+          "lastConnectedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registered": {
+            "type": "number"
+          },
+          "newTools": {
+            "type": "number"
+          },
+          "updated": {
+            "type": "number"
+          },
+          "pruned": {
+            "type": "number"
+          },
+          "health": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolHealthResource"
+            }
+          },
+          "unknownToolNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "connectionStatus",
+          "entityId",
+          "environmentId",
+          "externalEntityId",
+          "health",
+          "lastConnectedAt",
+          "newTools",
+          "pruned",
+          "registered",
+          "unknownToolNames",
+          "updated"
         ]
       },
       "WireError": {
@@ -10426,6 +10647,61 @@
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
     },
+    "/api/v1/tools/sync": {
+      "post": {
+        "operationId": "post__api_v1_tools_sync",
+        "summary": "ToolSyncController.sync",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_ToolSyncResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolSyncBody"
+              }
+            }
+          }
+        },
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
+      }
+    },
     "/internal/batch-turn": {
       "post": {
         "operationId": "post__internal_batch_turn",
@@ -12343,15 +12619,18 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 313,
+  "x-platos-rest-operation-count": 314,
   "x-platos-mcp-tool-count": 202,
   "x-platos-schema-coverage": {
-    "derivedOperations": 19,
+    "derivedOperations": 20,
     "undeclaredOperations": 294,
     "undeclaredReason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)",
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
-    "componentSchemas": 38,
+    "componentSchemas": 44,
     "canonicalErrorCodes": 459,
-    "queryParametersNotDerived": []
+    "queryParametersNotDerived": [],
+    "openJsonProperties": [
+      "ToolSyncDeclaration.paramSchema"
+    ]
   }
 }

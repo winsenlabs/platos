@@ -8,10 +8,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 
 - MCP tools: **202** across **35** namespaces (24 admin-tier).
 - MCP contract: **v1.0.0** (major **1**), MCP protocol `2025-06-18`, catalog digest `ac8e1aadba3fa8ac`.
-- REST operations: **313** unique method/path pairs from **320** route bindings.
+- REST operations: **314** unique method/path pairs from **321** route bindings.
 - Ambiguous duplicate REST method/path pairs: **7**, of which **7** are one handler in EACH deployable (a route mid-migration) rather than two in one router (a defect).
 - MCP classifications: MAPPED=82, MCP_ONLY=120.
-- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=157.
+- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=158.
 
 ## REST inventory
 
@@ -274,6 +274,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `GET /api/v1/projects` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/projects.controller.ts#list` |
 | `POST /api/v1/projects` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/projects.controller.ts#create` |
 | `POST /api/v1/public/guest-token` | PUBLIC_TRANSPORT | — | `public-token-mint` | `apps/agent/src/auth/public-guest-token.controller.ts#mint` |
+| `POST /api/v1/tools/sync` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/tools/tool-sync.controller.ts#sync` |
 | `POST /internal/batch-turn` | INTERNAL | — | `internal-prefix` | `apps/agent/src/trigger-bridge/internal-execute-tool.controller.ts#batchTurn` |
 | `POST /internal/env/invalidate` | INTERNAL | — | `internal-prefix` | `apps/agent/src/trigger-bridge/internal-execute-tool.controller.ts#invalidateEnv` |
 | `POST /internal/execute-tool` | INTERNAL | — | `internal-prefix` | `apps/agent/src/trigger-bridge/internal-execute-tool.controller.ts#executeTool` |

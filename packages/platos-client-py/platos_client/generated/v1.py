@@ -616,6 +616,11 @@ class ItemEnvelope_RevokedTokenResource(TypedDict):
     meta: "ItemMeta"
 
 
+class ItemEnvelope_ToolSyncResource(TypedDict):
+    data: "ToolSyncResource"
+    meta: "ItemMeta"
+
+
 class ItemMetaOptional(TypedDict, total=False):
     degraded: "DegradedNotice"
 
@@ -749,6 +754,58 @@ class SetOrganizationPolicyBody(TypedDict):
     state: Literal["auto_allow", "require_approval", "block"]
 
 
+class ToolHealthResource(TypedDict):
+    toolId: str
+    externalEntityId: str | None
+    lastCalledAt: str | None
+    lastStatus: str | None
+    failCount: float
+    totalCalls: float
+    totalFailures: float
+    avgLatencyMs: float | None
+
+
+class ToolSyncBody(TypedDict):
+    environmentId: str
+    entityId: str
+    externalEntityId: str
+    tools: list["ToolSyncDeclaration"]
+    callbackUrl: str | None
+    connectionStatus: str | None
+    health: list["ToolSyncHealthReport"]
+
+
+class ToolSyncDeclaration_paramSchema(TypedDict):
+    pass
+
+
+class ToolSyncDeclaration(TypedDict):
+    name: str
+    description: str
+    paramSchema: "ToolSyncDeclaration_paramSchema"
+    category: str | None
+
+
+class ToolSyncHealthReport(TypedDict):
+    toolName: str
+    status: str
+    avgLatencyMs: float | None
+
+
+class ToolSyncResource(TypedDict):
+    entityId: str
+    externalEntityId: str
+    environmentId: str
+    connectionStatus: str
+    lastConnectedAt: str | None
+    registered: float
+    newTools: float
+    updated: float
+    pruned: float
+    health: list["ToolHealthResource"]
+    unknownToolNames: list[str]
+
+
 class WireError_fields_item(TypedDict):
     field: str
     code: str
@@ -860,6 +917,14 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "template": "/api/v1/projects",
         "pathParameters": [],
         "successStatus": 201,
+        "idempotency": "accepted",
+    },
+    {
+        "operationId": "post__api_v1_tools_sync",
+        "method": "POST",
+        "template": "/api/v1/tools/sync",
+        "pathParameters": [],
+        "successStatus": 200,
         "idempotency": "accepted",
     },
     {
@@ -1134,6 +1199,22 @@ class ProjectsV1Api:
         )
 
 
+class ToolSyncV1Api:
+    def __init__(self, transport: V1Transport) -> None:
+        self._transport = transport
+
+    def sync(self, body: "ToolSyncBody") -> "ItemEnvelope_ToolSyncResource":
+        """POST /api/v1/tools/sync"""
+        return self._transport.send(
+            {
+                "operation": _operation("post__api_v1_tools_sync"),
+                "path": "/api/v1/tools/sync",
+                "body": body,
+                "query": None,
+            }
+        )
+
+
 class McpEntityTokensV1Api:
     def __init__(self, transport: V1Transport) -> None:
         self._transport = transport
@@ -1275,6 +1356,7 @@ class V1Api:
         self.identity_session = IdentitySessionV1Api(transport)
         self.organizations = OrganizationsV1Api(transport)
         self.projects = ProjectsV1Api(transport)
+        self.tool_sync = ToolSyncV1Api(transport)
         self.mcp_entity_tokens = McpEntityTokensV1Api(transport)
         self.mcp_organization_policies = McpOrganizationPoliciesV1Api(transport)
         self.mcp_platform_tokens = McpPlatformTokensV1Api(transport)

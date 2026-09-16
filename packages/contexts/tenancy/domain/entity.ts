@@ -61,6 +61,54 @@ export function entityBelongsToProject(entity: EntityRecord, projectId: ProjectI
   return entity.projectId === projectId;
 }
 
+/**
+ * `Entity.connectionStatus`, as the tool-sync socket writes it.
+ *
+ * TWO VALUES AND NOT AN ENUM. The column is a bare `String` in the schema, and
+ * the oracle (`apps/agent/src/tool-gateway/tool-sync-ws.service.ts`) writes
+ * exactly `"connected"` on a successful handshake and `"disconnected"` when the
+ * entity's LAST environment connection closes. Nothing else writes it, so this
+ * is the whole live vocabulary rather than a widening of one: a third value
+ * would be a status no reader in the tree knows how to render.
+ *
+ * LOWER CASE, WHICH IS NOT COSMETIC. `packages/adapters/postgres-tenancy`'s
+ * conformance rows carry `"CONNECTED"` because that is what a fixture author
+ * typed; the rows the RUNNING PRODUCT writes are lower case, and a writer that
+ * normalised them would silently rewrite every live row the first time an entity
+ * reconnected. The mapping layer passes the column through untouched and so does
+ * this.
+ */
+export const ENTITY_CONNECTION_STATUSES = ["connected", "disconnected"] as const;
+
+export type EntityConnectionStatus = (typeof ENTITY_CONNECTION_STATUSES)[number];
+
+export function isEntityConnectionStatus(value: unknown): value is EntityConnectionStatus {
+  return (
+    typeof value === "string" && (ENTITY_CONNECTION_STATUSES as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * The connect half of the oracle's pair.
+ *
+ * `{ connectionStatus: "connected", lastConnectedAt: new Date() }` — both
+ * columns, in one write, because the oracle sets both in one `entity.update`
+ * and a reader that saw `connected` with a stale `lastConnectedAt` would date
+ * the session wrongly.
+ */
 export function markEntityConnected(entity: EntityRecord, at: Date): EntityRecord {
-  return { ...entity, lastConnectedAt: at, updatedAt: at };
+  return { ...entity, connectionStatus: "connected", lastConnectedAt: at, updatedAt: at };
+}
+
+/**
+ * The disconnect half.
+ *
+ * `lastConnectedAt` IS DELIBERATELY NOT CLEARED AND NOT ADVANCED. The oracle
+ * writes `{ connectionStatus: "disconnected" }` and nothing else, so the column
+ * keeps meaning "when this entity was last seen to connect" rather than
+ * collapsing into "when it last changed state". Advancing it here would make
+ * every disconnect look like a connection to any dashboard reading the column.
+ */
+export function markEntityDisconnected(entity: EntityRecord, at: Date): EntityRecord {
+  return { ...entity, connectionStatus: "disconnected", updatedAt: at };
 }

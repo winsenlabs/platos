@@ -25,6 +25,7 @@ export * from "./create-organization.js";
 export * from "./create-project.js";
 export * from "./operator-read-models.js";
 export * from "./archive-tenant.js";
+export * from "./record-entity-connection.js";
 export * from "./revoke-access-key-generation.js";
 export * from "./tenancy-service.js";
 export * from "./testing/fakes.js";

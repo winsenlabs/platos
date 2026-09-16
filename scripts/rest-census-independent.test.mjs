@@ -312,10 +312,14 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // because `POST /api/v1/agent/providers/keys/:id/rotate-secret` sits under a base
   // path — `agent/providers` — that no controller in this tree had. A reader who
   // assumed "one route, no new class" would expect 9.
-  assert.equal(core.sourceControllers, 10);
-  assert.equal(core.sourceDecorators, 19);
-  assert.equal(core.expandedOperations, 19);
-  assert.equal(core.manifestOperations, 19);
+  // WIN-269 (M4.3): 10 -> 11 controllers and 19 -> 20 decorators, the SAME shape
+  // as the rotation above and for the same reason — `POST /api/v1/tools/sync`
+  // sits under a base path, `tools`, that no controller in this tree had, so one
+  // route costs one class.
+  assert.equal(core.sourceControllers, 11);
+  assert.equal(core.sourceDecorators, 20);
+  assert.equal(core.expandedOperations, 20);
+  assert.equal(core.manifestOperations, 20);
   // 301 + 14 = 315 BINDINGS, and the manifest's `summary.restOperations` is 313
   // UNIQUE operations: the two mints are served by both deployables, so each is
   // counted under both roots. The census publishes that surplus and the identity
@@ -335,10 +339,19 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // cleanest illustration of why the identity carries a surplus term: it adds one
   // binding and one shared operation in the same move, because `apps/agent` has
   // served this path since before V1. 320 - 7 = 313.
-  assert.equal(agent.manifestOperations + core.manifestOperations, 320);
+  //
+  // WIN-269 (M4.3): 320 -> 321 bindings, the surplus UNMOVED at 7, and the unique
+  // total 313 -> 314. It is the policy surface's shape rather than the rotation's,
+  // and the distinction is the one this identity exists to make visible: the
+  // oracle's own `/tools/sync` is a WEBSOCKET UPGRADE in
+  // `apps/agent/src/tool-gateway/tool-sync-ws.service.ts`, a file that carries no
+  // `@Controller` and is therefore invisible to BOTH enumerations. So there is no
+  // agent binding for this operation to share, the surplus cannot move, and the
+  // surface genuinely grows by one. 321 - 7 = 314.
+  assert.equal(agent.manifestOperations + core.manifestOperations, 321);
   const totals = manifestCensus();
   assert.equal(totals.crossRootBindings, 7);
-  assert.equal(totals.totalOps - totals.crossRootBindings, 313);
+  assert.equal(totals.totalOps - totals.crossRootBindings, 314);
 });
 
 test("BASELINE: the process-edge exclusion still describes the file it excludes", () => {

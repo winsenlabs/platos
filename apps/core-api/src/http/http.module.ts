@@ -35,6 +35,7 @@ import { IdentitySessionController } from "../transports/rest/identity-session.c
 import { OrganizationsController } from "../transports/rest/organizations.controller.js";
 import { ProjectsController } from "../transports/rest/projects.controller.js";
 import { ProviderKeysController } from "../transports/rest/provider-keys.controller.js";
+import { ToolSyncController } from "../transports/tools/tool-sync.controller.js";
 import { EnvironmentStreamsController } from "../transports/ws/streams.controller.js";
 import { DomainExceptionFilter } from "./domain-exception.filter.js";
 import { HEALTH_DEPENDENCIES, HealthController, type HealthDependencies } from "./health.controller.js";
@@ -111,6 +112,15 @@ import { NotFoundController } from "./not-found.controller.js";
     // not in the URL, so the path still carries the REST major: `sv` and the URL
     // version are two axes over one surface, which is the whole of that section.
     EnvironmentStreamsController,
+    // WIN-269 (M4.3) — `/tools/sync`, and the first controller in this array
+    // whose whole purpose is that an EXISTING installation keeps working. It is
+    // in this SAME array for the reason the banner above gives, and for one more
+    // that is specific to it: a platools client that met
+    // `NotFoundController`'s `@All("{*path}")` would read a JSON 404 as a
+    // platform error and enter its reconnect backoff (`transport/client.ts`), so
+    // the failure would be an entity that never registers rather than a visible
+    // one. Versioned under `/api/v1` like every REST entry.
+    ToolSyncController,
   ],
 })
 export class CoreApiHttpModule implements NestModule {

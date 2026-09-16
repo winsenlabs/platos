@@ -115,6 +115,48 @@ const HTTP_STATUS_FALLBACK = {
  */
 export const UNDERIVABLE_QUERY_HANDLERS = {};
 
+/**
+ * PROPERTIES WHOSE VALUE IS A CALLER-OWNED JSON DOCUMENT, and the only place an
+ * index signature is admitted rather than refused.
+ *
+ * WHY A REGISTER AND NOT A RULE. The refusal above — "an index signature;
+ * declare its keys" — is right for almost everything: a DTO whose keys nobody
+ * declared is a schema that guarantees nothing, and this derivation raises
+ * rather than emitting `{}` precisely so that cannot happen by accident. But
+ * there is one shape where "declare its keys" is not advice a route can take,
+ * because the keys belong to the CALLER: a JSON Schema.
+ *
+ * WIN-269 (M4.3) is the first route to hit it. `/tools/sync` carries the
+ * platools `tool_register` frame, whose `input_schema` is the JSON Schema an
+ * entity's own SDK generated for its own function's parameters
+ * (`packages/platools-js/src/core/schema.ts`). Its keys are the tool author's.
+ * A DTO that declared `type`, `properties` and `required` would publish a
+ * two-level subset of Draft 2020-12 as though it were the contract, and every
+ * client generated from it would refuse a schema with `$defs`, `anyOf` or a
+ * nested object — the ordinary output of the SDK this route exists to serve.
+ *
+ * SO THE HONEST SCHEMA IS `{"type":"object"}`: an object whose properties are
+ * not this contract's to name. That is a narrower statement than `{}` — it still
+ * refuses a string, a number and an array — and it is what OpenAPI has for a
+ * free-form object.
+ *
+ * IT IS STILL FALSIFIABLE. Only a property NAMED here is admitted, keyed by the
+ * declared interface and property; every other index signature anywhere in a
+ * request or response still stops generation. `openapi-schema-derivation.test.mjs`
+ * joins these keys to the emitted document's own coverage block, so an entry
+ * that stops being reached fails a named case. Every entry carries `reason` and
+ * `detail`, and the same test refuses a `detail` under eighty characters.
+ */
+export const OPEN_JSON_PROPERTIES = {
+  "ToolSyncDeclaration.paramSchema": {
+    reason: "caller-owned-json-schema",
+    detail:
+      "The JSON Schema a platools SDK generated for one tool's parameters. Its keys are the " +
+      "tool author's, not this contract's, so they cannot be declared here; a declared subset " +
+      "would make every generated client refuse the nested schemas the SDK ordinarily emits.",
+  },
+};
+
 class DerivationError extends Error {}
 
 function fail(message) {
@@ -236,6 +278,20 @@ function mergeNullable(schema) {
   return { anyOf: [schema, { type: "null" }] };
 }
 
+/**
+ * The register key for a pointer.
+ *
+ * A pointer is a PATH — `ToolSyncController.sync.body.tools[].paramSchema`, or
+ * `ToolSyncDeclaration.paramSchema` once the enclosing type has been named as a
+ * component — so the key is its last TWO segments: the declaring type and the
+ * property. Keying on the whole pointer would mean one entry per route that
+ * carries the same DTO, and the entries would drift apart.
+ */
+function openJsonKey(pointer) {
+  const parts = pointer.split(".");
+  return parts.slice(-2).join(".");
+}
+
 function objectSchema(type, context, pointer) {
   const properties = {};
   const required = [];
@@ -320,7 +376,15 @@ function schemaForType(type, context, pointer) {
     fail(`${pointer} is callable (${checker.typeToString(type)}) and has no JSON form`);
   }
   if (checker.getIndexInfosOfType(type).length > 0) {
-    fail(`${pointer} carries an index signature (${checker.typeToString(type)}); declare its keys`);
+    // THE ONE ADMITTED CASE, by NAME. See `OPEN_JSON_PROPERTIES`: a property
+    // whose value is a caller-owned JSON document is emitted as a free-form
+    // object, and everything else still stops generation here.
+    const open = OPEN_JSON_PROPERTIES[openJsonKey(pointer)];
+    if (open === undefined) {
+      fail(`${pointer} carries an index signature (${checker.typeToString(type)}); declare its keys`);
+    }
+    context.openJson.add(openJsonKey(pointer));
+    return { type: "object" };
   }
   const symbolName = type.symbol?.getName();
   if (symbolName === "Date") fail(`${pointer} is a Date; wire types use instant()/nullableInstant()`);
@@ -541,6 +605,8 @@ export function deriveRestContract({ repoDir, overrides = new Map() } = {}) {
     checker: program.getTypeChecker(),
     components: new Map(),
     coreApiSrc,
+    /** Which `OPEN_JSON_PROPERTIES` entries this run actually reached. */
+    openJson: new Set(),
   };
 
   const handlers = new Map();
@@ -567,6 +633,8 @@ export function deriveRestContract({ repoDir, overrides = new Map() } = {}) {
     handlers,
     components: Object.fromEntries([...context.components.entries()].sort(([a], [b]) => (a < b ? -1 : 1))),
     errorComponent,
+    /** Sorted, so the emitted document is byte-stable. */
+    openJsonProperties: [...context.openJson].sort(),
   };
 }
 

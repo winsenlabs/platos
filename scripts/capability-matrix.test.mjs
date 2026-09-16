@@ -129,15 +129,27 @@ test("committed matrix: row counts are pinned exactly", () => {
   // DO THE THREE THEY REPLACED — `permission-gateway.service.ts`'s `listOrgPolicies`,
   // `upsertOrgPolicy` and `deleteOrgPolicy` answered no route in the oracle either,
   // which is exactly what made them safe to delete.
-  assert.equal(REST.length, 313);
+  //
+  // 313 -> 314 and 271 -> 272 (WIN-269, M4.3): `POST /api/v1/tools/sync`, the
+  // reconnect transport. It resolves by URL PREFIX — `/tools/...` is not a
+  // prefix the table had, so the honest owner is read from the ONE context whose
+  // sole-writer column holds every row this route touches except
+  // `Entity.connectionStatus`, which reaches its writer through `tenancy`'s own
+  // published method rather than through this route. The oracle-derived count
+  // stays at 42 for the reason R1 gives: this handler does not exist in the
+  // frozen oracle. The ORACLE'S OWN `/tools/sync` IS NOT A REST OPERATION AT ALL
+  // — it is a WebSocket upgrade handled in `tool-sync-ws.service.ts`, which
+  // carries no `@Controller`, so the frozen surface never counted it and nothing
+  // here is a second implementation of it.
+  assert.equal(REST.length, 314);
   assert.equal(REST.filter((r) => r.ownerSource === "oracle-derived").length, 42);
-  assert.equal(REST.filter((r) => r.ownerSource === "path-prefix").length, 271);
-  assert.equal(42 + 271, REST.length);
+  assert.equal(REST.filter((r) => r.ownerSource === "path-prefix").length, 272);
+  assert.equal(42 + 272, REST.length);
   assert.equal(MCP.length, 202);
-  assert.equal(MATRIX.totals.restOperations, 313);
-  assert.equal(MATRIX.ownership.restRows, 313);
+  assert.equal(MATRIX.totals.restOperations, 314);
+  assert.equal(MATRIX.ownership.restRows, 314);
   assert.equal(MATRIX.ownership.oracleDerivedRestRows, 42);
-  assert.equal(MATRIX.ownership.pathPrefixRestRows, 271);
+  assert.equal(MATRIX.ownership.pathPrefixRestRows, 272);
 });
 
 test("committed matrix: exactly 5 rows carry the non-context value, and they are the pinned 5", () => {
@@ -511,7 +523,15 @@ test("committed matrix: the REST total is split across the declared scan roots a
   //
   // It is one more IMPLEMENTATION of an operation `apps/agent` already served, which
   // is why it widens the surplus instead of the surface: 301 + 19 - 7 = 313.
-  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 301, "core-api-transports": 19 });
+  //
+  // WIN-269 (M4.3) 19 -> 20, THE SHARED COUNT STILL 7, AND THE TOTAL 313 -> 314 —
+  // the POLICY-SURFACE shape rather than the rotation's. `POST /api/v1/tools/sync`
+  // is served by this deployable ALONE: the oracle's `/tools/sync` is a WebSocket
+  // upgrade in `tool-sync-ws.service.ts`, a file with no `@Controller` and
+  // therefore no REST operation in either census, so there is nothing for this
+  // route to be a second implementation OF. Both sides grow and the surplus does
+  // not. 301 + 20 - 7 = 314.
+  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 301, "core-api-transports": 20 });
   assert.equal(MATRIX.totals.restOperationsSharedAcrossScanRoots, 7);
   assert.deepEqual(MATRIX.scanRoots.unattributed, []);
 });

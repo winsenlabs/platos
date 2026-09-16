@@ -26,6 +26,7 @@ import type {
   CreateOrganizationRequest,
   CreateProjectRequest,
   MembershipMutationResult,
+  RecordEntityConnectionCommand,
   ResolvedEnvironmentScope,
   RevokeAccessKeyGenerationRequest,
   TenancyContract,
@@ -42,6 +43,7 @@ import {
   createListVisibleProjects,
 } from "./operator-read-models.js";
 import type { TenancyDependencies } from "./dependencies.js";
+import { createRecordEntityConnection } from "./record-entity-connection.js";
 import { createRevokeAccessKeyGeneration } from "./revoke-access-key-generation.js";
 
 export function createTenancyService(dependencies: TenancyDependencies): TenancyContract {
@@ -55,6 +57,7 @@ export function createTenancyService(dependencies: TenancyDependencies): Tenancy
   const listOperatorOrganizations = createListOperatorOrganizations(dependencies);
   const listVisibleProjects = createListVisibleProjects(dependencies);
   const revokeAccessKeyGeneration = createRevokeAccessKeyGeneration(dependencies);
+  const recordEntityConnection = createRecordEntityConnection(dependencies);
 
   return {
     name: "tenancy",
@@ -120,6 +123,9 @@ export function createTenancyService(dependencies: TenancyDependencies): Tenancy
       if (entity === null) return err(tenantNotFound("entity"));
       return ok(entity);
     },
+
+    recordEntityConnection: (command: RecordEntityConnectionCommand) =>
+      recordEntityConnection(command),
 
     revokeAccessKeyGeneration: (request: RevokeAccessKeyGenerationRequest) =>
       revokeAccessKeyGeneration(request),

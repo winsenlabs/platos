@@ -2902,9 +2902,23 @@
         "tenancy"
       ]
     },
+    "TENANCY_ENTITY_NOT_IN_SCOPE": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "tenancy"
+      ]
+    },
     "TENANCY_ENVIRONMENT_FORBIDDEN": {
       "category": "forbidden",
       "status": 403,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_INVALID_CONNECTION_STATUS": {
+      "category": "invalid_input",
+      "status": 400,
       "contexts": [
         "tenancy"
       ]
@@ -3094,6 +3108,13 @@
     "TOOLS_EXPOSURE_NOT_FOUND": {
       "category": "not_found",
       "status": 404,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_HEALTH_REPORT_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
       "contexts": [
         "tools"
       ]

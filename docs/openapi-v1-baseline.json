@@ -488,6 +488,21 @@
         ],
         "type": "object"
       },
+      "ItemEnvelope_ToolSyncResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ToolSyncResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
       "ItemMeta": {
         "properties": {
           "contractVersion": {
@@ -966,6 +981,212 @@
         "required": [
           "pattern",
           "state"
+        ],
+        "type": "object"
+      },
+      "ToolHealthResource": {
+        "properties": {
+          "avgLatencyMs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "externalEntityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failCount": {
+            "type": "number"
+          },
+          "lastCalledAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "toolId": {
+            "type": "string"
+          },
+          "totalCalls": {
+            "type": "number"
+          },
+          "totalFailures": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "avgLatencyMs",
+          "externalEntityId",
+          "failCount",
+          "lastCalledAt",
+          "lastStatus",
+          "toolId",
+          "totalCalls",
+          "totalFailures"
+        ],
+        "type": "object"
+      },
+      "ToolSyncBody": {
+        "properties": {
+          "callbackUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "connectionStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "externalEntityId": {
+            "type": "string"
+          },
+          "health": {
+            "items": {
+              "$ref": "#/components/schemas/ToolSyncHealthReport"
+            },
+            "type": "array"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/ToolSyncDeclaration"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "callbackUrl",
+          "connectionStatus",
+          "entityId",
+          "environmentId",
+          "externalEntityId",
+          "health",
+          "tools"
+        ],
+        "type": "object"
+      },
+      "ToolSyncDeclaration": {
+        "properties": {
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "paramSchema": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "category",
+          "description",
+          "name",
+          "paramSchema"
+        ],
+        "type": "object"
+      },
+      "ToolSyncHealthReport": {
+        "properties": {
+          "avgLatencyMs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "avgLatencyMs",
+          "status",
+          "toolName"
+        ],
+        "type": "object"
+      },
+      "ToolSyncResource": {
+        "properties": {
+          "connectionStatus": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "externalEntityId": {
+            "type": "string"
+          },
+          "health": {
+            "items": {
+              "$ref": "#/components/schemas/ToolHealthResource"
+            },
+            "type": "array"
+          },
+          "lastConnectedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "newTools": {
+            "type": "number"
+          },
+          "pruned": {
+            "type": "number"
+          },
+          "registered": {
+            "type": "number"
+          },
+          "unknownToolNames": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "updated": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "connectionStatus",
+          "entityId",
+          "environmentId",
+          "externalEntityId",
+          "health",
+          "lastConnectedAt",
+          "newTools",
+          "pruned",
+          "registered",
+          "unknownToolNames",
+          "updated"
         ],
         "type": "object"
       },
@@ -1927,6 +2148,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ItemEnvelope_CreatedProjectResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/api/v1/tools/sync": {
+      "post": {
+        "operationId": "post__api_v1_tools_sync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolSyncBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_ToolSyncResource"
                 }
               }
             },

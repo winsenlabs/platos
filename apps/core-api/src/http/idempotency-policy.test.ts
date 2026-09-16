@@ -94,7 +94,20 @@ describe("the policy table against the frozen operation manifest", () => {
     // while a replayed mint would leave a second live credential behind. Demanding
     // a key here would refuse three hundred operations' worth of callers for a
     // property the operation already has by construction.
-    expect(OPERATIONS.length).toBe(313);
+    //
+    // 313 -> 314 (WIN-269, M4.3): `POST /api/v1/tools/sync`, the reconnect
+    // transport. IT NEEDS NO POLICY ROW, and that is a CLASSIFICATION rather than
+    // an oversight — the same reading the tier-2 `PUT` above takes and for a
+    // sharper reason. A replayed sync CONVERGES on the rows one sync leaves:
+    // `registerTools` is a declarative replace of one (environment, entity) pair,
+    // `recordEntityConnection` writes a fixed value, and `recordToolHealth`
+    // upserts on `(environmentId, toolId, entityExternalId)`. So it takes the
+    // unlisted default `accepted` — a key is honoured if sent and not demanded —
+    // which is also the only classification a platools client can satisfy, since
+    // a reconnecting SDK has no key to invent. The credential-path case below is
+    // what proves this is a decision: it would fail if `/tools/sync` looked like
+    // a credential route, and the route mints no secret and returns none.
+    expect(OPERATIONS.length).toBe(314);
   });
 
   it("classifies only operations the frozen surface actually serves", () => {
@@ -134,6 +147,19 @@ describe("the policy table against the frozen operation manifest", () => {
 });
 
 describe("classifyRequest", () => {
+  it("accepts a key on the tool-sync reconnect and demands none", () => {
+    // WIN-269 (M4.3). The classification the route's own banner records, asserted
+    // rather than described: `accepted` means a caller that sends a key is
+    // reserved and replayed, and a caller that sends none is not refused. Both
+    // halves matter to a reconnecting entity, and `required` would break the
+    // second.
+    expect(classifyRequest("POST", "/api/v1/tools/sync")).toBe("accepted");
+    // AND IT IS NOT SWALLOWED BY A NEIGHBOURING TEMPLATE. `/api/v1/entities/
+    // :entityId/session-tokens` is `required`; a matcher whose parameter segment
+    // could span a slash would have bound this path too.
+    expect(operationScope("POST", "/api/v1/tools/sync")).toBe("POST /api/v1/tools/sync");
+  });
+
   it("requires a key on the access-key mint and not on its origins sibling", () => {
     // The pair that makes a prefix rule wrong. `/access-key` mints the credential
     // and `/access-key/origins` configures it, and a table matching by prefix
