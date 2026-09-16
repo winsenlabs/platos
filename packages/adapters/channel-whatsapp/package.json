@@ -1,0 +1,24 @@
+{
+  "name": "@platos/adapter-channel-whatsapp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Implements the channels ChannelAdapter port and the channels ChannelRuntime port.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@platos/context-channels": "workspace:*"
+  }
+}

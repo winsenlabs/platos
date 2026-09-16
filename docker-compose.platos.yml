@@ -749,6 +749,16 @@ services:
       PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "${PLATOS_CHANNELS_SLACK_SIGNING_SECRET:-}"
       # channels.discord — the application public key; blank leaves it unwired.
       PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "${PLATOS_CHANNELS_DISCORD_PUBLIC_KEY:-}"
+      # channels.whatsapp — the Meta app secret every X-Hub-Signature-256 is
+      # computed under, and the verify token Meta's subscription handshake is
+      # answered against. The group is declared only when BOTH are set: Meta
+      # delivers no webhook until the handshake succeeds, so an install with the
+      # secret alone would boot, serve and receive nothing.
+      PLATOS_CHANNELS_WHATSAPP_APP_SECRET: "${PLATOS_CHANNELS_WHATSAPP_APP_SECRET:-}"
+      PLATOS_CHANNELS_WHATSAPP_VERIFY_TOKEN: "${PLATOS_CHANNELS_WHATSAPP_VERIFY_TOKEN:-}"
+      # channels.telegram — the secret_token given to setWebhook, echoed on every
+      # update; blank leaves it unwired.
+      PLATOS_CHANNELS_TELEGRAM_SECRET_TOKEN: "${PLATOS_CHANNELS_TELEGRAM_SECRET_TOKEN:-}"
       # channels.emailNotifier — the relay budget alerts and operator sign-in
       # links go out through. The group is anchored on the relay URL and is
       # declared only when all three are set; blank leaves it unwired. It is here

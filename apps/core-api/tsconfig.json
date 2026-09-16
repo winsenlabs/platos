@@ -119,6 +119,12 @@
     },
     {
       "path": "../../packages/adapters/channel-discord"
+    },
+    {
+      "path": "../../packages/adapters/channel-whatsapp"
+    },
+    {
+      "path": "../../packages/adapters/channel-telegram"
     }
   ]
 }

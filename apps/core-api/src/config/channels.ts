@@ -1,7 +1,8 @@
 // The CHANNELS section — the inbound channel adapter and the two notifiers.
 //
 // ADR M0.3 §4 gives the channel and notifier adapter directories to this section:
-// `channel-slack` and — since WIN-271 (M4.5), D10 — `channel-discord` satisfy
+// `channel-slack` and — since WIN-271 (M4.5), D10 — `channel-discord`,
+// `channel-whatsapp` and `channel-telegram` satisfy
 // `ChannelAdapter` and `ChannelRuntime` for the `channels` context, and
 // `notifier-email` and `notifier-webhook` each satisfy `Notifier` for
 // `cost-monitoring`. Since D20 (2026-09-15) `notifier-email` also satisfies
@@ -79,6 +80,110 @@ const discordPublicKey: ConfigFieldSpec = Object.freeze({
   minimumLength: 64,
 });
 
+/**
+ * WIN-271 (M4.5), D10. Meta's APP SECRET — the key `X-Hub-Signature-256` is
+ * computed under. The anchor rule above holds for it unchanged: the group is
+ * declared by the thing that lets the endpoint tell Meta from a forger, never by
+ * a business access token.
+ *
+ * A SECRET, unlike Discord's public key, and the difference is not cosmetic.
+ * Discord's verification material verifies and nothing else; Meta's app secret
+ * PRODUCES signatures, so anybody holding it can forge a delivery for any
+ * business this app serves. It is redacted from diagnostics for exactly that
+ * reason.
+ *
+ * THIRTY-TWO IS THE FLOOR, for the reason Slack's signing secret has the same
+ * one: an attacker can grind an HMAC offline against a body they chose. Meta
+ * mints 32 hexadecimal characters; this refuses the hand-typed placeholder that
+ * would otherwise ship to production.
+ *
+ * AND NO REPLAY WINDOW BESIDE IT. Slack's and Discord's groups carry a
+ * `_REQUEST_MAX_AGE_S` because both providers SIGN a timestamp. Meta signs the
+ * body alone — the only instant inside the signed bytes is the customer's send
+ * time, and Meta retries an undelivered webhook for days — so a window here would
+ * throw away exactly the deliveries an outage delayed, labelled as an
+ * authentication failure. `packages/adapters/channel-whatsapp/src/verify.ts`
+ * states that at length and names what defends against a replay instead: the
+ * inbox's idempotency on the provider's own message id. A variable no code reads
+ * would be worse than no variable.
+ */
+const whatsappAppSecret: ConfigFieldSpec = Object.freeze({
+  name: "PLATOS_CHANNELS_WHATSAPP_APP_SECRET",
+  kind: "string",
+  required: false,
+  defaultValue: null,
+  secret: true,
+  describe: "the Meta app secret every inbound WhatsApp webhook signature is verified against",
+  minimumLength: 32,
+});
+
+/**
+ * WIN-271 (M4.5), D10. The VERIFY TOKEN, which is a different secret from the app
+ * secret and is required with it.
+ *
+ * WHY IT IS `requiredWithAnchor` AND NOT OPTIONAL. Meta will not deliver a single
+ * webhook until the subscription handshake succeeds, and the handshake is
+ * answered against this value alone. An install that set the app secret and left
+ * this blank would boot, serve, verify nothing and receive nothing — and the
+ * failure would surface as silence rather than as an error.
+ *
+ * ITS OWN VARIABLE, AND THE ADAPTER GIVES IT ITS OWN TYPE. `verify.ts` takes the
+ * app secret and the verify token through two different parameter types, because
+ * an endpoint that served both the signed POST and the subscription GET from one
+ * slot is one refactor away from comparing the app secret against a query
+ * parameter an anonymous caller chose.
+ */
+const whatsappVerifyToken: ConfigFieldSpec = Object.freeze({
+  name: "PLATOS_CHANNELS_WHATSAPP_VERIFY_TOKEN",
+  kind: "string",
+  required: false,
+  defaultValue: null,
+  secret: true,
+  describe: "the token Meta's subscription handshake is answered against",
+  minimumLength: 32,
+});
+
+/**
+ * WIN-271 (M4.5), D10. Telegram's WEBHOOK SECRET TOKEN — the value this install
+ * gave `setWebhook`, echoed back in `X-Telegram-Bot-Api-Secret-Token` on every
+ * delivery. The anchor rule holds: the group is declared by what authenticates
+ * the endpoint, never by the bot token that sends.
+ *
+ * IT IS THE WEAKEST INBOUND MATERIAL OF THE FOUR CHANNEL GROUPS, and
+ * `packages/adapters/channel-telegram/src/adapter.ts` opens with that sentence.
+ * Telegram signs nothing: a caller who learns this string can post any body it
+ * likes, because nothing in the request ties the token to the bytes. So the
+ * grammar below is not a formality —
+ *
+ *   THE ALPHABET IS `setWebhook`'s OWN. "1-256 characters. Only characters A-Z,
+ *   a-z, 0-9, _ and - are allowed." A value outside it is one `setWebhook` would
+ *   have REFUSED, so no genuine delivery could ever carry it: the process would
+ *   boot, the endpoint would answer, and every real request would be refused as a
+ *   forgery. Refusing it HERE turns that into a boot failure that names the
+ *   variable.
+ *
+ *   THIRTY-TWO IS THE FLOOR AND NOT ONE. Telegram permits a single character.
+ *   Since the token is a bare bearer string on a public endpoint with no
+ *   signature behind it, a short one is guessable online at whatever rate the
+ *   endpoint can be called, and there is no second factor anywhere in the
+ *   request. This is the one place an install can be stopped from choosing
+ *   something catastrophic.
+ *
+ * AND NO REPLAY WINDOW BESIDE IT, for a sharper reason than WhatsApp's: with
+ * nothing signed, a window would bound an UNAUTHENTICATED claim.
+ */
+const telegramSecretToken: ConfigFieldSpec = Object.freeze({
+  name: "PLATOS_CHANNELS_TELEGRAM_SECRET_TOKEN",
+  kind: "string",
+  required: false,
+  defaultValue: null,
+  secret: true,
+  describe: "the secret token every inbound Telegram update must present",
+  pattern: "[A-Za-z0-9_-]{32,256}",
+  patternDescribe: "32 to 256 characters from setWebhook's own alphabet (A-Z a-z 0-9 _ -)",
+  minimumLength: 32,
+});
+
 const emailSmtpUrl: ConfigFieldSpec = Object.freeze({
   name: "PLATOS_CHANNELS_EMAIL_SMTP_URL",
   kind: "url",
@@ -148,6 +253,23 @@ export const CHANNELS_SECTION: ConfigSectionSpec = Object.freeze({
           maximum: 3600,
         }),
       ]),
+    }),
+    // WIN-271 (M4.5), D10. Two more inbound groups, each anchored on its own
+    // verification material and each declaring NO replay window, for the reasons
+    // the field comments give.
+    Object.freeze({
+      id: "whatsapp",
+      describe: "the inbound WhatsApp Cloud API webhook's application identity",
+      anchor: whatsappAppSecret,
+      requiredWithAnchor: Object.freeze([whatsappVerifyToken]),
+      optional: Object.freeze([]),
+    }),
+    Object.freeze({
+      id: "telegram",
+      describe: "the inbound Telegram webhook's shared secret token",
+      anchor: telegramSecretToken,
+      requiredWithAnchor: Object.freeze([]),
+      optional: Object.freeze([]),
     }),
     Object.freeze({
       id: "emailNotifier",
@@ -236,6 +358,16 @@ export interface DiscordChannelConfiguration {
   readonly requestMaxAgeSeconds: number;
 }
 
+export interface WhatsAppChannelConfiguration {
+  readonly appSecret: string;
+  /** A DIFFERENT secret from the app secret; see the field comment. */
+  readonly verifyToken: string;
+}
+
+export interface TelegramChannelConfiguration {
+  readonly secretToken: string;
+}
+
 export interface EmailNotifierConfiguration {
   readonly smtpUrl: string;
   readonly from: string;
@@ -252,6 +384,8 @@ export interface WebhookNotifierConfiguration {
 export interface ChannelsConfiguration {
   readonly slack: SlackChannelConfiguration | null;
   readonly discord: DiscordChannelConfiguration | null;
+  readonly whatsapp: WhatsAppChannelConfiguration | null;
+  readonly telegram: TelegramChannelConfiguration | null;
   readonly emailNotifier: EmailNotifierConfiguration | null;
   readonly webhookNotifier: WebhookNotifierConfiguration | null;
 }
@@ -269,6 +403,17 @@ export function assembleChannels(read: SectionReader, declared: GroupPresence): 
       : Object.freeze({
           publicKey: read("PLATOS_CHANNELS_DISCORD_PUBLIC_KEY") ?? "",
           requestMaxAgeSeconds: Number(read("PLATOS_CHANNELS_DISCORD_REQUEST_MAX_AGE_S")),
+        }),
+    whatsapp: !declared("whatsapp")
+      ? null
+      : Object.freeze({
+          appSecret: read("PLATOS_CHANNELS_WHATSAPP_APP_SECRET") ?? "",
+          verifyToken: read("PLATOS_CHANNELS_WHATSAPP_VERIFY_TOKEN") ?? "",
+        }),
+    telegram: !declared("telegram")
+      ? null
+      : Object.freeze({
+          secretToken: read("PLATOS_CHANNELS_TELEGRAM_SECRET_TOKEN") ?? "",
         }),
     emailNotifier: !declared("emailNotifier")
       ? null

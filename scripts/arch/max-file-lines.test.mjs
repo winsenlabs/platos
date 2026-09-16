@@ -968,7 +968,14 @@ test("the live selectors scan an exact nonzero source census", () => {
   // INTEGRATED, RE-MEASURED ON THE MERGED TREE: 1653 + 2 + 20 + 18 = 1693. No lane
   // could see the others, so no number below 1693 is wrong at its own head and
   // none is right here.
-  assert.equal(result.fileCount, 1693);
+  //
+  // WIN-271 (M4.5), D10, THE REMAINING TWO PROVIDERS — 1693 -> 1728. THIRTY-FIVE,
+  // all under `packages/adapters/**`: nineteen in `channel-whatsapp/src`
+  // (fourteen modules, five suites) and sixteen in `channel-telegram/src`
+  // (twelve modules, four suites). None is in the warning band — the largest,
+  // `whatsapp-transport.test.ts`, is under 400 effective lines — so the pinned
+  // warning list below does not move.
+  assert.equal(result.fileCount, 1728);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -1079,7 +1086,13 @@ test("the live selectors scan an exact nonzero source census", () => {
       6 + 7 + 7 +
       // WIN-271 (M4.5), D10: EIGHTEEN under `packages/adapters/channel-discord/src`,
       // a new directory, so the whole directory and no net.
-      18
+      18 +
+      // WIN-271 (M4.5), D10, THE REMAINING TWO PROVIDERS: NINETEEN under
+      // `packages/adapters/channel-whatsapp/src` and SIXTEEN under
+      // `packages/adapters/channel-telegram/src`, two new directories, so both
+      // whole and no net. The two terms are written separately so a merge that
+      // dropped either half would disagree with the flat pin above.
+      19 + 16
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1316,7 +1329,14 @@ test("the live selectors scan an exact nonzero source census", () => {
   //
   // THE THREE TOGETHER, RE-MEASURED ON THE MERGED TREE:
   // 30 + 1100 + 498 + 20 + 45 = 1693.
-  assert.equal(result.fileCount, 30 + 1100 + 498 + 20 + 45);
+  //
+  // WIN-271 (M4.5), D10, THE REMAINING TWO PROVIDERS, +35 IN ONE TERM: ADAPTERS a
+  // third time, 498 -> 533. KERNEL, CONTEXTS, APPS-HTTP and APPS-TRANSPORTS are
+  // all FLAT, and that is the claim worth making about this tranche for the second
+  // and third time: two more providers land not one file under
+  // `packages/contexts/**` and not one under `apps/core-api/src/transports/**`.
+  // 30 + 1100 + 533 + 20 + 45 = 1728.
+  assert.equal(result.fileCount, 30 + 1100 + 533 + 20 + 45);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

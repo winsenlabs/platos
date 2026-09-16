@@ -160,6 +160,15 @@ import { createChannelSlackAdapter } from "@platos/adapter-channel-slack";
 // one. It is here and nowhere else under `apps/core-api` for rule (C1)'s reason.
 import type { ChannelDiscordAdapter } from "@platos/adapter-channel-discord";
 import { createChannelDiscordAdapter } from "@platos/adapter-channel-discord";
+// WIN-271 (M4.5), D10 — the THIRD and FOURTH channel runtimes, each constructed
+// from its own configuration group and satisfying the same two `channels` ports
+// as the Slack and Discord ones. D10 names three providers after Slack and drops
+// none; with these two the list is complete. Both are here and nowhere else under
+// `apps/core-api` for rule (C1)'s reason.
+import type { ChannelWhatsAppAdapter } from "@platos/adapter-channel-whatsapp";
+import { createChannelWhatsAppAdapter } from "@platos/adapter-channel-whatsapp";
+import type { ChannelTelegramAdapter } from "@platos/adapter-channel-telegram";
+import { createChannelTelegramAdapter } from "@platos/adapter-channel-telegram";
 import type { NotifierEmailAdapter } from "@platos/adapter-notifier-email";
 // D20 (2026-09-15) — a value import, and the directory it names left
 // `UNIMPLEMENTED_ADAPTERS` in the same commit, which rule (C7) checks against the
@@ -218,6 +227,15 @@ export interface AdapterInstances {
   // port pair as `channel-slack`, and a slot rather than a row on it because §15
   // consolidates ONE vendor client and Discord is a different vendor.
   readonly "channel-discord": ChannelDiscordAdapter;
+  // WIN-271 (M4.5), D10 — the SEVENTEENTH and EIGHTEENTH slots: the third and
+  // fourth providers behind the same port pair, each a slot rather than a row on
+  // `channel-slack` or `channel-discord` because §15 consolidates ONE vendor
+  // client and Meta and Telegram are different vendors. Neither holds a vendor
+  // client at all — `node:crypto` and `fetch` are the whole of both — and that is
+  // an argument for separate directories rather than against them: a shared one
+  // would hold two unrelated egress policies and two unrelated credentials.
+  readonly "channel-whatsapp": ChannelWhatsAppAdapter;
+  readonly "channel-telegram": ChannelTelegramAdapter;
   readonly "notifier-email": NotifierEmailAdapter;
   readonly "notifier-webhook": NotifierWebhookAdapter;
   // WIN-259 M2.4 — the THIRTEENTH slot, and the first one added since this table
@@ -597,6 +615,14 @@ interface PortSatisfaction {
   // `sendFollowup` collides with no port member, so no property indirection.
   readonly "channel-discord:ChannelAdapter": Satisfies<ChannelDiscordAdapter, ChannelAdapter>;
   readonly "channel-discord:ChannelRuntime": Satisfies<ChannelDiscordAdapter, ChannelRuntime>;
+  // WIN-271 (M4.5), D10. The two obligations of the third runtime and the two of
+  // the fourth, each stated as two for the reason `channel-slack`'s are. Proven
+  // against the ADAPTER: WhatsApp's extra `verifySubscription` and Telegram's
+  // empty extension collide with no port member, so no property indirection.
+  readonly "channel-whatsapp:ChannelAdapter": Satisfies<ChannelWhatsAppAdapter, ChannelAdapter>;
+  readonly "channel-whatsapp:ChannelRuntime": Satisfies<ChannelWhatsAppAdapter, ChannelRuntime>;
+  readonly "channel-telegram:ChannelAdapter": Satisfies<ChannelTelegramAdapter, ChannelAdapter>;
+  readonly "channel-telegram:ChannelRuntime": Satisfies<ChannelTelegramAdapter, ChannelRuntime>;
   readonly "notifier-email:Notifier": Satisfies<NotifierEmailAdapter, Notifier>;
   // D20 (2026-09-15). The SECOND port on this directory, owned by identity-access.
   // Proven against the ADAPTER: `deliverMagicLink` collides with neither
@@ -700,6 +726,10 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "channel-slack:ChannelRuntime": true,
   "channel-discord:ChannelAdapter": true,
   "channel-discord:ChannelRuntime": true,
+  "channel-whatsapp:ChannelAdapter": true,
+  "channel-whatsapp:ChannelRuntime": true,
+  "channel-telegram:ChannelAdapter": true,
+  "channel-telegram:ChannelRuntime": true,
   "notifier-email:Notifier": true,
   "notifier-email:MagicLinkDelivery": true,
   "notifier-webhook:Notifier": true,
@@ -1216,6 +1246,20 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // either stops having two.
   Object.freeze({ adapter: "channel-discord", port: "ChannelAdapter", owner: "channels" }),
   Object.freeze({ adapter: "channel-discord", port: "ChannelRuntime", owner: "channels" }),
+  // WIN-271 (M4.5), D10, the remaining two providers. The LAST FOUR rows,
+  // appended at the END for the reason every row above was: every ordinal already
+  // written stays true. `channels:ChannelAdapter` and `channels:ChannelRuntime`
+  // now have FOUR homes each — which is the registry shape the port header
+  // designed for and the reason it is a registry rather than a map; `MULTI_HOME_PORTS`
+  // in the generator says so, and `selfCheck` fails if either stops having more
+  // than one. FOUR homes is also the point at which "future adapters require no
+  // Core modification" stops resting on a single case: three directories have now
+  // been added behind this pair with `git diff -- packages/contexts/channels`
+  // empty each time.
+  Object.freeze({ adapter: "channel-whatsapp", port: "ChannelAdapter", owner: "channels" }),
+  Object.freeze({ adapter: "channel-whatsapp", port: "ChannelRuntime", owner: "channels" }),
+  Object.freeze({ adapter: "channel-telegram", port: "ChannelAdapter", owner: "channels" }),
+  Object.freeze({ adapter: "channel-telegram", port: "ChannelRuntime", owner: "channels" }),
 ] as const satisfies readonly AdapterBinding[]);
 
 /**
@@ -1650,6 +1694,41 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
     adapters["channel-discord"] = createChannelDiscordAdapter({
       requestMaxAgeSeconds: input.channels.discord.requestMaxAgeSeconds,
     });
+  }
+
+  // WIN-271 (M4.5), D10. THE SAME SHAPE AND THE SAME ANCHOR RULE as the two arms
+  // above: the group is declared by the material that lets the endpoint tell the
+  // provider from a forger — Meta's APP SECRET, Telegram's WEBHOOK SECRET TOKEN —
+  // and never by an outbound token, so "the channel is wired" and "the channel can
+  // refuse a forged delivery" stay one statement. Both are total over their
+  // options: the verification material travels per delivery on the command and
+  // the outbound credential per send, so no `faults` row is possible for either.
+  //
+  // NEITHER TAKES A REPLAY WINDOW, AND THAT IS WHY NEITHER READS ONE. Slack's and
+  // Discord's constructors take `requestMaxAgeSeconds` because both providers sign
+  // a timestamp. Meta signs the body alone, and Telegram signs nothing at all —
+  // each adapter's `verify.ts` says at length why a window over the instants those
+  // payloads DO carry would refuse genuine redeliveries while stopping nothing —
+  // so `config/channels.ts` declares no such field for either group, and a
+  // constructor argument here would be a value no code could read.
+  if (input.channels.whatsapp === null) {
+    decline(
+      "channel-whatsapp",
+      "configuration",
+      "PLATOS_CHANNELS_WHATSAPP_APP_SECRET is not set, so the channels.whatsapp group is undeclared",
+    );
+  } else {
+    adapters["channel-whatsapp"] = createChannelWhatsAppAdapter();
+  }
+
+  if (input.channels.telegram === null) {
+    decline(
+      "channel-telegram",
+      "configuration",
+      "PLATOS_CHANNELS_TELEGRAM_SECRET_TOKEN is not set, so the channels.telegram group is undeclared",
+    );
+  } else {
+    adapters["channel-telegram"] = createChannelTelegramAdapter();
   }
 
   for (const adapter of UNIMPLEMENTED_ADAPTERS) {

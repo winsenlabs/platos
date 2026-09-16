@@ -55,6 +55,8 @@
     "@platos/adapter-node-crypto-digest": "workspace:*",
     "@platos/adapter-tokenmint-totp": "workspace:*",
     "@platos/adapter-channel-discord": "workspace:*",
+    "@platos/adapter-channel-whatsapp": "workspace:*",
+    "@platos/adapter-channel-telegram": "workspace:*",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",

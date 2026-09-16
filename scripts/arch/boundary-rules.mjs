@@ -225,6 +225,30 @@ export const SDK_CONTAINMENT = [
     source: "node_modules/(discord\\.js|@discordjs|discord-api-types|discord-interactions)",
   },
   {
+    // WIN-271 (M4.5), D10. WhatsApp and Meta Graph client libraries get ONE home,
+    // the directory that speaks WhatsApp. `channel-whatsapp` runs NONE of them —
+    // it computes its HMAC with `node:crypto` and calls Graph with `fetch`, and
+    // it has no vendor dependency at all — which is exactly why the rule is worth
+    // having: the first file anywhere else that reaches for `whatsapp-web.js`,
+    // `@whiskeysockets/baileys` or Meta's business SDK fails here instead of
+    // quietly becoming a second WhatsApp client, in a package that has no
+    // business holding a business access token.
+    id: "whatsapp-sdk-only",
+    home: "^packages/adapters/channel-whatsapp/",
+    source: "node_modules/(whatsapp-web\\.js|@whiskeysockets|baileys|facebook-nodejs-business-sdk)",
+  },
+  {
+    // WIN-271 (M4.5), D10. Telegram client libraries get ONE home, the directory
+    // that speaks Telegram, on the same terms: `channel-telegram` runs none of
+    // them and has no vendor dependency, and the rule exists so that the day
+    // somebody reaches for `telegraf` or `grammy` to "just send one message" it
+    // fails at the boundary rather than becoming a second bot client holding a
+    // second copy of the token.
+    id: "telegram-sdk-only",
+    home: "^packages/adapters/channel-telegram/",
+    source: "node_modules/(node-telegram-bot-api|telegraf|@telegraf|grammy|@grammyjs|telegram)",
+  },
+  {
     id: "provider-sdk-only",
     home: MODEL_ROUTER_ADAPTER,
     source: "node_modules/(openai|@anthropic-ai)",

@@ -2493,6 +2493,31 @@ export const EXPECTED = Object.freeze({
   // itself).
   "packages/adapters/channel-discord": { files: 5, cases: 110 },
   "packages/adapters/channel-slack": { files: 5, cases: 61 },
+  // WIN-271 (M4.5), D10, the remaining two providers. 0 -> 83 over 4 NEW files.
+  // `secret-token` (11 — the comparison against `node:crypto`'s own
+  // `timingSafeEqual` verdicts, `false` rather than a throw everywhere it raises,
+  // the refusals for a wrong token, a prefix, a longer one, a missing header and
+  // a configured token outside `setWebhook`'s alphabet), `normalize` (24 — the
+  // fixtures checked against the published `Update` shape, the topic rule that
+  // turns on `is_topic_message` and not on `message_thread_id`, and the negative
+  // chat id surviving), `signed-admission` (10 — one `update_id`, one row, a week
+  // apart, through `channels`' own use case) and `telegram-transport` (38 — the
+  // method, path and body of every call against a recording server, the four
+  // outcome codes, and the `./` that keeps a colon-bearing token from being
+  // parsed as a URL scheme).
+  "packages/adapters/channel-telegram": { files: 4, cases: 83 },
+  // WIN-271 (M4.5), D10, the remaining two providers. 0 -> 112 over 5 NEW files.
+  // `rfc4231` (29 — the seven published vectors against BOTH `createHmac` and an
+  // RFC 2104 construction built from raw SHA-256, with a negative control proving
+  // the second can disagree), `whatsapp-signature` (16 — every fixture signed by
+  // the independent HMAC and verified by the adapter, the re-serialized-body
+  // forgery, the `sha1=` downgrade, and the hub.challenge handshake),
+  // `normalize` (22 — the line-and-customer key read back through the domain's
+  // own reader, and the batched delivery REFUSED rather than half-admitted),
+  // `signed-admission` (10) and `whatsapp-transport` (35 — the three throughput
+  // scopes, error code 190 arriving as a 400, and the edit refused because the
+  // Cloud API has no edit route).
+  "packages/adapters/channel-whatsapp": { files: 5, cases: 112 },
   "packages/adapters/clickhouse-observability": { files: 0, cases: 0 },
   "packages/adapters/durable-runtime": { files: 0, cases: 0 },
   "packages/adapters/model-router-providers": { files: 15, cases: 198 },
@@ -3802,8 +3827,22 @@ export const EXPECTED = Object.freeze({
 // decision inside `channels` — `APP_PROVIDERS` is `["slack"]` — so the clause is
 // advanced by this directory, not closed.)
 //
-// INTEGRATED AND RE-MEASURED: 8359 + 47 + 110 = 8516 over 564 + 5 = 569 files.
-export const EXPECTED_RUNTIME_TOTAL = 8516;
+// WIN-271 (M4.5), D10, THE REMAINING TWO PROVIDERS: +195 over 9 NEW files. TWO
+// rows move, `packages/adapters/channel-whatsapp` 0 -> 112 over 5 files and
+// `packages/adapters/channel-telegram` 0 -> 83 over 4, each itemised on its own
+// row above. `packages/contexts/channels` is UNMOVED at 274 for the THIRD time,
+// and that is the measurement the clause rests on: three directories have now
+// been added behind `ChannelAdapter`/`ChannelRuntime` and the context's own case
+// count has not moved once. (Production inbound still needs a decision inside
+// `channels` for all three — `APP_PROVIDERS` is `["slack"]` — so the clause is
+// advanced by them and not closed by them.)
+//
+// RE-MEASURED ON THE TREE, NOT SUMMED FROM THE COMMENTS ABOVE: the audit reports
+// 8516 -> 8711 cases across 574 -> 583 FILES in 34 -> 36 V1 packages. (The
+// running file figure the paragraphs above quote, 569, counts a narrower set than
+// the audit's own line does; 574 is what the tool printed on this lane's base
+// commit and 583 is what it prints here, and those two are the authority.)
+export const EXPECTED_RUNTIME_TOTAL = 8711;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

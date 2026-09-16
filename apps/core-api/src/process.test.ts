@@ -237,6 +237,9 @@ describe("the built binary refuses to start on a bad section", () => {
       PLATOS_PROVIDERS_DEFAULT_MODEL: "anthropic:claude-haiku-4-5-20251001",
       PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(32),
       PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+      PLATOS_CHANNELS_WHATSAPP_APP_SECRET: "e".repeat(32),
+      PLATOS_CHANNELS_WHATSAPP_VERIFY_TOKEN: "f".repeat(32),
+      PLATOS_CHANNELS_TELEGRAM_SECRET_TOKEN: "platos-test-secret-token-0123456789",
       PLATOS_DURABLE_RUNTIME_API_URL: "https://durable.internal",
       PLATOS_DURABLE_RUNTIME_SECRET_KEY: "d".repeat(24),
       PLATOS_SECURITY_SESSION_SECRET: "s".repeat(32),
@@ -320,6 +323,16 @@ describe("the built binary starts, serves and stops", () => {
       // Slack one is here: a fully declared install declares both runtimes. RFC
       // 8032 §7.1 TEST 1's public key, a real Ed25519 point.
       PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+      // WIN-271 (M4.5), D10, the remaining two providers. The third and fourth
+      // channel groups' anchors, for the reason the first two are here: a fully
+      // declared install declares EVERY runtime, and D10 names three providers
+      // after Slack and drops none. The WhatsApp group needs its verify token as
+      // well — Meta delivers no webhook until the subscription handshake
+      // succeeds — and the Telegram token is in `setWebhook`'s own alphabet, so
+      // it is a value Telegram would really have accepted.
+      PLATOS_CHANNELS_WHATSAPP_APP_SECRET: "e".repeat(64),
+      PLATOS_CHANNELS_WHATSAPP_VERIFY_TOKEN: "f".repeat(64),
+      PLATOS_CHANNELS_TELEGRAM_SECRET_TOKEN: "platos-test-secret-token-0123456789",
     });
     const port = await awaitListening(spawned);
 
@@ -354,8 +367,17 @@ describe("the built binary starts, serves and stops", () => {
     // directory that arrived WITH a constructor, so both rows it declares are
     // satisfied from its first commit — 57/62 on that lane, remainder unchanged.
     // Together: 60 + 1 + 2 = 63 declared, 55 + 2 + 2 = 59 satisfied, 4 not.
-    expect(body.detail.declaredBindings).toBe(63);
-    expect(body.detail.satisfiedBindings).toHaveLength(59);
+    //
+    // WIN-271 (M4.5), D10, THE REMAINING TWO PROVIDERS: 59/63 -> 63/67, and both
+    // figures move by the SAME four while the remainder stands still. Each new
+    // directory arrived WITH a constructor, so neither was ever in
+    // `UNIMPLEMENTED_ADAPTERS` and neither leaves it; the four rows they declare
+    // are satisfied from their first commit because this install declares
+    // `channels.whatsapp` and `channels.telegram`. A tranche that moved declared
+    // without moving satisfied would have bound a port to a directory nothing
+    // constructs, which is what asserting all three numbers is for.
+    expect(body.detail.declaredBindings).toBe(67);
+    expect(body.detail.satisfiedBindings).toHaveLength(63);
     // WIN-267 A1 + A2: 41 -> 45 of 49 -> 53. Both new directories need no
     // configuration, so all four of their bindings are satisfied in every
     // install and the EIGHT that remain are the same eight generated interfaces.
@@ -384,7 +406,7 @@ describe("the built binary starts, serves and stops", () => {
     // skeleton was generated. Declared moves by one and satisfied by two, and the
     // unsatisfied remainder falls from six to FIVE: `redis-streams` is the THIRD
     // directory ever to leave `UNIMPLEMENTED_ADAPTERS`.
-    expect(body.reason).toBe("59 of 63 adapter bindings are satisfied; 4 are not");
+    expect(body.reason).toBe("63 of 67 adapter bindings are satisfied; 4 are not");
     // THE CONTEXTS THIS PROCESS ACTUALLY BUILT, read back OFF THE RUNNING
     // BINARY rather than computed. `tenancy` was the first composed over a REAL
     // PostgreSQL adapter rather than over a bundle an install had to hand in;
@@ -439,7 +461,7 @@ describe("the built binary starts, serves and stops", () => {
 
     // The startup log carries the same figure, so an operator with no token can
     // still read it off stdout.
-    expect(spawned.stdout()).toContain("59/63 adapter bindings satisfied");
+    expect(spawned.stdout()).toContain("63/67 adapter bindings satisfied");
 
     spawned.child.kill("SIGTERM");
     const { code, signal } = await spawned.exited;

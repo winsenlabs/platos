@@ -191,7 +191,11 @@ test("the live repository satisfies both the boundary rules and the composition-
   // SIXTEEN, the case §15 does not consolidate: `channel-discord` is a different
   // vendor behind the same `channels` port pair, so it is a new directory with two
   // rows. INTEGRATED AND RE-MEASURED: 60 + 1 + 2 = 63.
-  assert.equal(audit.bindingCount, 63);
+  // WIN-271 (M4.5), D10, THE REMAINING TWO PROVIDERS take it to 67 and the
+  // DIRECTORY count to EIGHTEEN, the same case §15 does not consolidate twice
+  // more: Meta and Telegram are two more vendors behind the same `channels` port
+  // pair, so each is a new directory with two rows.
+  assert.equal(audit.bindingCount, 67);
   //
   // AND `memory` adds `MemoryRepository` and
   // `KnowledgeGraphRepository` over its three canonical rows, so that directory
@@ -225,8 +229,9 @@ test("the live repository satisfies both the boundary rules and the composition-
   // parameter that belongs with the keys) does not carry: this port is
   // synchronous and can never have one. `tokenmint-totp` holds no rows, no
   // database client and no key material either.
-  // WIN-271 (M4.5), D10: 15 -> 16, `channel-discord`.
-  assert.equal(ADAPTERS.length, 16);
+  // WIN-271 (M4.5), D10: 15 -> 16, `channel-discord`; then 16 -> 18 with
+  // `channel-whatsapp` and `channel-telegram`, the rest of D10's three.
+  assert.equal(ADAPTERS.length, 18);
 });
 
 // ---------------------------------------------------------------------------
@@ -386,7 +391,8 @@ test("C2: an entry removed from the binding table fails", () => {
     // "unknown adapter" — which is the case this exercises.
     // 59 -> 62 integrated (60 with D20 alone, 61 with WIN-271 (M4.5), D10 alone):
     // the table declares 63.
-    assert.ok(problems.some((problem) => problem.includes("declares 62 binding(s)")));
+    // 63 -> 67: D10's remaining four channel rows, so one row removed leaves 66.
+    assert.ok(problems.some((problem) => problem.includes("declares 66 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
@@ -521,7 +527,10 @@ test("C7 NON-VACUITY: the live list names exactly the directories with no constr
   // set (5 -> 4) and WIN-271 (M4.5), D10's `channel-discord` is a NEW directory that
   // arrived WITH a constructor, so it joins neither that set nor its count while
   // ADAPTERS.length moves.
-  assert.equal(listed.length, 4, "four of the sixteen directories are still generated interfaces");
+  // 4 of 16 -> 4 of 18. Both new directories arrived WITH constructors, so
+  // neither joins this set and neither moves its count while ADAPTERS.length
+  // moves by two: 4 + 14 = 18.
+  assert.equal(listed.length, 4, "four of the eighteen directories are still generated interfaces");
   const constructible = ADAPTERS.filter((adapter) => !listed.includes(adapter.dir)).map((a) => a.dir).sort();
   // WIN-267 A1 and A2 add the SIXTH and SEVENTH constructible directories while
   // the unimplemented count stays at EIGHT, which is their claim from the other
@@ -531,6 +540,9 @@ test("C7 NON-VACUITY: the live list names exactly the directories with no constr
   // unimplemented list, 8 -> 7, so the constructible set gains an EIGHTH member
   // without ADAPTERS.length moving at all. The identity below is what holds the
   // two apart: 7 + 8 = 15, after WIN-271, 6 + 9 = 15, and after WIN-272, 5 + 10 = 15.
+  // After D10's three channel directories the identity reads 4 + 14 = 18: the
+  // unimplemented count has not moved for any of them, because each arrived with
+  // a constructor and none was ever a generated interface.
   assert.deepEqual(constructible, [
     // WIN-271 (M4.5), D10. The ELEVENTH, and a new directory rather than a
     // generated interface filled in.
@@ -539,6 +551,12 @@ test("C7 NON-VACUITY: the live list names exactly the directories with no constr
     // arrive by an existing generated interface gaining an implementation
     // rather than by a new directory being written.
     "channel-slack",
+    // WIN-271 (M4.5), D10. The THIRTEENTH and FOURTEENTH, on the same terms as
+    // the ELEVENTH: new directories that arrived with constructors rather than
+    // generated interfaces filled in. This list is SORTED, so their position here
+    // is alphabetical and not their declaration order.
+    "channel-telegram",
+    "channel-whatsapp",
     "keyring-envelope",
     "model-router-providers",
     // WIN-267 A1. The sixth constructible directory, and the only one in the
@@ -600,15 +618,16 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all SIXTY-THREE bindings, across sixteen directories", () => {
+test("the binding-table parser reads all SIXTY-SEVEN bindings, across eighteen directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
   const bindings = adapterBindings();
   assert.equal(entries.length, bindings.length);
   // 60 -> 63 integrated: D20's `notifier-email:MagicLinkDelivery` and WIN-271
   // (M4.5), D10's two `channel-discord` rows.
-  assert.equal(bindings.length, 63);
-  assert.equal(ADAPTERS.length, 16);
+  // 63 -> 67: D10's remaining four channel rows.
+  assert.equal(bindings.length, 67);
+  assert.equal(ADAPTERS.length, 18);
   assert.deepEqual(
     entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
     bindings.map((binding) => `${binding.adapter}:${binding.port}`).sort()
@@ -654,7 +673,10 @@ test("the binding-table parser reads all SIXTY-THREE bindings, across sixteen di
   assert.equal(entries.filter((entry) => entry.adapter === "tokenmint-totp").length, 2);
   // WIN-271 (M4.5), D10: two rows on the sixteenth directory.
   assert.equal(entries.filter((entry) => entry.adapter === "channel-discord").length, 2);
-  assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 16);
+  // WIN-271 (M4.5), D10: two rows each on the seventeenth and eighteenth.
+  assert.equal(entries.filter((entry) => entry.adapter === "channel-whatsapp").length, 2);
+  assert.equal(entries.filter((entry) => entry.adapter === "channel-telegram").length, 2);
+  assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 18);
 });
 
 test("the parser reads a WRAPPED entry, not only a one-line one", () => {
@@ -699,7 +721,7 @@ test("§15 refusal: a binding table row the ADR does not declare fails", () => {
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-        problem.includes("binding table names outbox -> memory Cache, which is not one of the 63 declared bindings")
+        problem.includes("binding table names outbox -> memory Cache, which is not one of the 67 declared bindings")
     )
   );
 });
@@ -730,7 +752,8 @@ test("§15 refusal: a declared binding with no row in the table fails", () => {
       problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
     )
   );
-    assert.ok(problems.some((problem) => problem.includes("declares 62 binding(s)")));
+    // 63 -> 67: D10's remaining four channel rows, so one row removed leaves 66.
+    assert.ok(problems.some((problem) => problem.includes("declares 66 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {

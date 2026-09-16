@@ -89,7 +89,7 @@ function adapterDouble(name: string): unknown {
 }
 
 describe("the declared binding table", () => {
-  it("declares FIFTY-NINE bindings across ADR M0.3 §4's FIFTEEN adapter directories", () => {
+  it("declares SIXTY-SEVEN bindings across ADR M0.3 §4's EIGHTEEN adapter directories", () => {
     // The two numbers stopped being the same number at WIN-258 tranche 2:
     // ADR M0.3 §15 lets one directory satisfy more than one port, and
     // `postgres-tenancy` satisfies `TenancyRepository`,
@@ -242,9 +242,18 @@ describe("the declared binding table", () => {
     // `channel-slack` — and it takes both of `channels`' channel ports with it.
     //
     // The two together: 60 + 1 + 2 = 63 rows, 15 + 0 + 1 = 16 directories.
-    expect(ADAPTER_BINDINGS).toHaveLength(63);
-    expect(DECLARED_BINDING_COUNT).toBe(63);
-    expect(ADAPTER_NAMES).toHaveLength(16);
+    //
+    // WIN-271 (M4.5), D10, THE REMAINING TWO PROVIDERS: 63 -> 67 AND 16 -> 18.
+    // `channel-whatsapp` and `channel-telegram` are two more of the case §15 does
+    // NOT consolidate — Meta and Telegram are different vendors from Discord and
+    // from each other — and each takes both of `channels`' channel ports with it.
+    // Neither holds a vendor client at all, and that is an argument FOR separate
+    // directories rather than against them: one shared directory would hold two
+    // unrelated egress policies and two unrelated credentials, and `channel-slack`
+    // is already the only home `chat-sdk-only` permits the chat SDK.
+    expect(ADAPTER_BINDINGS).toHaveLength(67);
+    expect(DECLARED_BINDING_COUNT).toBe(67);
+    expect(ADAPTER_NAMES).toHaveLength(18);
     expect(
       ADAPTER_BINDINGS.filter((binding) => binding.adapter === "tokenmint-totp").map(
         (binding) => binding.port,
@@ -317,9 +326,17 @@ describe("the declared binding table", () => {
     // multi-PORT AND multi-OWNER, because its second port is identity-access's and
     // its first cost-monitoring's — and `channel-discord` joins in `channel-slack`'s
     // exact shape: two ports, one owner, one object.
+    //
+    // EIGHT -> TEN (WIN-271, M4.5, D10, the remaining two providers).
+    // `channel-whatsapp` and `channel-telegram` join in `channel-slack`'s exact
+    // shape: two ports, one owner, one object. The list is still NAMED rather
+    // than counted, so the eleventh directory quietly gaining a second port
+    // fails here instead of widening a number.
     expect(multiPort.sort()).toEqual([
       "channel-discord",
       "channel-slack",
+      "channel-telegram",
+      "channel-whatsapp",
       "keyring-envelope",
       "notifier-email",
       "postgres-tenancy",
@@ -466,9 +483,9 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when a caller supplies nothing at all", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(63);
+    expect(report.unsatisfied).toHaveLength(67);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/63 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/67 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
     // list `postgres-tenancy` once and say 12/12 while TWENTY of the ports it
     // carries were unserved, which is a readiness endpoint that lies about what
@@ -495,7 +512,7 @@ describe("adapter supply validation", () => {
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
     expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(report.unsatisfied).toHaveLength(62);
+    expect(report.unsatisfied).toHaveLength(66);
 
     expect(report.faults).toEqual([]);
   });
@@ -524,14 +541,14 @@ describe("adapter supply validation", () => {
 
   it("rejects an adapter name that is not one of the declared bindings", () => {
     const report = reportAdapterSupply({ "redis-queue": adapterDouble("redis-queue") } as SuppliedAdapters);
-    expect(report.faults[0]).toContain("is not one of the 16 declared adapters");
+    expect(report.faults[0]).toContain("is not one of the 18 declared adapters");
   });
 });
 
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(63);
+    expect(app.bindings.unsatisfied).toHaveLength(67);
 
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
@@ -572,7 +589,7 @@ describe("composing the application", () => {
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(app.bindings.unsatisfied).toHaveLength(62);
+    expect(app.bindings.unsatisfied).toHaveLength(66);
 
   });
 

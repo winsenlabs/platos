@@ -125,17 +125,25 @@ What composes depends on the security variables, which `.env.example` leaves uns
 
 | Set in `.env` | `/readyz` bindings | `composedContexts` |
 |---|---|---|
-| `PLATOS_ENVIRONMENT` only | 49 of 63 | `tenancy` |
-| plus `PLATOS_SECURITY_SESSION_SECRET`, `PLATOS_SECURITY_ENCRYPTION_KEY`, `PLATOS_SECURITY_ENCRYPTION_KEY_VERSION` | 53 of 63 | `identityAccess`, `tenancy`, `secrets`, `providers`, `tools` |
-| plus `PLATOS_CHANNELS_SLACK_SIGNING_SECRET` | 55 of 63 | the same five |
-| plus `PLATOS_CHANNELS_DISCORD_PUBLIC_KEY` | 57 of 63 | the same five |
-| plus `PLATOS_CHANNELS_EMAIL_SMTP_URL`, `PLATOS_CHANNELS_EMAIL_FROM`, `PLATOS_CHANNELS_EMAIL_LOGIN_URL` | 59 of 63 | the same five |
+| `PLATOS_ENVIRONMENT` only | 49 of 67 | `tenancy` |
+| plus `PLATOS_SECURITY_SESSION_SECRET`, `PLATOS_SECURITY_ENCRYPTION_KEY`, `PLATOS_SECURITY_ENCRYPTION_KEY_VERSION` | 53 of 67 | `identityAccess`, `tenancy`, `secrets`, `providers`, `tools` |
+| plus `PLATOS_CHANNELS_SLACK_SIGNING_SECRET` | 55 of 67 | the same five |
+| plus `PLATOS_CHANNELS_DISCORD_PUBLIC_KEY` | 57 of 67 | the same five |
+| plus `PLATOS_CHANNELS_EMAIL_SMTP_URL`, `PLATOS_CHANNELS_EMAIL_FROM`, `PLATOS_CHANNELS_EMAIL_LOGIN_URL` | 59 of 67 | the same five |
+| plus `PLATOS_CHANNELS_WHATSAPP_APP_SECRET`, `PLATOS_CHANNELS_WHATSAPP_VERIFY_TOKEN` | 61 of 67 | the same five |
+| plus `PLATOS_CHANNELS_TELEGRAM_SECRET_TOKEN` | 63 of 67 | the same five |
 
 Every row was read back off the built composition root rather than derived: each is a
 `/readyz` body from `node apps/core-api/dist/main.js` started with exactly the variables
 its row names, plus the two store URLs the Compose profile always passes. The four that
 remain unsatisfied at the last row are the bindings on directories that are still
-generated interfaces, which no `.env` can reach.
+generated interfaces, which no `.env` can reach — `durable-runtime`,
+`clickhouse-observability`, `objectstore-minio` and `notifier-webhook`.
+
+Each channel row adds exactly TWO bindings, because a channel directory satisfies
+both `ChannelAdapter` and `ChannelRuntime` with one object. Four providers are
+wired here and none of them changed a line inside the `channels` context to get
+there.
 
 Operator authentication, secrets, providers and tools are therefore not running until the three security variables are set. Generate the session secret and the encryption key with `openssl rand -hex 32`, independently of every other key in `.env`.
 

@@ -1432,7 +1432,16 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // each lane measured its own delta against 1701, and only the merge can say
     // what the four together produce. `scripts/arch/env-access.mjs`'s
     // EXPECTED_FILE_COUNT is the second independent copy and reads 1760 too.
-    assert.equal(result.fileCount, 1760, "the generated V1 source census must stay exact");
+    //
+    // WIN-271 (M4.5), D10 — THE REMAINING TWO CHANNEL RUNTIMES, 1760 -> 1795.
+    // THIRTY-FIVE files: nineteen under `packages/adapters/channel-whatsapp/src`
+    // (fourteen modules and five suites) and sixteen under
+    // `packages/adapters/channel-telegram/src` (twelve modules and four suites).
+    // NOT a net either time: both directories are new, so no generated
+    // placeholder was ever on disk for these to replace. NOTHING under
+    // `packages/contexts/`, which is the clause these directories exist to
+    // evidence — for the SECOND and THIRD time — and nothing new under `apps/`.
+    assert.equal(result.fileCount, 1795, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1537,7 +1546,15 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       6 + 7 + 7 + 1 +
       // WIN-271 (M4.5), D10: adapters 18 -- `channel-discord`'s thirteen modules and
       // five suites, a new directory and so no placeholder to net against.
-      18);
+      18 +
+      // WIN-271 (M4.5), D10, THE REMAINING TWO PROVIDERS: adapters 35 --
+      // `channel-whatsapp`'s nineteen (fourteen modules and five suites) and
+      // `channel-telegram`'s sixteen (twelve modules and four suites). Two new
+      // directories, so again no placeholders to net against, and the two terms
+      // are written separately for the reason the WIN-303 note gives: this is the
+      // re-derivation, so a merge that dropped either half would disagree with the
+      // flat pin above.
+      19 + 16);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

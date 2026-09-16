@@ -103,6 +103,9 @@ function fullySupplied(): SuppliedAdapters {
     // WIN-271 (M4.5), D10. The sixteenth, listed by name for the reason every
     // later entry is: green readiness must require a slot somebody filled.
     "channel-discord",
+    // WIN-271 (M4.5), D10. The seventeenth and eighteenth, listed by name for the
+    // same reason: green readiness must require a slot somebody filled.
+    "channel-whatsapp", "channel-telegram",
     // WIN-259 (M2.4). The thirteenth directory. It is listed HERE, by name,
     // rather than derived from `ADAPTER_NAMES`, and that is the point of the
     // list: readiness turning green has to require a slot somebody deliberately
@@ -172,7 +175,10 @@ describe("the process starts and serves", () => {
     // `channel-discord`'s two rows (62 on its own). Satisfied stays ZERO: this case
     // supplies no adapter, and declares neither `channels.emailNotifier` nor
     // `channels.discord`.
-    expect(started).toMatchObject({ bindings: "0/63 adapter bindings satisfied", unsatisfied: 63 });
+    // 63 -> 67 (WIN-271 (M4.5), D10, the remaining two providers): four more
+    // declared rows, two each for `channel-whatsapp` and `channel-telegram`.
+    // Satisfied stays ZERO: this case supplies nothing.
+    expect(started).toMatchObject({ bindings: "0/67 adapter bindings satisfied", unsatisfied: 67 });
   });
 });
 
@@ -206,7 +212,7 @@ describe("readiness tells the truth about what is wired", () => {
       headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
     });
     const body = (await response.json()) as { detail: { unsatisfiedBindings: string[]; declaredBindings: number } };
-    expect(body.detail.declaredBindings).toBe(63);
+    expect(body.detail.declaredBindings).toBe(67);
     // Named per BINDING (ADR M0.3 §15), so an operator reading a 503 learns
     // WHICH port is unserved rather than only which package is absent.
     expect(body.detail.unsatisfiedBindings).toContain("postgres-tenancy:TenancyRepository");

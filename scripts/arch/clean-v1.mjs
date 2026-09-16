@@ -19,7 +19,10 @@ const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 // it: after `keyring-envelope` and before the two apps.
 // WIN-271 (M4.5), D10 35 -> 36. `packages/adapters/channel-discord`, the sixteenth
 // adapter directory, where the generator emits it: after `tokenmint-totp`.
-export const EXPECTED_V1_PROJECT_COUNT = 36;
+// WIN-271 (M4.5), D10 36 -> 38. `packages/adapters/channel-whatsapp` and
+// `packages/adapters/channel-telegram`, the seventeenth and eighteenth adapter
+// directories, where the generator emits them: after `channel-discord`.
+export const EXPECTED_V1_PROJECT_COUNT = 38;
 export const EXPECTED_V1_PROJECTS = [
   "packages/kernel",
   "packages/contexts/identity-access", "packages/contexts/tenancy", "packages/contexts/secrets",
@@ -40,6 +43,9 @@ export const EXPECTED_V1_PROJECTS = [
   "packages/adapters/tokenmint-totp",
   // WIN-271 (M4.5), D10: the sixteenth adapter directory.
   "packages/adapters/channel-discord",
+  // WIN-271 (M4.5), D10: the seventeenth and eighteenth adapter directories.
+  "packages/adapters/channel-whatsapp",
+  "packages/adapters/channel-telegram",
   "apps/core-api", "apps/mcp-stdio",
 ];
 

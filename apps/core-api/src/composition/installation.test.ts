@@ -96,6 +96,18 @@ const FULLY_DECLARED = Object.freeze({
   // because the field's grammar is "a raw Ed25519 public key" and a fixture that
   // only satisfied the regex would stop being a key the day the field checked.
   PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+  // WIN-271 (M4.5), D10, the remaining two providers. THREE variables across TWO
+  // groups, and the WhatsApp group is the first in this section to need a SECOND
+  // field with its anchor: Meta will not deliver a webhook until the subscription
+  // handshake succeeds, and the handshake is answered against the verify token
+  // alone, so an install with the app secret and no verify token would boot,
+  // serve, and receive nothing.
+  PLATOS_CHANNELS_WHATSAPP_APP_SECRET: "e".repeat(64),
+  PLATOS_CHANNELS_WHATSAPP_VERIFY_TOKEN: "f".repeat(64),
+  // Telegram's is checked against `setWebhook`'s OWN alphabet, so a fixture of
+  // repeated characters is a token Telegram would really have accepted rather
+  // than one that only satisfies a length.
+  PLATOS_CHANNELS_TELEGRAM_SECRET_TOKEN: "platos-test-secret-token-0123456789",
 });
 
 /** Nothing wired at all — the install part-way through setup that must boot. */
@@ -132,6 +144,12 @@ const GROUP_BUILDS: Readonly<Record<string, AdapterName>> = Object.freeze({
   // first section to name two directories behind the SAME port pair: the channels
   // registry chooses between them by provider.
   "channels.discord": "channel-discord",
+  // WIN-271 (M4.5), D10, the remaining two providers. The EIGHTH and NINTH, and
+  // with them ONE SECTION names FOUR directories behind the SAME port pair: the
+  // channels registry chooses among them by provider, and that is the shape
+  // `channel-runtime.ts` predicted when it made the registry a registry.
+  "channels.whatsapp": "channel-whatsapp",
+  "channels.telegram": "channel-telegram",
 });
 
 /**
@@ -295,7 +313,11 @@ describe("constructing the adapters an install declared", () => {
     // 13 -> 14 (WIN-271 (M4.5), D10): `channel-discord` is one more directory an
     // operator wires by setting a variable, so with nothing declared it is one
     // more CONFIGURATION row — asserted per directory by the GROUP_BUILDS loop.
-    expect(construction.unwired).toHaveLength(14);
+    // 14 -> 16 (WIN-271 (M4.5), D10, the remaining two providers): two more
+    // directories an operator wires by setting a variable, so with nothing
+    // declared they are two more CONFIGURATION rows — asserted per directory by
+    // the GROUP_BUILDS loop below rather than by this total.
+    expect(construction.unwired).toHaveLength(16);
     for (const adapter of BUILT_UNCONDITIONALLY) {
       expect(byCause.get(adapter)).toBeUndefined();
       expect(construction.adapters[adapter]).toBeDefined();
@@ -412,7 +434,7 @@ describe("readiness over what was actually constructed", () => {
     );
   });
 
-  it("reports 59 of 63, and the 4 that remain are exactly the bindings with no implementation", () => {
+  it("reports 63 of 67, and the 4 that remain are exactly the bindings with no implementation", () => {
     // THE ARITHMETIC, PINNED AND DERIVED. The literal catches drift in either
     // direction; the identity beside it says WHY the number is that number, so a
     // future tranche that implements one of the remaining directories sees both
@@ -475,7 +497,13 @@ describe("readiness over what was actually constructed", () => {
     // WIN-271 (M4.5), D10: +2 declared and unimplementable UNCHANGED (62/5 on its
     // lane). `channel-discord` arrived with a constructor, so both of its bindings
     // are satisfiable from the first commit and none joins the unimplementable side.
-    expect(ADAPTER_BINDINGS).toHaveLength(63);
+    // WIN-271 (M4.5), D10, THE REMAINING TWO PROVIDERS: 63 -> 67 declared and
+    // unimplementable UNCHANGED at 4. Both directories arrived with constructors,
+    // so all four of their bindings are satisfiable from the first commit and
+    // none joins the unimplementable side — the same shape `channel-discord` had,
+    // and the reason satisfied moves by exactly four while the third figure
+    // stands still.
+    expect(ADAPTER_BINDINGS).toHaveLength(67);
     expect(unimplementable).toHaveLength(4);
     // WIN-267 A1 + A2: 41 -> 45. Two new directories brought FOUR bindings
     // between them and both directories are constructible, so all four are
@@ -486,7 +514,9 @@ describe("readiness over what was actually constructed", () => {
     // 55 -> 59 of 60 -> 63 on the integrated tree: `notifier-email`'s two and both
     // Discord rows, all four satisfied because this fixture declares
     // `channels.emailNotifier` and `channels.discord`. See the subtraction above.
-    expect(verdict.detail.satisfiedBindings).toHaveLength(59);
+    // 59 -> 63 of 63 -> 67: the four new channel rows, all satisfied because this
+    // fixture declares `channels.whatsapp` and `channels.telegram`.
+    expect(verdict.detail.satisfiedBindings).toHaveLength(63);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
     expect(verdict.detail.unsatisfiedBindings).toHaveLength(4);
     // STILL RED, AND HONESTLY SO. Five ports have no implementation in this
@@ -1244,8 +1274,10 @@ describe("composing tools, whose two remaining ports no adapter directory may ho
     // reads off a real socket, asserted here against the table instead: composing
     // `tools` adds a CONTEXT and no BINDING, so `declaredBindings` is untouched.
     // (60 -> 63 is D20's `notifier-email:MagicLinkDelivery` plus WIN-271 (M4.5),
-    // D10's two `channel-discord` rows; neither is tools'.)
-    expect(ADAPTER_BINDINGS).toHaveLength(63);
+    // D10's two `channel-discord` rows; 63 -> 67 is D10's four remaining channel
+    // rows, two each for `channel-whatsapp` and `channel-telegram`. None is
+    // tools'.)
+    expect(ADAPTER_BINDINGS).toHaveLength(67);
   });
 
   it("publishes the adapters barrel from EXACTLY ONE of the seventeen, and it is the SDK's home", () => {

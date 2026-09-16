@@ -573,6 +573,42 @@ export const ADAPTERS = [
     additional: [{ port: "ChannelRuntime", owner: "channels" }],
     note: "Discord interactions: Ed25519 inbound, REST outbound",
   },
+  // WIN-271 (M4.5), D10. THE SEVENTEENTH DIRECTORY, and the SECOND second-home
+  // for `channels`' port pair — which is the moment "future adapters require no
+  // Core modification" stops being a claim about one case. It is a directory and
+  // not a row on `channel-discord` for §15's reason: ONE VENDOR CLIENT is one
+  // directory, and Meta is a different vendor. Here, as with Discord, there is no
+  // client library at all: `node:crypto` computes its HMAC-SHA256 and `fetch`
+  // speaks its Graph routes.
+  //
+  // TWO BINDINGS FOR THE REASON EVERY CHANNEL DIRECTORY HAS TWO:
+  // `ChannelRuntime` extends `ChannelAdapter`, one object satisfies both, and
+  // `PORT_SATISFACTION` proves each so the compiler notices the day either
+  // changes shape. Its only owner is `channels`, so it brings exactly the two
+  // edges every adapter directory brings and no more.
+  {
+    dir: "channel-whatsapp",
+    port: "ChannelAdapter",
+    owner: "channels",
+    additional: [{ port: "ChannelRuntime", owner: "channels" }],
+    note: "WhatsApp Cloud API: HMAC-SHA256 inbound, Graph REST outbound",
+  },
+  // WIN-271 (M4.5), D10. THE EIGHTEENTH DIRECTORY, and the last of D10's three.
+  // Same shape and same reasoning as the two channel directories above it; what
+  // differs is what its suites can PROVE, and `channel-telegram/src/adapter.ts`
+  // states that at the top of the file rather than leaving it to be discovered:
+  // its inbound check compares a secret the integrator itself chose, so there is
+  // no vendor vector and no vendor library to join it to, and the joined halves
+  // are `node:crypto`'s own `timingSafeEqual` semantics, fixtures transcribed
+  // from the published Bot API reference, and the outbound contract read back off
+  // a recording server.
+  {
+    dir: "channel-telegram",
+    port: "ChannelAdapter",
+    owner: "channels",
+    additional: [{ port: "ChannelRuntime", owner: "channels" }],
+    note: "Telegram Bot API: shared-secret inbound, REST outbound",
+  },
 ];
 
 /**
@@ -891,8 +927,16 @@ export function adapterOwnerPackages(adapter) {
 //
 // INTEGRATED AND RE-MEASURED, not summed from either lane's report: 15 + 1 = 16
 // directories and 60 + 1 + 2 = 63 bindings.
-export const EXPECTED_ADAPTER_COUNT = 16;
-export const EXPECTED_BINDING_COUNT = 63;
+//
+// WIN-271 (M4.5), D10 (the remaining two providers): 16 -> 18 directories and
+// 63 -> 67 bindings. `packages/adapters/channel-whatsapp` and
+// `packages/adapters/channel-telegram` are the THIRD and FOURTH `ChannelRuntime`,
+// and each takes both of `channels`' channel ports with it for the reason
+// `channel-slack` and `channel-discord` hold both. Both pins move, by two and by
+// four. D10 named three providers and none is dropped; with these two, all three
+// are on the branch.
+export const EXPECTED_ADAPTER_COUNT = 18;
+export const EXPECTED_BINDING_COUNT = 67;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -941,7 +985,12 @@ export const ROOT_SOLUTION_PATH = "tsconfig.json";
 // 35 -> 36 (WIN-271 (M4.5), D10). `packages/adapters/channel-discord`, the
 // sixteenth adapter directory, a PROJECT for the reason every adapter is one:
 // ADR M0.3 §2 lets only an adapter package implement a driven port.
-export const EXPECTED_PROJECT_COUNT = 36;
+// 36 -> 38 (WIN-271 (M4.5), D10, the remaining two providers).
+// `packages/adapters/channel-whatsapp` and `packages/adapters/channel-telegram`,
+// the seventeenth and eighteenth adapter directories, each a PROJECT for the
+// reason every adapter is one: ADR M0.3 §2 lets only an adapter package
+// implement a driven port.
+export const EXPECTED_PROJECT_COUNT = 38;
 // 94 -> 95 (WIN-297): apps/core-api -> packages/kernel. The composition root
 // binds twelve adapters to the ports they implement and three of those ports
 // (OutboxWriter, DurableRuntime, EventBus) are kernel-hosted, so without this
@@ -1160,7 +1209,12 @@ export const EXPECTED_PROJECT_COUNT = 36;
 // `packages/contexts/channels` (its one owner, carrying TWO ports in ONE
 // reference) and `apps/core-api` -> `packages/adapters/channel-discord` (the
 // composition-root edge every adapter gets). READ BACK, as above.
-export const EXPECTED_EDGE_COUNT = 125;
+// WIN-271 (M4.5), D10 (the remaining two providers): 125 + 4 = 129 --
+// `packages/adapters/channel-whatsapp` -> `packages/contexts/channels` and
+// `packages/adapters/channel-telegram` -> `packages/contexts/channels` (one owner
+// each, carrying TWO ports in ONE reference), plus `apps/core-api` -> each of the
+// two (the composition-root edge every adapter gets). READ BACK, as above.
+export const EXPECTED_EDGE_COUNT = 129;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -1182,7 +1236,10 @@ export const SCAFFOLDING_BASENAMES = ["package.json", "tsconfig.json", "README.m
 // project brings: 34 projects x 3 files + 1 = 103.
 // 106 -> 109 (WIN-271 (M4.5), D10). The sixteenth directory brings the three
 // files every project brings: 36 projects x 3 files + 1 = 109.
-export const EXPECTED_SCAFFOLDING_FILE_COUNT = 109;
+// 109 -> 115 (WIN-271 (M4.5), D10, the remaining two providers): 38 projects x 3
+// files + 1. The seventeenth and eighteenth directories bring the same three
+// each, for the same reason every directory before them did.
+export const EXPECTED_SCAFFOLDING_FILE_COUNT = 115;
 
 // Declaration-only source placeholders in a fully unadopted skeleton:
 // kernel 3 + contexts 17x4 + adapters 13x2 + core-api 8 + mcp-stdio 1.
@@ -1223,7 +1280,11 @@ export const EXPECTED_SCAFFOLDING_FILE_COUNT = 109;
 // `src/adapter.ts`, emitted for an unadopted project and released by the
 // adoption below in the same run; the CEILING rises so un-adoption still fails
 // closed.
-export const EXPECTED_PLACEHOLDER_FILE_COUNT = 112;
+// 112 -> 116 (WIN-271 (M4.5), D10, the remaining two providers). The
+// seventeenth and eighteenth directories' `src/index.ts` and `src/adapter.ts`,
+// emitted for unadopted projects and released by the adoptions below in the same
+// run; the CEILING rises so un-adoption still fails closed.
+export const EXPECTED_PLACEHOLDER_FILE_COUNT = 116;
 
 // ---------------------------------------------------------------------------
 // ADOPTED PROJECTS (WIN-256). Append-only, one project path per entry, each with
@@ -1271,6 +1332,8 @@ export const ADOPTED_PROJECTS = [
   "packages/adapters/notifier-email", // D20 (2026-09-15) — outbound email for two owners over ONE SMTP submission client written here: STARTTLS whenever offered, credentials never sent in clear, base64 bodies dot-stuffing cannot alter, and a header value with a line break refused rather than cleaned
   "packages/adapters/redis-streams", // WIN-272 (M4.6) — the kernel EventBus and StreamJournal over ONE Redis Streams client: the producer's own sequence IS the server-enforced entry id, a trimmed resume position is REFUSED rather than answered with a gap, and a bus that reconnects joins the live end because it is a fan-out seam and not a queue
   "packages/adapters/channel-discord", // WIN-271 (M4.5), D10 — the SECOND channels ChannelRuntime: Ed25519 over `timestamp + body` joined to RFC 8032 and to Discord's own helper library, the PING handshake, rate-limit windows that refuse before a socket opens, and a far side that records what it CREATED as well as what it received
+  "packages/adapters/channel-whatsapp", // WIN-271 (M4.5), D10 — the THIRD channels ChannelRuntime: HMAC-SHA256 over the raw body joined to RFC 4231 and to a second HMAC built from raw SHA-256 per RFC 2104 (Meta publishes no worked vector, and the header says so), the hub.challenge handshake behind its own secret type, a batched delivery REFUSED rather than half-admitted, and an edit refused because the Cloud API has no edit route
+  "packages/adapters/channel-telegram", // WIN-271 (M4.5), D10 — the FOURTH channels ChannelRuntime and the one whose inbound half cannot be joined to anything outside this repository: the adapter header says so, and what IS joined is node:crypto's own timingSafeEqual semantics, update fixtures transcribed from the published Bot API reference, and the outbound contract read back off a recording server
 ];
 
 // ---------------------------------------------------------------------------

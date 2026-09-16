@@ -838,12 +838,29 @@ export const VIOLATION_CODES = Object.freeze({
  * the one place this deployable is entitled to read a variable, and read through
  * its loader.
  *
+ * WIN-271 (M4.5), D10, THE REMAINING TWO PROVIDERS: 1760 + 35 = 1795, and NO DOOR
+ * OPENED. Nineteen files under `packages/adapters/channel-whatsapp/src` (fourteen
+ * modules and five suites) and sixteen under
+ * `packages/adapters/channel-telegram/src` (twelve modules and four suites), and
+ * not one reads the environment. The reasons are `channel-discord`'s, unchanged:
+ * the app secret, the verify token and the secret token arrive per delivery on
+ * the command and the outbound credential per send; the Graph and Bot API bases,
+ * the deadline, the clock and the `fetch` are construction options whose doc
+ * comments say why they must NOT be operator-settable — and here that argument is
+ * sharper than anywhere, because Telegram's base carries the BOT TOKEN in its
+ * path, so an operator-settable host would exfiltrate the credential itself; and
+ * both far sides bind an ephemeral loopback port rather than reading one. Their
+ * three configuration variables are declared in
+ * `apps/core-api/src/config/channels.ts`, the one place this deployable is
+ * entitled to read a variable, and read through its loader.
+ *
  * THE NUMBER BELOW IS RE-MEASURED ON THE INTEGRATED TREE, NOT SUMMED FROM THE
  * LANE REPORTS: each lane measured its own delta against 1701, and only the merge
  * can say what the four together produce. 1701 + 18 + 2 + 21 + 18 = 1760, and the
- * audit run on this merge is the authority for it.
+ * audit run on this merge is the authority for it; this lane re-measured 1795 on
+ * top of that merge the same way.
  */
-export const EXPECTED_FILE_COUNT = 1760;
+export const EXPECTED_FILE_COUNT = 1795;
 
 function listSourceFiles(root) {
   const found = [];

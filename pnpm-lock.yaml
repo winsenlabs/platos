@@ -283,6 +283,12 @@ importers:
       '@platos/adapter-channel-slack':
         specifier: workspace:*
         version: link:../../packages/adapters/channel-slack
+      '@platos/adapter-channel-telegram':
+        specifier: workspace:*
+        version: link:../../packages/adapters/channel-telegram
+      '@platos/adapter-channel-whatsapp':
+        specifier: workspace:*
+        version: link:../../packages/adapters/channel-whatsapp
       '@platos/adapter-clickhouse-observability':
         specifier: workspace:*
         version: link:../../packages/adapters/clickhouse-observability
@@ -1041,6 +1047,18 @@ importers:
       '@chat-adapter/slack-audited':
         specifier: npm:@chat-adapter/slack@4.34.0
         version: '@chat-adapter/slack@4.34.0(ai@7.0.28(zod@4.4.3))(bufferutil@4.0.9)(zod@4.4.3)'
+
+  packages/adapters/channel-telegram:
+    dependencies:
+      '@platos/context-channels':
+        specifier: workspace:*
+        version: link:../../contexts/channels
+
+  packages/adapters/channel-whatsapp:
+    dependencies:
+      '@platos/context-channels':
+        specifier: workspace:*
+        version: link:../../contexts/channels
 
   packages/adapters/clickhouse-observability:
     dependencies:

@@ -23,7 +23,11 @@ const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 // maintaining them separately is for.
 // WIN-271 (M4.5), D10: 35 -> 36. `packages/adapters/channel-discord`, the
 // sixteenth adapter directory, derived here independently of the generator.
-export const EXPECTED_PROJECT_COUNT = 36;
+// WIN-271 (M4.5), D10 (the remaining two providers): 36 -> 38.
+// `packages/adapters/channel-whatsapp` and `packages/adapters/channel-telegram`,
+// the seventeenth and eighteenth adapter directories, derived here independently
+// of the generator for the reason the rows above give.
+export const EXPECTED_PROJECT_COUNT = 38;
 // 94 -> 95 (WIN-297). `apps/core-api` gained one workspace edge, to
 // `packages/kernel`.
 //
@@ -258,7 +262,13 @@ export const EXPECTED_PROJECT_COUNT = 36;
 // `apps/core-api` -> `packages/adapters/channel-discord`. The source model makes
 // the second one real: it counts only because `adapter-bindings.ts` imports the
 // constructor.
-export const EXPECTED_EDGE_COUNT = 125;
+// WIN-271 (M4.5), D10 (the remaining two providers): 125 + 4 = 129 --
+// `packages/adapters/channel-whatsapp` -> `packages/contexts/channels` and
+// `packages/adapters/channel-telegram` -> `packages/contexts/channels` (one owner
+// each, TWO ports, ONE reference), plus `apps/core-api` -> each of the two. The
+// source model makes the last two real: they count only because
+// `adapter-bindings.ts` imports both constructors.
+export const EXPECTED_EDGE_COUNT = 129;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -555,6 +565,11 @@ export const EXPECTED_ADAPTER_OWNERS = {
   // appended LAST because root references follow the generator's `ADAPTERS`
   // order and the sixteenth directory was appended there.
   "channel-discord": ["channels"],
+  // WIN-271 (M4.5), D10. Two more of the same shape, appended LAST for the same
+  // reason: root references follow the generator's `ADAPTERS` order, and the
+  // seventeenth and eighteenth directories were appended there.
+  "channel-whatsapp": ["channels"],
+  "channel-telegram": ["channels"],
 };
 
 /**

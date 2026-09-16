@@ -408,6 +408,28 @@ module.exports = {
       }
     },
     {
+      "name": "whatsapp-sdk-only",
+      "comment": "node_modules/(whatsapp-web\\.js|@whiskeysockets|baileys|facebook-nodejs-business-sdk) may be imported only from its single owning adapter.",
+      "severity": "error",
+      "from": {
+        "pathNot": "^packages/adapters/channel-whatsapp/"
+      },
+      "to": {
+        "path": "node_modules/(whatsapp-web\\.js|@whiskeysockets|baileys|facebook-nodejs-business-sdk)"
+      }
+    },
+    {
+      "name": "telegram-sdk-only",
+      "comment": "node_modules/(node-telegram-bot-api|telegraf|@telegraf|grammy|@grammyjs|telegram) may be imported only from its single owning adapter.",
+      "severity": "error",
+      "from": {
+        "pathNot": "^packages/adapters/channel-telegram/"
+      },
+      "to": {
+        "path": "node_modules/(node-telegram-bot-api|telegraf|@telegraf|grammy|@grammyjs|telegram)"
+      }
+    },
+    {
       "name": "provider-sdk-only",
       "comment": "node_modules/(openai|@anthropic-ai) may be imported only from its single owning adapter.",
       "severity": "error",

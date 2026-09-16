@@ -187,6 +187,13 @@ export function coreApiEnvironment({ postgresUrl, redisUrl, defaultModel, secret
     // directory stops being a generated interface. `channel-discord` arrived with a
     // constructor; `notifier-email` gained one with the magic-link delivery port.
     PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: secrets.discordPublicKey,
+    // WIN-271 (M4.5), D10, the remaining two providers. `channel-whatsapp` and
+    // `channel-telegram` also arrived with constructors, so the same rule applies:
+    // leave either group undeclared and the smoke fails on an adapter unwired for
+    // a reason CONFIGURATION could fix.
+    PLATOS_CHANNELS_WHATSAPP_APP_SECRET: secrets.whatsappAppSecret,
+    PLATOS_CHANNELS_WHATSAPP_VERIFY_TOKEN: secrets.whatsappVerifyToken,
+    PLATOS_CHANNELS_TELEGRAM_SECRET_TOKEN: secrets.telegramSecretToken,
     PLATOS_CHANNELS_EMAIL_SMTP_URL: secrets.emailSmtpUrl,
     PLATOS_CHANNELS_EMAIL_FROM: secrets.emailFrom,
     PLATOS_CHANNELS_EMAIL_LOGIN_URL: secrets.emailLoginUrl,
@@ -279,6 +286,16 @@ async function main() {
     // one is as good as a real point here, and a real one would be a credential in
     // the source of a smoke that needs none.
     discordPublicKey: randomBytes(32).toString("hex"),
+    // WIN-271 (M4.5), D10. The same argument as the public key above, for the two
+    // remaining providers: constructing either adapter never touches its material
+    // — the app secret, the verify token and the secret token all travel per
+    // delivery on the command — so a random value is as good as a real one here,
+    // and a real one would be a credential in the source of a smoke that needs
+    // none. The Telegram token is rendered in `setWebhook`'s own alphabet, because
+    // the config field checks the alphabet and not only the length.
+    whatsappAppSecret: randomBytes(32).toString("hex"),
+    whatsappVerifyToken: randomBytes(32).toString("hex"),
+    telegramSecretToken: randomBytes(32).toString("base64url"),
     // The relay is never dialled: constructing `notifier-email` opens no socket, and
     // this smoke sends nothing. The address is unroutable on purpose.
     emailSmtpUrl: "smtp://127.0.0.1:1",
