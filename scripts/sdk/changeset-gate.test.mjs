@@ -23,18 +23,22 @@ import { join, relative } from "node:path";
 import test from "node:test";
 
 import {
+  ARCHIVED_CHANGESETS,
   GENERATED_SDK_ARTIFACTS,
   GOVERNING_LICENSE,
   NON_SHIPPING,
   PYTHON_SDK_TWINS,
+  citedCommits,
   classifyPath,
   evaluate,
   fixtureSurface,
   isLicenseReconciliation,
   pyprojectName,
+  readDeletedChangesets,
   readPackages,
   repositoryRoot,
   runGate,
+  versionSetAt,
 } from "./changeset-gate.mjs";
 import { FIXTURE_OUTPUT, PYTHON_OUTPUT, TYPESCRIPT_OUTPUT, buildArtifacts } from "./v1-contract.mjs";
 
@@ -309,6 +313,184 @@ test("the rule in both directions, over the real package inventory", () => {
     ["names-non-publishable"],
     "carried or not, a name that does not publish is refused",
   );
+
+  // A CITATION OLDER THAN THE PACKAGE'S LAST VERSION BUMP IS NOT A REASON TO MOVE THE
+  // VERSION AGAIN. Reachability alone used to clear the gate here.
+  assert.deepEqual(
+    evaluate({
+      changedPaths: [],
+      packages,
+      changesets: [
+        changeset(".changeset/a.md", ["@platosdev/token-mint"], [
+          { sha: "abcdef0123456", touched: ["packages/platos-token-mint/src/index.ts"], staleFor: ["@platosdev/token-mint"] },
+        ]),
+      ],
+    }).violations.map((entry) => entry.kind),
+    ["names-released-change"],
+  );
+  assert.deepEqual(
+    evaluate({
+      changedPaths: [],
+      packages,
+      changesets: [
+        changeset(".changeset/a.md", ["@platosdev/token-mint"], [
+          { sha: "abcdef0123456", touched: ["packages/platos-token-mint/src/index.ts"], staleFor: ["@platosdev/token-mint"] },
+          { sha: "0123456abcdef", touched: ["packages/platos-token-mint/src/index.ts"], staleFor: [] },
+        ]),
+      ],
+    }).violations,
+    [],
+    "one live citation is enough, however many stale ones sit beside it",
+  );
+  assert.deepEqual(
+    evaluate({
+      changedPaths: [],
+      packages,
+      changesets: [
+        changeset(".changeset/a.md", ["@platosdev/token-mint"], [
+          { sha: "abcdef0123456", touched: ["packages/platos-embed/src/embed.ts"], staleFor: ["@platosdev/embed"] },
+        ]),
+      ],
+    }).violations.map((entry) => entry.kind),
+    ["names-unchanged"],
+    "stale for ANOTHER package is still simply not a citation of this one",
+  );
+
+  // DELETED -> STILL PENDING.
+  const deleted = (names) => ({
+    path: ".changeset/dropped.md",
+    releases: names.map((name) => ({ name, type: "patch" })),
+  });
+  assert.deepEqual(
+    evaluate({ changedPaths: [], packages, changesets: [], deletedChangesets: [deleted(["@platosdev/token-mint"])] })
+      .violations.map((entry) => [entry.kind, entry.package]),
+    [["deletes-pending-intent", "@platosdev/token-mint"]],
+  );
+  assert.deepEqual(
+    evaluate({
+      changedPaths: [],
+      packages,
+      changesets: [],
+      deletedChangesets: [deleted(["@platosdev/token-mint"])],
+      versionBumped: new Set(["@platosdev/token-mint"]),
+    }).violations,
+    [],
+    "a version step that SPENDS the intent moves the manifest version in the same diff",
+  );
+  assert.deepEqual(
+    evaluate({
+      changedPaths: [],
+      packages,
+      changesets: [],
+      deletedChangesets: [{ ...deleted(["@platosdev/token-mint"]), preserved: new Set(["@platosdev/token-mint:patch"]) }],
+    }).violations,
+    [],
+    "an entry kept under the archive CHANGESETS.md names is relocated history, not dropped intent",
+  );
+  assert.deepEqual(
+    evaluate({
+      changedPaths: [],
+      packages,
+      changesets: [],
+      deletedChangesets: [{ ...deleted(["@platosdev/token-mint"]), preserved: new Set(["@platosdev/token-mint:minor"]) }],
+    }).violations.map((entry) => entry.kind),
+    ["deletes-pending-intent"],
+    "the archived copy has to preserve the same BUMP, not merely the same name",
+  );
+});
+
+test("the two named->changed leniencies are closed, against real history", () => {
+  // `versionSetAt` reads the package's OWN manifest history, so the commit it names is
+  // checked against that manifest rather than against a list written here.
+  const mint = packages.find((entry) => entry.name === "@platosdev/token-mint" && entry.python === null);
+  assert.ok(mint, "@platosdev/token-mint is gone; pick another publishable package");
+  const bump = versionSetAt(mint, "HEAD", repositoryRoot);
+  assert.match(bump ?? "", /^[0-9a-f]{40}$/u, "no commit in history set this package's version");
+  const manifest = `${mint.directory}/package.json`;
+  const at = (revision) => JSON.parse(git(["show", `${revision}:${manifest}`], repositoryRoot)).version;
+  let parent = null;
+  try {
+    parent = git(["rev-parse", "--verify", "--quiet", `${bump}^1`], repositoryRoot).trim();
+  } catch {
+    parent = null;
+  }
+  if (parent === null) {
+    // A ROOT COMMIT counts: the version it introduced is the one it set. This
+    // repository's import squashed its pre-V1 history, so several manifests are of
+    // that shape and the rule has to say what it means for them.
+    assert.equal(
+      git(["log", "--max-count=1", "--diff-filter=A", "--format=%H", bump, "--", manifest], repositoryRoot).trim(),
+      bump,
+      "versionSetAt named a parentless commit that did not add the manifest",
+    );
+  } else {
+    assert.notEqual(at(bump), at(parent), "versionSetAt named a commit that did not move the version");
+  }
+  assert.equal(
+    at(bump),
+    JSON.parse(readFileSync(join(repositoryRoot, manifest), "utf8")).version,
+    "versionSetAt must name the commit that set the CURRENT version",
+  );
+
+  // A commit at or before that bump is stale for this package.
+  const older = git(["log", "-1", "--format=%H", bump, "--", `${mint.directory}/src`], repositoryRoot).trim();
+  assert.match(older, /^[0-9a-f]{40}$/u);
+  const staleCite = citedCommits(`Records ${older.slice(0, 10)}.`, "HEAD", repositoryRoot, packages);
+  assert.equal(staleCite.length, 1, "the planted hash did not resolve");
+  assert.ok(
+    staleCite[0].staleFor.includes("@platosdev/token-mint"),
+    `${older.slice(0, 10)} is at or before ${bump.slice(0, 10)} and must be stale for the package it touched`,
+  );
+  assert.deepEqual(
+    evaluate({
+      changedPaths: [],
+      packages,
+      changesets: [
+        { path: ".changeset/a.md", releases: [{ name: "@platosdev/token-mint", type: "patch" }], summary: "", cited: staleCite },
+      ],
+    }).violations.map((entry) => entry.kind),
+    ["names-released-change"],
+    "the gate passed on exactly this citation before the rule existed",
+  );
+
+  // THE ARCHIVE CARVE-OUT IS MEASURED AGAINST THE TREE, not asserted: the entry the
+  // frozen oracle still carries is the one this repository moved into history, and the
+  // comparison is by declared release because `generate:evidence-lifecycle` stamps
+  // front matter onto everything under `docs/`.
+  const oracle = "89c12b8aa8da75c561dc879f370aaefb6e3359bc";
+  let haveOracle = true;
+  try {
+    git(["cat-file", "-e", `${oracle}^{commit}`], repositoryRoot);
+  } catch {
+    haveOracle = false;
+  }
+  if (haveOracle) {
+    const mergeBase = git(["merge-base", oracle, "HEAD"], repositoryRoot).trim();
+    const dropped = readDeletedChangesets(
+      [{ status: "D", path: ".changeset/ppr-34-platos-client-mvp.md" }],
+      mergeBase,
+      "HEAD",
+      repositoryRoot,
+    );
+    assert.equal(dropped.length, 1);
+    assert.ok(dropped[0].releases.length > 0);
+    for (const release of dropped[0].releases) {
+      assert.ok(
+        dropped[0].preserved.has(`${release.name}:${release.type}`),
+        `${release.name}:${release.type} is not preserved under ${ARCHIVED_CHANGESETS}/`,
+      );
+    }
+  }
+  // And the carve-out is not a blanket pass: a live entry has no archived twin.
+  const live = readDeletedChangesets(
+    [{ status: "D", path: ".changeset/platools-sdk-tenancy-id-docs.md" }],
+    "HEAD",
+    "HEAD",
+    repositoryRoot,
+  );
+  assert.equal(live.length, 1);
+  assert.ok(live[0].releases.length > 0);
+  assert.equal(live[0].preserved.size, 0);
 });
 
 test("a licence reconciliation in a real worktree needs no changeset, and a licence change of any other shape does", (t) => {
@@ -454,6 +636,32 @@ test("a planted change in a real worktree fires the CLI, and version intent clea
   const platoolsPy = runHere();
   assert.equal(platoolsPy.status, 1, platoolsPy.stderr);
   assert.match(platoolsPy.stderr, /@platosdev\/platools-sdk changed without a changeset naming it: packages\/platools-py\/platools\/context\.py/u);
+
+  // DELETING PENDING INTENT IS REFUSED. Before this rule the gate skipped every
+  // deleted changeset, so a diff could remove a recorded release and exit 0.
+  git(["reset", "-q", "--hard", "HEAD~1"], worktree);
+  const pending = join(worktree, ".changeset", "platos-client-post-retry-guard.md");
+  const pendingSource = readFileSync(pending, "utf8");
+  assert.match(pendingSource, /@platosdev\/client/u, "the entry this case deletes no longer names the client");
+  rmSync(pending);
+  commit("delete a pending changeset");
+  const dropped = runHere();
+  assert.equal(dropped.status, 1, dropped.stderr);
+  assert.match(
+    dropped.stderr,
+    /\.changeset\/platos-client-post-retry-guard\.md is deleted, and it declared pending \w+ intent for @platosdev\/client/u,
+  );
+  // The same deletion passes once the package's own version moves, which is what a
+  // version step that SPENDS the entry does.
+  const clientManifest = join(worktree, "packages", "platos-client", "package.json");
+  const manifestSource = JSON.parse(readFileSync(clientManifest, "utf8"));
+  writeFileSync(clientManifest, `${JSON.stringify({ ...manifestSource, version: `${manifestSource.version}-planted.1` }, null, 2)}\n`);
+  writeFileSync(join(worktree, ".changeset", "gate-test-client.md"), '---\n"@platosdev/client": patch\n---\n\nPlanted.\n');
+  git(["add", "-A"], worktree);
+  git(["commit", "-q", "--amend", "--no-edit"], worktree);
+  const spent = runHere();
+  assert.equal(spent.status, 0, spent.stderr);
+  assert.match(spent.stderr, /deleted \.changeset\/platos-client-post-retry-guard\.md, which declared @platosdev\/client:/u);
 
   // A THIRD packages/* directory with no npm manifest is a refusal, not a pass.
   git(["reset", "-q", "--hard", "HEAD~1"], worktree);

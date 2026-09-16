@@ -103,6 +103,14 @@ export const PACKAGE_GLOB = "packages/*";
 export const CHANGESET_DIRECTORY = ".changeset";
 
 /**
+ * Where CHANGESETS.md says the entries naming retired package identities were
+ * "preserved byte-for-byte". A deleted entry whose bytes are here at head was moved
+ * into history rather than dropped, which is the only deletion the gate excuses
+ * besides a version step that spends the intent.
+ */
+export const ARCHIVED_CHANGESETS = "docs/audits/history/win-252/stale-changesets";
+
+/**
  * The SPDX id CHANGESETS.md calls the repository's governing licence metadata, and
  * the one `scripts/license-distribution.test.mjs` requires of every non-private
  * package manifest. `changeset-gate.test.mjs` reads that test to keep the two equal.
@@ -369,14 +377,24 @@ export function licenseReconciliations(changedPaths, mergeBase, head, packages, 
   return exempt;
 }
 
+/** Is this path a changeset entry (and not the directory's README or a nested file)? */
+function isChangesetEntry(path) {
+  if (!path.startsWith(`${CHANGESET_DIRECTORY}/`) || !path.endsWith(".md")) return false;
+  if (path.slice(CHANGESET_DIRECTORY.length + 1).includes("/")) return false;
+  return !path.endsWith("/README.md");
+}
+
 /**
- * Changesets the diff adds or edits, parsed at head. Deleted ones are the version step's business.
+ * Changesets the diff adds or edits, parsed at head.
  *
  * `carried` holds the `name:type` releases an EDITED changeset already declared at
  * the merge base. Those are pending intent recorded for an earlier change, not intent
  * this diff creates: when WIN-253 deleted the retired package names from
  * `.changeset/eobd-83-followup-package-repo-urls.md`, the two names it kept did not
  * become claims about this diff. A release that is new, or whose bump changed, is.
+ *
+ * DELETED entries are NOT skipped any more; `readDeletedChangesets` reads them at the
+ * merge base and `evaluate` refuses a deletion that drops still-pending intent.
  */
 export function readChangesets(changedWithStatus, head, root, mergeBase = null) {
   const found = [];
@@ -390,8 +408,7 @@ export function readChangesets(changedWithStatus, head, root, mergeBase = null) 
   };
   for (const { status, path } of changedWithStatus) {
     if (status === "D") continue;
-    if (!path.startsWith(`${CHANGESET_DIRECTORY}/`) || !path.endsWith(".md")) continue;
-    if (path.slice(CHANGESET_DIRECTORY.length + 1).includes("/") || path.endsWith("/README.md")) continue;
+    if (!isChangesetEntry(path)) continue;
     const parsed = parseAt(head, path);
     const carried = new Set();
     if (status === "M" && mergeBase !== null) {
@@ -402,8 +419,134 @@ export function readChangesets(changedWithStatus, head, root, mergeBase = null) 
   return found;
 }
 
-/** Commits a changeset body cites, keeping only those that resolve and are reachable from head. */
-export function citedCommits(summary, head, root) {
+/**
+ * Changesets the diff DELETES, parsed at the merge base.
+ *
+ * THE LENIENCY THIS CLOSES. The gate read the diff in both directions and ignored
+ * deletions entirely, so a diff could REMOVE pending version intent — the retry-guard
+ * entry, say — and pass with nothing said. That is the one direction where silence is
+ * a loss of a maintainer's recorded decision rather than an absence of one.
+ *
+ * In a repository that RAN `changeset version` this would be ordinary: the version step
+ * consumes entries as it applies them. This repository does not have that step —
+ * CHANGESETS.md says so in as many words ("no Changesets release workflow, npm
+ * publication workflow, prerelease helper, or automatic npm authority") — so a deleted
+ * entry here is intent dropped, not intent spent. `evaluate` still allows the spent
+ * case, keyed on the only evidence that distinguishes it: the named package's own
+ * version moving in the same diff.
+ */
+export function readDeletedChangesets(changedWithStatus, mergeBase, head, root) {
+  if (mergeBase === null) return [];
+  const found = [];
+  for (const { status, path } of changedWithStatus) {
+    if (status !== "D" || !isChangesetEntry(path)) continue;
+    const source = gitOrNull(["show", `${mergeBase}:${path}`], root);
+    if (source === null) continue;
+    let parsed;
+    try {
+      parsed = parseChangeset(source);
+    } catch {
+      // Unparseable at the base: it recorded no machine-readable intent, so its
+      // removal drops none.
+      continue;
+    }
+    // PRESERVED, NOT DROPPED. CHANGESETS.md records that the entries naming retired
+    // package identities were kept under ARCHIVED_CHANGESETS. The evidence is the
+    // archived file's own front matter, not this gate's opinion — and it is compared
+    // by DECLARED RELEASE and not by bytes, because `generate:evidence-lifecycle`
+    // stamps a `title`/`lifecycle` pair and a banner onto everything under `docs/`,
+    // so "byte-for-byte" stopped being literally true the moment that gate ran.
+    const archivedSource = gitOrNull(
+      ["show", `${head}:${ARCHIVED_CHANGESETS}/${path.slice(CHANGESET_DIRECTORY.length + 1)}`],
+      root,
+    );
+    const preserved = new Set();
+    if (archivedSource !== null) {
+      try {
+        for (const release of parseChangeset(archivedSource).releases) preserved.add(`${release.name}:${release.type}`);
+      } catch {
+        // An archived copy that no longer parses preserves nothing the gate can read.
+      }
+    }
+    found.push({ path, releases: parsed.releases, preserved });
+  }
+  return found;
+}
+
+/**
+ * Packages whose own manifest version moved between the merge base and head.
+ *
+ * This is the ONLY signal that tells a `changeset version` run (which consumes entries
+ * as it applies them) apart from a plain deletion of pending intent.
+ */
+export function versionBumps(packages, mergeBase, head, root) {
+  const bumped = new Set();
+  if (mergeBase === null) return bumped;
+  for (const entry of packages) {
+    if (entry.private || entry.python !== null) continue;
+    const manifest = `${entry.directory}/package.json`;
+    const before = gitOrNull(["show", `${mergeBase}:${manifest}`], root);
+    const after = gitOrNull(["show", `${head}:${manifest}`], root);
+    if (before === null || after === null) continue;
+    try {
+      if (JSON.parse(before).version !== JSON.parse(after).version) bumped.add(entry.name);
+    } catch {
+      continue;
+    }
+  }
+  return bumped;
+}
+
+/**
+ * The commit that set a package's CURRENT version, or null if nothing in history did.
+ *
+ * Walks that package's manifest history newest-first and stops at the first commit
+ * where the `version` field differs from its first parent's. A commit that ADDED the
+ * manifest counts: the version it introduced is the one that commit set.
+ */
+export function versionSetAt(entry, head, root, limit = 200) {
+  const manifest = `${entry.directory}/package.json`;
+  const versionAt = (revision) => {
+    const source = gitOrNull(["show", `${revision}:${manifest}`], root);
+    if (source === null) return null;
+    try {
+      return JSON.parse(source).version ?? null;
+    } catch {
+      return null;
+    }
+  };
+  const history = (gitOrNull(["log", `--max-count=${limit}`, "--format=%H", head, "--", manifest], root) ?? "")
+    .split("\n")
+    .filter(Boolean);
+  for (const sha of history) {
+    const parent = gitOrNull(["rev-parse", "--verify", "--quiet", `${sha}^1`], root)?.trim() ?? null;
+    if (parent === null) return sha;
+    if (versionAt(sha) !== versionAt(parent)) return sha;
+  }
+  return null;
+}
+
+/**
+ * Commits a changeset body cites, keeping only those that resolve and are reachable from head.
+ *
+ * `staleFor` names the packages for which this commit is ALREADY RELEASED: it is the
+ * package's own version-setting commit or an ancestor of it, so the change it carries
+ * shipped under the version the manifest currently declares.
+ *
+ * THE LENIENCY THIS CLOSES. Reachability alone let a changeset name an unchanged
+ * package and clear the gate by quoting ANY commit hash that ever touched that
+ * package's shipped paths — including one released long ago. "Reachable and it touched
+ * the package" is not "this diff has a reason to move the version".
+ */
+export function citedCommits(summary, head, root, packages = [], limit = 200) {
+  const releasedAt = new Map();
+  const setAt = (name) => {
+    if (releasedAt.has(name)) return releasedAt.get(name);
+    const entry = packages.find((candidate) => candidate.name === name && candidate.python === null);
+    const sha = entry === undefined ? null : versionSetAt(entry, head, root, limit);
+    releasedAt.set(name, sha);
+    return sha;
+  };
   const cited = [];
   for (const [candidate] of summary.matchAll(/\b[0-9a-f]{7,40}\b/gu)) {
     const sha = gitOrNull(["rev-parse", "--verify", "--quiet", `${candidate}^{commit}`], root)?.trim();
@@ -412,7 +555,13 @@ export function citedCommits(summary, head, root) {
     const touched = git(["diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "--root", sha], root)
       .split("\0")
       .filter(Boolean);
-    cited.push({ sha, touched });
+    const staleFor = [];
+    for (const name of movedPackages(touched, packages).keys()) {
+      const bump = setAt(name);
+      if (bump === null) continue;
+      if (gitOrNull(["merge-base", "--is-ancestor", sha, bump], root) !== null) staleFor.push(name);
+    }
+    cited.push({ sha, touched, staleFor });
   }
   return cited;
 }
@@ -422,7 +571,13 @@ export function citedCommits(summary, head, root) {
  *
  * `changesets[].cited` is `[{ sha, touched }]`.
  */
-export function evaluate({ changedPaths, packages, changesets }) {
+export function evaluate({
+  changedPaths,
+  packages,
+  changesets,
+  deletedChangesets = [],
+  versionBumped = new Set(),
+}) {
   const violations = [];
   const moved = movedPackages(changedPaths, packages);
   // Resolved against npm manifests only: a Python SDK carries its twin's name.
@@ -459,10 +614,22 @@ export function evaluate({ changedPaths, packages, changesets }) {
       }
       if (moved.has(release.name)) continue;
       if (changeset.carried?.has(`${release.name}:${release.type}`)) continue;
-      const cites = (changeset.cited ?? []).filter(({ touched }) =>
+      const touching = (changeset.cited ?? []).filter(({ touched }) =>
         movedPackages(touched, packages).has(release.name),
       );
-      if (cites.length > 0) continue;
+      const live = touching.filter(({ staleFor }) => !(staleFor ?? []).includes(release.name));
+      if (live.length > 0) continue;
+      if (touching.length > 0) {
+        violations.push({
+          kind: "names-released-change",
+          package: release.name,
+          message:
+            `${changeset.path} names ${release.name}, and the only commit(s) it cites that changed ${release.name} ` +
+            `(${touching.map(({ sha }) => sha.slice(0, 12)).join(", ")}) already shipped under the version its ` +
+            "manifest declares; a citation must be newer than the package's last version bump",
+        });
+        continue;
+      }
       violations.push({
         kind: "names-unchanged",
         package: release.name,
@@ -472,7 +639,25 @@ export function evaluate({ changedPaths, packages, changesets }) {
       });
     }
   }
-  return { moved, named, violations };
+
+  // DELETED -> STILL PENDING. A deletion that drops recorded intent is refused unless
+  // the named package's own version moved in the same diff, which is what a
+  // `changeset version` run looks like.
+  for (const changeset of deletedChangesets) {
+    for (const release of changeset.releases) {
+      if (versionBumped.has(release.name)) continue;
+      if (changeset.preserved?.has(`${release.name}:${release.type}`)) continue;
+      violations.push({
+        kind: "deletes-pending-intent",
+        package: release.name,
+        message:
+          `${changeset.path} is deleted, and it declared pending ${release.type} intent for ${release.name} ` +
+          `whose version did not move in this diff; removing a recorded release needs the version step that spends it, ` +
+          `or the entry kept under ${ARCHIVED_CHANGESETS}/`,
+      });
+    }
+  }
+  return { moved, named, violations, deletedChangesets, versionBumped };
 }
 
 /** `changeset status --since <sha> --output <file>`: the release plan, computed and not written. */
@@ -537,9 +722,11 @@ export function runGate({ base, head = "HEAD", withReleasePlan = false, root = r
     .filter((path) => !provenanceOnly.has(path) && !licenseOnly.has(path));
   const changesets = readChangesets(changedWithStatus, headCommit, root, mergeBase).map((changeset) => ({
     ...changeset,
-    cited: citedCommits(changeset.summary, headCommit, root),
+    cited: citedCommits(changeset.summary, headCommit, root, packages),
   }));
-  const verdict = evaluate({ changedPaths, packages, changesets });
+  const deletedChangesets = readDeletedChangesets(changedWithStatus, mergeBase, headCommit, root);
+  const versionBumped = versionBumps(packages, mergeBase, headCommit, root);
+  const verdict = evaluate({ changedPaths, packages, changesets, deletedChangesets, versionBumped });
 
   let plan = null;
   if (withReleasePlan && verdict.violations.length === 0 && changesets.length > 0) {
@@ -590,6 +777,11 @@ function runCli(argv = process.argv.slice(2)) {
   }
   for (const [name, paths] of result.moved) {
     process.stderr.write(`  moved ${name} (${paths.length} shipped path(s)) named by ${(result.named.get(name) ?? ["nothing"]).join(", ")}\n`);
+  }
+  for (const changeset of result.deletedChangesets) {
+    process.stderr.write(
+      `  deleted ${changeset.path}, which declared ${changeset.releases.map((release) => `${release.name}:${release.type}`).join(", ") || "nothing"}\n`,
+    );
   }
   if (result.plan !== null) {
     for (const name of result.named.keys()) {
