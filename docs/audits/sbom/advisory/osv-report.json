@@ -1,19 +1,21 @@
 {
   "$schema": "platos.audit.osv-receipt/v2",
   "tool": "scripts/audit-advisory.mjs (OSV querybatch + vulnerability details)",
-  "scannedAt": "2026-09-16T02:27:30.438Z",
+  "scannedAt": "2026-09-16T04:55:38.068Z",
   "network": {
     "requestedMode": "public-osv-with-cache",
-    "effectiveMode": "public-osv-live",
+    "effectiveMode": "public-osv-cache-fallback",
     "timeoutMs": 20000,
     "queryBatchSize": 1000,
     "detailConcurrency": 8,
     "publicRequestsAttempted": 134,
-    "publicRequestsSucceeded": 134,
-    "cacheFallbacks": 0,
-    "limitations": []
+    "publicRequestsSucceeded": 133,
+    "cacheFallbacks": 1,
+    "limitations": [
+      "https://api.osv.dev/v1/vulns/GHSA-2w69-qvjg-hvjx: live request failed (fetch failed); used validated JSON cache"
+    ]
   },
-  "lockfileSha256": "6dafadf93e0f5264a2ba5571dffcca335f879a565ffd5a14065c6ebb4402b34c",
+  "lockfileSha256": "bfdce30c06ad3b1e64f118e37ba5bf9ca48773140301a63fb7abb4f90cbc1a1f",
   "ecosystem": "npm",
   "scope": "agent production lock closure, core-api lock closure as its image build proves its deploy bundle, plus exact verified linux/amd64 webapp image inventory",
   "webappInventory": {

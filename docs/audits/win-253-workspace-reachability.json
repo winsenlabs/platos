@@ -22,10 +22,10 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "e22502cf35d8e6f3af9bbe7e8d65db3db41cc54974243279a6b790a805a7854b",
+  "evidenceSha256": "797faaa2a93311e92582b89522632c62a921c965786c516ce8aee62c99c01907",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
-    "generatedProjectCount": 40,
+    "generatedProjectCount": 42,
     "generatedProjects": [
       "apps/core-api",
       "apps/mcp-stdio",
@@ -33,6 +33,8 @@
       "internal-packages/llm-model-catalog",
       "packages/adapters/channel-discord",
       "packages/adapters/channel-slack",
+      "packages/adapters/channel-telegram",
+      "packages/adapters/channel-whatsapp",
       "packages/adapters/clickhouse-observability",
       "packages/adapters/durable-runtime",
       "packages/adapters/keyring-envelope",
@@ -71,17 +73,19 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 117,
-        "sha256": "246e4744074140636fb55142cc162a379d85b8a6a77e9e81c34785f04ca59632"
+        "outputCount": 123,
+        "sha256": "6addbe06d233dbed1d412b4c7732718414c058d9954aa01ce55e4d052ba8284c"
       }
     ],
-    "ownedOutputCount": 117,
-    "ownedOutputProjectCount": 36,
+    "ownedOutputCount": 123,
+    "ownedOutputProjectCount": 38,
     "ownedOutputProjects": [
       "apps/core-api",
       "apps/mcp-stdio",
       "packages/adapters/channel-discord",
       "packages/adapters/channel-slack",
+      "packages/adapters/channel-telegram",
+      "packages/adapters/channel-whatsapp",
       "packages/adapters/clickhouse-observability",
       "packages/adapters/durable-runtime",
       "packages/adapters/keyring-envelope",
@@ -117,7 +121,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "3265b1b13149849b21779f854af08d9eef695cb32b19f4eed8e7b7cfd0944ab4",
+    "aggregateSha256": "002f677e671973264791c2d03f2830d1d0f19b1ea84ed9d75d4451823249b986",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -241,7 +245,7 @@
       },
       {
         "path": ".dependency-cruiser.js",
-        "sha256": "e246b973e9acc5544be29485314f25d3ea9f457b6d5170641edb80ea7928a4ec"
+        "sha256": "5d2365fa4379b8c58124d9567daa54da37d65a7463928d7a6397e761c81f76eb"
       },
       {
         "path": ".dockerignore",
@@ -249,7 +253,7 @@
       },
       {
         "path": ".env.example",
-        "sha256": "a3d06d3b6c08c2ac0dcb9d1db266e0d609ef268b6132b2217ae5179fe6eac6df"
+        "sha256": "4ec39b8a6d563e959b6f94ff3dd60c8681d21a8f248753ad8101339999e4d240"
       },
       {
         "path": ".github/FUNDING.yml",
@@ -2561,11 +2565,11 @@
       },
       {
         "path": "apps/core-api/package.json",
-        "sha256": "49ddc857b431a1b3f06053205fbd088cbccaa1632963a7fdd22a80c3ce8ca347"
+        "sha256": "1a2ba9cefc338854ad71dfbdf834d19c3f4561dc697aa7a46f5858bebd9cc766"
       },
       {
         "path": "apps/core-api/src/app.module.test.ts",
-        "sha256": "d7d06d7ff3695b681792634f83b8545c7676dc1f01b399ae3b610796c175c9f9"
+        "sha256": "cdb2447429878d3a0c3a05eb21292c1f144393ea31bcedab2dac1d3ce3c44a50"
       },
       {
         "path": "apps/core-api/src/app.module.ts",
@@ -2573,7 +2577,7 @@
       },
       {
         "path": "apps/core-api/src/composition/adapter-bindings.ts",
-        "sha256": "1a4d5b3c74a622619fb270585d82a706c390725fb55c91bf950bd544b49344af"
+        "sha256": "4de2b86aa3b1bfa6653ff3be508df8f966826bcd4ccb1f55f7e14780d75a0446"
       },
       {
         "path": "apps/core-api/src/composition/context-factories.test.ts",
@@ -2581,7 +2585,7 @@
       },
       {
         "path": "apps/core-api/src/composition/context-ports.ts",
-        "sha256": "dd5cf873ed05aff164f26f14f393b316d8249301d5a25aefbaae4dd6e5a89cf3"
+        "sha256": "b16d1bb52e023c55955c35c4191af84181638a8c4ba3af0e1fcc5927e8ac87b4"
       },
       {
         "path": "apps/core-api/src/composition/factory-entries/agents.ts",
@@ -2669,7 +2673,7 @@
       },
       {
         "path": "apps/core-api/src/composition/installation.test.ts",
-        "sha256": "0d02e11c9bb0889a1fb2927c4683c68bab4f98cc5b27be0cf81fbac37dc21a23"
+        "sha256": "05bd551b9b8c06fdf75f8c7b29659bb31bbd0d40a0c71a8da5319b62c70989d7"
       },
       {
         "path": "apps/core-api/src/composition/integration-database.test.ts",
@@ -2705,7 +2709,7 @@
       },
       {
         "path": "apps/core-api/src/config/channels.ts",
-        "sha256": "02cadf8efada5de9b53be05fbc6151a2f13870419bd877edcba52d967cf2f1b0"
+        "sha256": "b6320baf6ec852e59eb74774c8cc445ffeaac177db3428f0ed06e1e56177b123"
       },
       {
         "path": "apps/core-api/src/config/durable-runtime.ts",
@@ -2841,7 +2845,7 @@
       },
       {
         "path": "apps/core-api/src/process.test.ts",
-        "sha256": "5382a5b126e2eb86144bd5b5130ec00f908e84a7b96320758a7fb66a242cbd90"
+        "sha256": "0694754170591ad2e0e5188bd568180326115932f01ba5d5b3e61bb7901e7add"
       },
       {
         "path": "apps/core-api/src/runtime/correlation.test.ts",
@@ -2865,7 +2869,7 @@
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.test.ts",
-        "sha256": "1b8630da2f7ac2ef035b4aa0960efe7eeaebaba75c9bcfb98c68b806759dd76e"
+        "sha256": "5f9b5ab2ace5d37823ea03ce93a3a45b40a11dc6408cecb703e856a322bb58c2"
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.ts",
@@ -3073,7 +3077,7 @@
       },
       {
         "path": "apps/core-api/tsconfig.json",
-        "sha256": "cf0bd85dd08e1eb35213c114ab46628d24dc6c68771bbb5b9bcce8fe0cad9745"
+        "sha256": "d62ff4013eb99032fb8e1ad44601653f5de9e0b7e9949ce89ee5b904f221b551"
       },
       {
         "path": "apps/mcp-stdio/README.md",
@@ -4029,7 +4033,7 @@
       },
       {
         "path": "content/docs/self-hosting.md",
-        "sha256": "8877b24a4747fcc6db55f34459b86ac8329d393ffb56b09a326c31a82d7a96b2"
+        "sha256": "b295a7b537f97696d9893d934ace04090c0078f4ac615ee5168f626437aa2bca"
       },
       {
         "path": "content/docs/skills.md",
@@ -4417,7 +4421,7 @@
       },
       {
         "path": "docker-compose.platos.yml",
-        "sha256": "af2fc947f51b519ec45ee14b8de56863d521a73df49293410de32530a3aab0af"
+        "sha256": "473c2acb836ab189cd7bc15349c5316a6d65adcedf2a2a25e4f7c9fb13ba13f3"
       },
       {
         "path": "docs/.gitignore",
@@ -4957,7 +4961,7 @@
       },
       {
         "path": "docs/env-vars.md",
-        "sha256": "550a7a35b8c9d18e25821ccbc69a81d7229e805a15f05af30bd93f4ca4b19f15"
+        "sha256": "a7183f075bdc3ca9c01da991ebead91277669b6140be925d88541462a2017f43"
       },
       {
         "path": "docs/error-taxonomy.json",
@@ -11629,6 +11633,170 @@
       },
       {
         "path": "packages/adapters/channel-slack/tsconfig.json",
+        "sha256": "d3f495eac9adfbe24ca6925d343b767169a7de12f631ae270010c158ae8b2c70"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/README.md",
+        "sha256": "753e3cda397ea0ef339a563c31a8487f6bd1e6f4fcf0d652bb726e729d1a3828"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/package.json",
+        "sha256": "3839e804f04aaa8666d44b03420f1a4be8fa3a4b02269563ac3b106604b48b82"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/adapter.ts",
+        "sha256": "94d20e404d63de0a923ccb5fec77e57d24065276451fc9274eedebfa392c5ca9"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/failure.ts",
+        "sha256": "d28daf7766b0694e0829a607f18bceb34a1ed1e0f6a20f8d5e6478f32c515c70"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/far-side.ts",
+        "sha256": "749477f5635cbbb8af5d15862ec2aec864de93953a9623b4439af1a45ea3ce8f"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/fixtures.ts",
+        "sha256": "992d035de125405cd15aaa7a5e0ab64b89da56fb8de9207ab7435a818582e24b"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/index.ts",
+        "sha256": "05b239c17e28c8d2fe2513bf20e5c4a41edcb816acf6999558ef3ad584926f2e"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/normalize.test.ts",
+        "sha256": "93caaeb64bd4cd93208f58c286b8797ce48ad26da983e32918a09d02af86faa3"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/normalize.ts",
+        "sha256": "053f74d40e1a934be2610e0af199615daf0905c0214a5119f0ec5ff4f57ea621"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/provider.ts",
+        "sha256": "1a22753b18011c3b79a519616192a4ef3260722e844ca9688b206367bae886cf"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/rate-limit.ts",
+        "sha256": "c72863daf936d8939a4131a019aaefce1bcc5ff9fb014d497a09f5fd1291be98"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/secret-token.test.ts",
+        "sha256": "57af589ee90b71773d7033ef26961abfed32a7d2ebcf27cab34a6d372fd0394f"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/secret-token.ts",
+        "sha256": "76922c4d1c7b1bc49dc08dbbfd06dd63d3b23c6f19c6176b6e7918b25d43a79a"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/send.ts",
+        "sha256": "ed106724dde791d417a854746d0491cc2dadd9eb91a8632ca1934abf5b977e28"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/signed-admission.test.ts",
+        "sha256": "ff8a5adbdcb9c1aee8f11831855b94efe536c34b7c818de45df56a574bf3a045"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/telegram-transport.test.ts",
+        "sha256": "c415dceb39be8bb036495c8f10b503e8205a5868e6360a06c3b6a010d7877237"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/vendor.ts",
+        "sha256": "dc67bc0137d86480227bcc18e423b0ac8eae4b457111e3ab0223f43f9b2d9a6f"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/src/verify.ts",
+        "sha256": "9665f0cbbbffbae85379beb9ac3f8add71dbec33e3888a3ed569771259f7cf6a"
+      },
+      {
+        "path": "packages/adapters/channel-telegram/tsconfig.json",
+        "sha256": "d3f495eac9adfbe24ca6925d343b767169a7de12f631ae270010c158ae8b2c70"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/README.md",
+        "sha256": "2537fc653b0b351dcfc7df2b793603b6069a3d56e4d44de03713bdf286823528"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/package.json",
+        "sha256": "8dfe4d127b6750925887576ce1c4e5456e270f7df890530026918e77f71ad09a"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/adapter.ts",
+        "sha256": "00a4d8a66f3db2c1c4b4b3bba1a09e4e9068a468e96443e511a9fcc7f9e07f50"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/failure.ts",
+        "sha256": "0dd79d55c0379fceb6454629530db50c377f8ab1de53d6a5cf7387d8064013e1"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/far-side.ts",
+        "sha256": "9fa66677946eb0a5ee04ea8bfd2294fa88e1817de9ea8619e5a94371c273ebc3"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/fixtures.ts",
+        "sha256": "9cb1fb0ffa4463e946de81cf5b0cd7e26b8d9b15f73f78c799d1c0f34cc57bbc"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/hmac.ts",
+        "sha256": "2dfb319c43a4f2a0c0edd5dfaffa21f25f43e982b46c80f5b5727ca31a0994bb"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/index.ts",
+        "sha256": "5d4eed1f165aa95e1a0ca6709cfa79d42af74867974e1f9a5ffedc69ae3ec8c8"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/normalize.test.ts",
+        "sha256": "eccaca70ce4e97ddb807cb21aa18013248c6e4cc31b081121dee413aa34c8631"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/normalize.ts",
+        "sha256": "ed81d8f48f56a169bd838a0db7bce18fbf734362c10b48531ab32fb5c060ab4e"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/provider.ts",
+        "sha256": "3ba6052cf04ebcab32835dc4db272f64e14b34bfbd3ed874275e71722213101b"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/rate-limit.ts",
+        "sha256": "d7384425b71d9fb83b9e1b10a8cdb8b9610f5e2809974521efe66cfd0329299b"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/rfc2104-oracle.ts",
+        "sha256": "bf13e4162bb1cbc008bf2d559c98071780b4bc64b9e0d3f18f373aa41287d341"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/rfc4231-vectors.ts",
+        "sha256": "21868e7afd75a57e77147ff81cf2869b3b926acc1eed731df1348b7bb29dd45a"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/rfc4231.test.ts",
+        "sha256": "8dc59181104fcb8fb16c0f7b6263a3b8fd6b3a8393df3be8cde74bde5fd2ea24"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/send.ts",
+        "sha256": "7348f41398ffc749671a1e6e708767b8adc874cebc524655adeabec930201791"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/signed-admission.test.ts",
+        "sha256": "aba39496410d3e978da92c174aaf68523552f7eeb2eb744cf2193a91814ebff5"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/vendor.ts",
+        "sha256": "f5cc7a97e24295faf9632ba450c2380d6770d8536435aa0488a8a9b3530e0e6d"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/verify.ts",
+        "sha256": "4132882283337b194d04dc7e052f9439c6716ff85356dc14406fe090cca8c803"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/whatsapp-signature.test.ts",
+        "sha256": "55cc63927f8f65c44f6f31e4ca264e4ea0e3a8765bf196ddf0b629a1ca1f19b0"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/src/whatsapp-transport.test.ts",
+        "sha256": "7c8cc4cff3a3a490e9c008d77fd8c9f4a740e9e7ae395ba6c531715440692473"
+      },
+      {
+        "path": "packages/adapters/channel-whatsapp/tsconfig.json",
         "sha256": "d3f495eac9adfbe24ca6925d343b767169a7de12f631ae270010c158ae8b2c70"
       },
       {
@@ -20437,7 +20605,7 @@
       },
       {
         "path": "pnpm-lock.yaml",
-        "sha256": "6dafadf93e0f5264a2ba5571dffcca335f879a565ffd5a14065c6ebb4402b34c"
+        "sha256": "bfdce30c06ad3b1e64f118e37ba5bf9ca48773140301a63fb7abb4f90cbc1a1f"
       },
       {
         "path": "pnpm-workspace.yaml",
@@ -20593,19 +20761,19 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "55d050071a2a61e8ff92d90bf79fcb352e150e8de87292248ceddffe0b568b25"
+        "sha256": "6eae3f2593d5d20467d8cf97412e5d7285c1c30558ca79019eef5f3338e1d648"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
-        "sha256": "e5d0b76d332ac680ddefc97d6d9f3a32939de1d77f2cc4f7ae0f99e2b252e4ab"
+        "sha256": "bceda3e44fafa42e3eb52312ea9889d13e46eb6f4cdd9b26e14119d365676efb"
       },
       {
         "path": "scripts/arch/clean-v1.mjs",
-        "sha256": "865e12873efb8fb96d72dc4c5f7063046f290ef998705885f7cbcc1c25f6d89c"
+        "sha256": "cf749f1e083332b4f4f1bdb10fb08565799d66a64bc301337617da7f18ba60f5"
       },
       {
         "path": "scripts/arch/clean-v1.test.mjs",
-        "sha256": "8d64ab63ab045ef261d56cde5c151f4b1d89d2492573de97a0c07095e4c79d19"
+        "sha256": "7a0b31455779a08adfaa7a5669b7eb4ee3f330b7993a7293eef4d5ea76de4be7"
       },
       {
         "path": "scripts/arch/composition-root.mjs",
@@ -20613,7 +20781,7 @@
       },
       {
         "path": "scripts/arch/composition-root.test.mjs",
-        "sha256": "ada589f582a1e15fdfe0839cbb78c9494f98ad409669cfbfe7a9557b07a80a8f"
+        "sha256": "a975fd8124fa0ae1c8482b1694d468cd654714d48b8e939844cae85e6a38fd24"
       },
       {
         "path": "scripts/arch/contract-map.mjs",
@@ -20633,7 +20801,7 @@
       },
       {
         "path": "scripts/arch/env-access.mjs",
-        "sha256": "bedb78c4d72778d88a97874c0ab14b28e3bf41ae5939593fe2d4c4d0a599df29"
+        "sha256": "a84c2ed5e79baf8533b0487cd1b335d0d06d276325796082adaf18ef7d5668d0"
       },
       {
         "path": "scripts/arch/env-access.test.mjs",
@@ -20645,11 +20813,11 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "cce1019766478cbf2e0da87e7effbffd61cb7102e5ead68725aa3c1f4334e6e3"
+        "sha256": "5989fbd5c869ce10bb2a35db556cf8ca032129dcdc99c3247e6a3344f8d2886d"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
-        "sha256": "ba827920dde8ddca5da7e66cac9dcb1ba10f3fb90d8e1334ecb734e4b25b58c4"
+        "sha256": "702899c3455412528fdd3478b9744d4a8aaec4c5b07f6191061045ba8f1644f3"
       },
       {
         "path": "scripts/arch/kernel-content.mjs",
@@ -20665,7 +20833,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "2af74e0a171aa27130c8539f5f2481ca864e712f97952206e2b79e8d863c871d"
+        "sha256": "8ee0e6efda2ac6228c35a2148012fb18277b0181b298be2826c528b3bde76c45"
       },
       {
         "path": "scripts/arch/mcp-store-ownership.mjs",
@@ -20717,11 +20885,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "f4c6bafe1eb51b50093ebdddb2e54c7a4c204eb009331a3e3e4162bfc2b83ec7"
+        "sha256": "e815b922df5fb4fb5c7500dd3022134e68feb4629a625590685361a5b7c6804a"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "93cb9afbc0351b673817bfafc719ebc458b1b8123ef36570c9fc6580642fec51"
+        "sha256": "d553e9eb6e89f7ad429ef1c7d3f509fd4e68e3559cb6b4968ed9707731815f33"
       },
       {
         "path": "scripts/arch/tool-lifecycle-reach.mjs",
@@ -20741,11 +20909,11 @@
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
-        "sha256": "288d8a14132204f9674183c410ee54a0d9fe22e208efcce519b507b5369c7337"
+        "sha256": "81da2a49bfb231f8d56ed1cac0a77d8f2b3cc418842052331605d0d809a8185c"
       },
       {
         "path": "scripts/arch/v1-project-graph.test.mjs",
-        "sha256": "0e9b0ab7d255ef6dafcfc14c93649e419d95b88fad3da29a178484b68d28ed28"
+        "sha256": "1d280c440adbf7ab85e250467c9b5b1e316a89d6fbc2d8eca40d4d0494b1c2fc"
       },
       {
         "path": "scripts/audit-advisory.mjs",
@@ -21433,7 +21601,7 @@
       },
       {
         "path": "tests/persisted-state-gate/smoke-core-api-image.mjs",
-        "sha256": "b0d45bc24c5ea84d012bb6b4a11daf2f805931743939477cbc36e3eaeb46b6f7"
+        "sha256": "9337755fec9e922607333a1873698e3d4a8bd74fd1332d8939a04374a864f9ee"
       },
       {
         "path": "tests/persisted-state-gate/smoke-core-api-image.test.mjs",
@@ -21517,7 +21685,7 @@
       },
       {
         "path": "tsconfig.json",
-        "sha256": "c93e3944c418abe501f2fff6e3a37563807e1d5e7c97ab1c6936934bf1c8dfb2"
+        "sha256": "02ebcedbee5eb962ee869badc4257841ee2bf1fcc9144ae81fabf1aae29a8711"
       },
       {
         "path": "turbo.json",
@@ -21981,6 +22149,18 @@
             "kind": "root-typescript-reference"
           }
         ],
+        "packages/adapters/channel-telegram": [
+          {
+            "from": "tsconfig.json",
+            "kind": "root-typescript-reference"
+          }
+        ],
+        "packages/adapters/channel-whatsapp": [
+          {
+            "from": "tsconfig.json",
+            "kind": "root-typescript-reference"
+          }
+        ],
         "packages/adapters/clickhouse-observability": [
           {
             "from": "tsconfig.json",
@@ -22196,6 +22376,8 @@
         "internal-packages/workload-identity",
         "packages/adapters/channel-discord",
         "packages/adapters/channel-slack",
+        "packages/adapters/channel-telegram",
+        "packages/adapters/channel-whatsapp",
         "packages/adapters/clickhouse-observability",
         "packages/adapters/durable-runtime",
         "packages/adapters/keyring-envelope",
@@ -22241,6 +22423,8 @@
       "internal-packages/workload-identity",
       "packages/adapters/channel-discord",
       "packages/adapters/channel-slack",
+      "packages/adapters/channel-telegram",
+      "packages/adapters/channel-whatsapp",
       "packages/adapters/clickhouse-observability",
       "packages/adapters/durable-runtime",
       "packages/adapters/keyring-envelope",
@@ -22305,6 +22489,8 @@
       "internal-packages/zod-worker",
       "packages/adapters/channel-discord",
       "packages/adapters/channel-slack",
+      "packages/adapters/channel-telegram",
+      "packages/adapters/channel-whatsapp",
       "packages/adapters/clickhouse-observability",
       "packages/adapters/durable-runtime",
       "packages/adapters/keyring-envelope",
@@ -22355,32 +22541,32 @@
   },
   "schemaVersion": 2,
   "summary": {
-    "applicationDeployableWorkspaceCount": 41,
+    "applicationDeployableWorkspaceCount": 43,
     "channelReachableCounts": {
-      "ci": 64,
+      "ci": 66,
       "dockerImage": 8,
-      "docsExamples": 61,
-      "generated": 44,
-      "license": 50,
-      "packageScripts": 64,
+      "docsExamples": 63,
+      "generated": 46,
+      "license": 52,
+      "packageScripts": 66,
       "patches": 17,
       "sourceDynamic": 2,
-      "sourceStatic": 48,
-      "testsFixtures": 61
+      "sourceStatic": 50,
+      "testsFixtures": 63
     },
     "configuredPatchCount": 5,
-    "deploymentUnionWorkspaceCount": 42,
+    "deploymentUnionWorkspaceCount": 44,
     "externalProductionSnapshotNodesByImage": {
       "agent": 718,
       "core-api": 329,
       "webapp": 335
     },
-    "installTraversalWorkspaceCount": 64,
-    "ociImageWorkspaceCount": 41,
+    "installTraversalWorkspaceCount": 66,
+    "ociImageWorkspaceCount": 43,
     "publicBoundaryCount": 8,
     "reconciledPatchCount": 5,
-    "registeredWorkspaceCount": 64,
-    "repositoryDevWorkspaceCount": 45,
+    "registeredWorkspaceCount": 66,
+    "repositoryDevWorkspaceCount": 47,
     "reviewCandidateCount": 22
   },
   "workspaces": [
@@ -26933,7 +27119,7 @@
             {
               "from": "content/docs/self-hosting.md",
               "kind": "reference",
-              "line": 135
+              "line": 137
             },
             {
               "from": "docs/adr/M0.3-bounded-contexts.md",
@@ -27037,6 +27223,16 @@
             },
             {
               "from": "packages/adapters/channel-slack/README.md",
+              "kind": "reference",
+              "line": 13
+            },
+            {
+              "from": "packages/adapters/channel-telegram/README.md",
+              "kind": "reference",
+              "line": 13
+            },
+            {
+              "from": "packages/adapters/channel-whatsapp/README.md",
               "kind": "reference",
               "line": 13
             },
@@ -27213,6 +27409,14 @@
               "packages/adapters/channel-slack/README.md"
             ],
             [
+              "packages/adapters/channel-telegram/README.md",
+              "packages/adapters/channel-telegram/README.md"
+            ],
+            [
+              "packages/adapters/channel-whatsapp/README.md",
+              "packages/adapters/channel-whatsapp/README.md"
+            ],
+            [
               "packages/adapters/clickhouse-observability/README.md",
               "packages/adapters/clickhouse-observability/README.md"
             ],
@@ -27295,6 +27499,8 @@
             "docs/win-260-mutation-ledger.json",
             "packages/adapters/channel-discord/README.md",
             "packages/adapters/channel-slack/README.md",
+            "packages/adapters/channel-telegram/README.md",
+            "packages/adapters/channel-whatsapp/README.md",
             "packages/adapters/clickhouse-observability/README.md",
             "packages/adapters/durable-runtime/README.md",
             "packages/adapters/keyring-envelope/README.md",
@@ -28459,8 +28665,8 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "1b1f6c26a5fd5c58cd5361061397f71eaaf81f94f9986067681062fee87693b4",
-      "manifestSha256": "49ddc857b431a1b3f06053205fbd088cbccaa1632963a7fdd22a80c3ce8ca347",
+      "evidenceSha256": "866a89ff0e58a421e303a203f8c5e78f4b8482d360350befd13347161e01318a",
+      "manifestSha256": "1a2ba9cefc338854ad71dfbdf834d19c3f4561dc697aa7a46f5858bebd9cc766",
       "name": "@platos/core-api",
       "ociImageClosure": {
         "reachable": true,
@@ -28879,7 +29085,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 155
+              "line": 159
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -29006,7 +29212,7 @@
           "apps/mcp-stdio"
         ]
       },
-      "evidenceSha256": "0067d3953a86cc81f732e0eaa2edef901436c2b0744baa41d876622b18f8ab1f",
+      "evidenceSha256": "381cbd43dd32440b6b4d84d1a4d63d2a2dc42786e405f4f8a7bf42cbce3f17ce",
       "manifestSha256": "c9bb318e0946a79c6a4572d2c852f7ac414cb361c6dab2e34c5543dcefcc00a3",
       "name": "@platos/mcp-stdio",
       "ociImageClosure": {
@@ -30442,7 +30648,7 @@
             {
               "from": "apps/core-api/src/app.module.test.ts",
               "kind": "reference",
-              "line": 878
+              "line": 895
             },
             {
               "from": "apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts",
@@ -31313,7 +31519,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "eb60f1be8eba86c0fc877149d7712682f269c032e859704e330fe128fc936779",
+      "evidenceSha256": "ace324c3dc4fb3e711521c619569ab16856aae01248110bd32b9be7994b33722",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -39091,7 +39297,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 1639
+              "line": 1656
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -39206,7 +39412,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "625ab3e4b057f28635409b69498ea273e11dc2e0e9b0cf49f675867914bac2b1",
+      "evidenceSha256": "20b06565136b397185d55dd116688ef31cb2d9739b2e7948f8cab0b2c4ba6199",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -41451,7 +41657,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 1662
+              "line": 1679
             }
           ],
           "reversePaths": [
@@ -41541,7 +41747,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "8e717455794c4f72e8e99722f948fe8c17bef13481e629305f48cb09fcc0c4ce",
+      "evidenceSha256": "c0312566cf4fc1baa37e8c18788353e1a392e91f833bfe7fe59ba3043fda765a",
       "manifestSha256": "2848f0f02171494d6112ab9631f2b0ed74a98d740454f7a2e43a442b2b3d6c16",
       "name": "@internal/redis",
       "ociImageClosure": {
@@ -44285,7 +44491,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 1634
+              "line": 1651
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -45170,7 +45376,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "004d89c6fca8d25cbe782d3225dc64d2dfbf3b63ef0521fbdd06f05713b60503",
+      "evidenceSha256": "4210249d63d9b77a9cdf4777b8ff644d05cd7fb06bc956cf55d270b23cb3f9f5",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -48968,7 +49174,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 1029
+              "line": 1036
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -49140,7 +49346,7 @@
           "packages/adapters/channel-slack"
         ]
       },
-      "evidenceSha256": "3c01f6378c845228f04946c95d35ff64b7fb07adc1169d30af46cef99972c107",
+      "evidenceSha256": "ddb81ab2b70c6b1b9d90c6c8cab3e5c06c7e434b74997b223ed25bf79eed8ddc",
       "manifestSha256": "602133cd6f0a158f3dd4764775171821935d6905555f731042114748187eaa04",
       "name": "@platos/adapter-channel-slack",
       "ociImageClosure": {
@@ -49202,6 +49408,1006 @@
           [
             "apps/core-api",
             "packages/adapters/channel-slack"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
+      }
+    },
+    {
+      "applicationDeployableClosure": {
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/channel-telegram"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
+                "from": "apps/core-api/package.json",
+                "kind": "executable-manifest"
+              },
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-telegram"
+            ],
+            "root": "packages/adapters/channel-telegram",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/channel-telegram"
+          ],
+          [
+            "packages/adapters/channel-telegram"
+          ]
+        ],
+        "roots": [
+          "apps/core-api",
+          "packages/adapters/channel-telegram"
+        ]
+      },
+      "boundaries": {
+        "externalPublic": false,
+        "externalPublicReasons": [],
+        "kind": "private-workspace",
+        "ownerDecisionReasons": [],
+        "ownerDecisionRequired": false
+      },
+      "candidate": {
+        "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
+        "deletionAuthorized": false,
+        "reviewCandidate": false,
+        "status": "retain-oci-image"
+      },
+      "channels": {
+        "ci": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": ".github/workflows/build-images.yml",
+              "kind": "workspace-wide-install"
+            },
+            {
+              "from": ".github/workflows/ci.yml",
+              "kind": "workspace-wide-install"
+            },
+            {
+              "from": ".github/workflows/trigger-deploy.yml",
+              "kind": "workspace-wide-install"
+            }
+          ],
+          "reversePaths": [
+            [
+              ".github/workflows/build-images.yml",
+              ".github/workflows/build-images.yml"
+            ],
+            [
+              ".github/workflows/ci.yml",
+              ".github/workflows/ci.yml"
+            ],
+            [
+              ".github/workflows/trigger-deploy.yml",
+              ".github/workflows/trigger-deploy.yml"
+            ]
+          ],
+          "roots": [
+            ".github/workflows/build-images.yml",
+            ".github/workflows/ci.yml",
+            ".github/workflows/trigger-deploy.yml"
+          ]
+        },
+        "dockerImage": {
+          "reachable": false,
+          "reasons": [],
+          "reversePaths": [],
+          "roots": []
+        },
+        "docsExamples": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/adapters/channel-telegram/README.md",
+              "kind": "workspace-owned-file",
+              "line": 1
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/adapters/channel-telegram/README.md",
+              "packages/adapters/channel-telegram/README.md"
+            ]
+          ],
+          "roots": [
+            "packages/adapters/channel-telegram/README.md"
+          ]
+        },
+        "generated": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/adapters/channel-telegram/package.json",
+              "generator": "scripts/arch/gen-v1-skeleton.mjs",
+              "kind": "generator-owned-output"
+            },
+            {
+              "from": "packages/adapters/channel-telegram/README.md",
+              "generator": "scripts/arch/gen-v1-skeleton.mjs",
+              "kind": "generator-owned-output"
+            },
+            {
+              "from": "packages/adapters/channel-telegram/tsconfig.json",
+              "generator": "scripts/arch/gen-v1-skeleton.mjs",
+              "kind": "generator-owned-output"
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/adapters/channel-telegram/package.json",
+              "packages/adapters/channel-telegram/package.json"
+            ],
+            [
+              "packages/adapters/channel-telegram/README.md",
+              "packages/adapters/channel-telegram/README.md"
+            ],
+            [
+              "packages/adapters/channel-telegram/tsconfig.json",
+              "packages/adapters/channel-telegram/tsconfig.json"
+            ]
+          ],
+          "roots": [
+            "packages/adapters/channel-telegram/README.md",
+            "packages/adapters/channel-telegram/package.json",
+            "packages/adapters/channel-telegram/tsconfig.json"
+          ]
+        },
+        "license": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/adapters/channel-telegram/package.json",
+              "kind": "manifest-license",
+              "license": "Apache-2.0"
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/adapters/channel-telegram/package.json",
+              "packages/adapters/channel-telegram/package.json"
+            ]
+          ],
+          "roots": [
+            "packages/adapters/channel-telegram/package.json"
+          ]
+        },
+        "packageScripts": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "build"
+            },
+            {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "clean"
+            },
+            {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
+              "command": "tsc -b",
+              "from": "packages/adapters/channel-telegram/package.json",
+              "kind": "workspace-script",
+              "script": "build"
+            },
+            {
+              "command": "tsc -b --clean",
+              "from": "packages/adapters/channel-telegram/package.json",
+              "kind": "workspace-script",
+              "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/adapters/channel-telegram/package.json",
+              "kind": "workspace-script",
+              "script": "test"
+            }
+          ],
+          "reversePaths": [
+            [
+              "package.json",
+              "package.json"
+            ],
+            [
+              "packages/adapters/channel-telegram/package.json",
+              "packages/adapters/channel-telegram/package.json"
+            ]
+          ],
+          "roots": [
+            "package.json",
+            "packages/adapters/channel-telegram/package.json"
+          ]
+        },
+        "patches": {
+          "reachable": false,
+          "reasons": [],
+          "reversePaths": [],
+          "roots": []
+        },
+        "sourceDynamic": {
+          "reachable": false,
+          "reasons": [],
+          "reversePaths": [],
+          "roots": []
+        },
+        "sourceStatic": {
+          "reachable": true,
+          "reasons": [
+            {
+              "file": "apps/core-api/src/composition/adapter-bindings.ts",
+              "from": "apps/core-api",
+              "line": 170,
+              "specifier": "@platos/adapter-channel-telegram"
+            },
+            {
+              "file": "apps/core-api/src/composition/adapter-bindings.ts",
+              "from": "apps/core-api",
+              "line": 171,
+              "specifier": "@platos/adapter-channel-telegram"
+            }
+          ],
+          "reversePaths": [
+            [
+              "apps/core-api",
+              "apps/core-api/src/composition/adapter-bindings.ts"
+            ]
+          ],
+          "roots": [
+            "apps/core-api"
+          ]
+        },
+        "testsFixtures": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/adapters/channel-telegram/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "packages/adapters/channel-telegram/src/normalize.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/channel-telegram/src/secret-token.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/channel-telegram/src/signed-admission.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/channel-telegram/src/telegram-transport.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "scripts/arch/arch-boundaries.test.mjs",
+              "kind": "reference",
+              "line": 1439
+            },
+            {
+              "from": "scripts/arch/max-file-lines.test.mjs",
+              "kind": "reference",
+              "line": 1092
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/adapters/channel-telegram/package.json",
+              "packages/adapters/channel-telegram/package.json"
+            ],
+            [
+              "packages/adapters/channel-telegram/src/normalize.test.ts",
+              "packages/adapters/channel-telegram/src/normalize.test.ts"
+            ],
+            [
+              "packages/adapters/channel-telegram/src/secret-token.test.ts",
+              "packages/adapters/channel-telegram/src/secret-token.test.ts"
+            ],
+            [
+              "packages/adapters/channel-telegram/src/signed-admission.test.ts",
+              "packages/adapters/channel-telegram/src/signed-admission.test.ts"
+            ],
+            [
+              "packages/adapters/channel-telegram/src/telegram-transport.test.ts",
+              "packages/adapters/channel-telegram/src/telegram-transport.test.ts"
+            ],
+            [
+              "scripts/arch/arch-boundaries.test.mjs",
+              "scripts/arch/arch-boundaries.test.mjs"
+            ],
+            [
+              "scripts/arch/max-file-lines.test.mjs",
+              "scripts/arch/max-file-lines.test.mjs"
+            ]
+          ],
+          "roots": [
+            "packages/adapters/channel-telegram/package.json",
+            "packages/adapters/channel-telegram/src/normalize.test.ts",
+            "packages/adapters/channel-telegram/src/secret-token.test.ts",
+            "packages/adapters/channel-telegram/src/signed-admission.test.ts",
+            "packages/adapters/channel-telegram/src/telegram-transport.test.ts",
+            "scripts/arch/arch-boundaries.test.mjs",
+            "scripts/arch/max-file-lines.test.mjs"
+          ]
+        }
+      },
+      "deploymentUnionClosure": {
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/channel-telegram"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
+                "from": "apps/core-api/package.json",
+                "kind": "executable-manifest"
+              },
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-telegram"
+            ],
+            "root": "packages/adapters/channel-telegram",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/channel-telegram"
+          ],
+          [
+            "packages/adapters/channel-telegram"
+          ]
+        ],
+        "roots": [
+          "apps/core-api",
+          "packages/adapters/channel-telegram"
+        ]
+      },
+      "evidenceSha256": "cbfa771713ff02b78ce15d58e781836158025f90ff1b911bf01fb14732b09a81",
+      "manifestSha256": "3839e804f04aaa8666d44b03420f1a4be8fa3a4b02269563ac3b106604b48b82",
+      "name": "@platos/adapter-channel-telegram",
+      "ociImageClosure": {
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/channel-telegram"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/channel-telegram"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
+      },
+      "path": "packages/adapters/channel-telegram",
+      "private": true,
+      "repositoryDevClosure": {
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/channel-telegram"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/channel-telegram"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
+      }
+    },
+    {
+      "applicationDeployableClosure": {
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/channel-whatsapp"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
+                "from": "apps/core-api/package.json",
+                "kind": "executable-manifest"
+              },
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-whatsapp"
+            ],
+            "root": "packages/adapters/channel-whatsapp",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/channel-whatsapp"
+          ],
+          [
+            "packages/adapters/channel-whatsapp"
+          ]
+        ],
+        "roots": [
+          "apps/core-api",
+          "packages/adapters/channel-whatsapp"
+        ]
+      },
+      "boundaries": {
+        "externalPublic": false,
+        "externalPublicReasons": [],
+        "kind": "private-workspace",
+        "ownerDecisionReasons": [],
+        "ownerDecisionRequired": false
+      },
+      "candidate": {
+        "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
+        "deletionAuthorized": false,
+        "reviewCandidate": false,
+        "status": "retain-oci-image"
+      },
+      "channels": {
+        "ci": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": ".github/workflows/build-images.yml",
+              "kind": "workspace-wide-install"
+            },
+            {
+              "from": ".github/workflows/ci.yml",
+              "kind": "workspace-wide-install"
+            },
+            {
+              "from": ".github/workflows/trigger-deploy.yml",
+              "kind": "workspace-wide-install"
+            }
+          ],
+          "reversePaths": [
+            [
+              ".github/workflows/build-images.yml",
+              ".github/workflows/build-images.yml"
+            ],
+            [
+              ".github/workflows/ci.yml",
+              ".github/workflows/ci.yml"
+            ],
+            [
+              ".github/workflows/trigger-deploy.yml",
+              ".github/workflows/trigger-deploy.yml"
+            ]
+          ],
+          "roots": [
+            ".github/workflows/build-images.yml",
+            ".github/workflows/ci.yml",
+            ".github/workflows/trigger-deploy.yml"
+          ]
+        },
+        "dockerImage": {
+          "reachable": false,
+          "reasons": [],
+          "reversePaths": [],
+          "roots": []
+        },
+        "docsExamples": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/adapters/channel-whatsapp/README.md",
+              "kind": "workspace-owned-file",
+              "line": 1
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/adapters/channel-whatsapp/README.md",
+              "packages/adapters/channel-whatsapp/README.md"
+            ]
+          ],
+          "roots": [
+            "packages/adapters/channel-whatsapp/README.md"
+          ]
+        },
+        "generated": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/adapters/channel-whatsapp/package.json",
+              "generator": "scripts/arch/gen-v1-skeleton.mjs",
+              "kind": "generator-owned-output"
+            },
+            {
+              "from": "packages/adapters/channel-whatsapp/README.md",
+              "generator": "scripts/arch/gen-v1-skeleton.mjs",
+              "kind": "generator-owned-output"
+            },
+            {
+              "from": "packages/adapters/channel-whatsapp/tsconfig.json",
+              "generator": "scripts/arch/gen-v1-skeleton.mjs",
+              "kind": "generator-owned-output"
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/adapters/channel-whatsapp/package.json",
+              "packages/adapters/channel-whatsapp/package.json"
+            ],
+            [
+              "packages/adapters/channel-whatsapp/README.md",
+              "packages/adapters/channel-whatsapp/README.md"
+            ],
+            [
+              "packages/adapters/channel-whatsapp/tsconfig.json",
+              "packages/adapters/channel-whatsapp/tsconfig.json"
+            ]
+          ],
+          "roots": [
+            "packages/adapters/channel-whatsapp/README.md",
+            "packages/adapters/channel-whatsapp/package.json",
+            "packages/adapters/channel-whatsapp/tsconfig.json"
+          ]
+        },
+        "license": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/adapters/channel-whatsapp/package.json",
+              "kind": "manifest-license",
+              "license": "Apache-2.0"
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/adapters/channel-whatsapp/package.json",
+              "packages/adapters/channel-whatsapp/package.json"
+            ]
+          ],
+          "roots": [
+            "packages/adapters/channel-whatsapp/package.json"
+          ]
+        },
+        "packageScripts": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "build"
+            },
+            {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "clean"
+            },
+            {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
+              "command": "tsc -b",
+              "from": "packages/adapters/channel-whatsapp/package.json",
+              "kind": "workspace-script",
+              "script": "build"
+            },
+            {
+              "command": "tsc -b --clean",
+              "from": "packages/adapters/channel-whatsapp/package.json",
+              "kind": "workspace-script",
+              "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/adapters/channel-whatsapp/package.json",
+              "kind": "workspace-script",
+              "script": "test"
+            }
+          ],
+          "reversePaths": [
+            [
+              "package.json",
+              "package.json"
+            ],
+            [
+              "packages/adapters/channel-whatsapp/package.json",
+              "packages/adapters/channel-whatsapp/package.json"
+            ]
+          ],
+          "roots": [
+            "package.json",
+            "packages/adapters/channel-whatsapp/package.json"
+          ]
+        },
+        "patches": {
+          "reachable": false,
+          "reasons": [],
+          "reversePaths": [],
+          "roots": []
+        },
+        "sourceDynamic": {
+          "reachable": false,
+          "reasons": [],
+          "reversePaths": [],
+          "roots": []
+        },
+        "sourceStatic": {
+          "reachable": true,
+          "reasons": [
+            {
+              "file": "apps/core-api/src/composition/adapter-bindings.ts",
+              "from": "apps/core-api",
+              "line": 168,
+              "specifier": "@platos/adapter-channel-whatsapp"
+            },
+            {
+              "file": "apps/core-api/src/composition/adapter-bindings.ts",
+              "from": "apps/core-api",
+              "line": 169,
+              "specifier": "@platos/adapter-channel-whatsapp"
+            }
+          ],
+          "reversePaths": [
+            [
+              "apps/core-api",
+              "apps/core-api/src/composition/adapter-bindings.ts"
+            ]
+          ],
+          "roots": [
+            "apps/core-api"
+          ]
+        },
+        "testsFixtures": {
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/adapters/channel-whatsapp/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "packages/adapters/channel-whatsapp/src/normalize.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/channel-whatsapp/src/rfc4231.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/channel-whatsapp/src/signed-admission.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/channel-whatsapp/src/whatsapp-signature.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/channel-whatsapp/src/whatsapp-transport.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "scripts/arch/arch-boundaries.test.mjs",
+              "kind": "reference",
+              "line": 1437
+            },
+            {
+              "from": "scripts/arch/max-file-lines.test.mjs",
+              "kind": "reference",
+              "line": 1091
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/adapters/channel-whatsapp/package.json",
+              "packages/adapters/channel-whatsapp/package.json"
+            ],
+            [
+              "packages/adapters/channel-whatsapp/src/normalize.test.ts",
+              "packages/adapters/channel-whatsapp/src/normalize.test.ts"
+            ],
+            [
+              "packages/adapters/channel-whatsapp/src/rfc4231.test.ts",
+              "packages/adapters/channel-whatsapp/src/rfc4231.test.ts"
+            ],
+            [
+              "packages/adapters/channel-whatsapp/src/signed-admission.test.ts",
+              "packages/adapters/channel-whatsapp/src/signed-admission.test.ts"
+            ],
+            [
+              "packages/adapters/channel-whatsapp/src/whatsapp-signature.test.ts",
+              "packages/adapters/channel-whatsapp/src/whatsapp-signature.test.ts"
+            ],
+            [
+              "packages/adapters/channel-whatsapp/src/whatsapp-transport.test.ts",
+              "packages/adapters/channel-whatsapp/src/whatsapp-transport.test.ts"
+            ],
+            [
+              "scripts/arch/arch-boundaries.test.mjs",
+              "scripts/arch/arch-boundaries.test.mjs"
+            ],
+            [
+              "scripts/arch/max-file-lines.test.mjs",
+              "scripts/arch/max-file-lines.test.mjs"
+            ]
+          ],
+          "roots": [
+            "packages/adapters/channel-whatsapp/package.json",
+            "packages/adapters/channel-whatsapp/src/normalize.test.ts",
+            "packages/adapters/channel-whatsapp/src/rfc4231.test.ts",
+            "packages/adapters/channel-whatsapp/src/signed-admission.test.ts",
+            "packages/adapters/channel-whatsapp/src/whatsapp-signature.test.ts",
+            "packages/adapters/channel-whatsapp/src/whatsapp-transport.test.ts",
+            "scripts/arch/arch-boundaries.test.mjs",
+            "scripts/arch/max-file-lines.test.mjs"
+          ]
+        }
+      },
+      "deploymentUnionClosure": {
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/channel-whatsapp"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              },
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-image-build-entrypoint"
+              },
+              {
+                "from": "apps/core-api/package.json",
+                "kind": "executable-manifest"
+              },
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-whatsapp"
+            ],
+            "root": "packages/adapters/channel-whatsapp",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/channel-whatsapp"
+          ],
+          [
+            "packages/adapters/channel-whatsapp"
+          ]
+        ],
+        "roots": [
+          "apps/core-api",
+          "packages/adapters/channel-whatsapp"
+        ]
+      },
+      "evidenceSha256": "2624ee8d4381ffa235c4570df2d1943f78c09f07ed5a38070004caeb88ab20aa",
+      "manifestSha256": "8dfe4d127b6750925887576ce1c4e5456e270f7df890530026918e77f71ad09a",
+      "name": "@platos/adapter-channel-whatsapp",
+      "ociImageClosure": {
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/channel-whatsapp"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/channel-whatsapp"
+          ]
+        ],
+        "roots": [
+          "apps/core-api"
+        ]
+      },
+      "path": "packages/adapters/channel-whatsapp",
+      "private": true,
+      "repositoryDevClosure": {
+        "reachable": true,
+        "reasons": [
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies",
+              "devDependencies"
+            ],
+            "path": [
+              "apps/core-api",
+              "packages/adapters/channel-whatsapp"
+            ],
+            "root": "apps/core-api",
+            "rootReasons": [
+              {
+                "from": "apps/core-api/Dockerfile",
+                "kind": "ci-shipping-dockerfile"
+              }
+            ]
+          }
+        ],
+        "reversePaths": [
+          [
+            "apps/core-api",
+            "packages/adapters/channel-whatsapp"
           ]
         ],
         "roots": [
@@ -49516,7 +50722,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 449
+              "line": 455
             }
           ],
           "reversePaths": [
@@ -49598,7 +50804,7 @@
           "packages/adapters/clickhouse-observability"
         ]
       },
-      "evidenceSha256": "f857fc2d44513e645898fcf36eeabab973752835ae049e1bc233390409c6c6b1",
+      "evidenceSha256": "465ce93b5ca7e18d917c4d0e500ec9480fcfe814ad72d3ec6cd217c259f5b64f",
       "manifestSha256": "40bd79d6088e4c71073e849ecff745f0dfa79e7add5ff2ae33406f67a3f01acf",
       "name": "@platos/adapter-clickhouse-observability",
       "ociImageClosure": {
@@ -49989,12 +51195,12 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 465
+              "line": 471
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 169
+              "line": 173
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -50106,7 +51312,7 @@
           "packages/adapters/durable-runtime"
         ]
       },
-      "evidenceSha256": "add1e6aa35925108fa174c16a17e08bb60b1a47416c93a0659b6801d73fa9e30",
+      "evidenceSha256": "219f3d8006fb3a7c72d4fc33d587d1715ee7f0c033f2438b33292f95fcbe578e",
       "manifestSha256": "1291fd9c446a27a02ca32d3da2adb9193c903e0af03fecc1d397d85f051e26d6",
       "name": "@platos/adapter-durable-runtime",
       "ociImageClosure": {
@@ -50458,13 +51664,13 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 169,
+              "line": 178,
               "specifier": "@platos/adapter-keyring-envelope"
             },
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 170,
+              "line": 179,
               "specifier": "@platos/adapter-keyring-envelope"
             }
           ],
@@ -50731,7 +51937,7 @@
           "packages/adapters/keyring-envelope"
         ]
       },
-      "evidenceSha256": "bd29b0a7c8dfbf0ab911ac92bc72404997903a5d464bfa93e4e41dc738989026",
+      "evidenceSha256": "b9d45da524fc8183c4f3b7194f4e096f18a556ccd76e4f9b6a670cb4c4ddfb3e",
       "manifestSha256": "ae371bc6b627e6693e9a7b45f6a789d1df3f4489f8b93db1ed61c9c2fefdd854",
       "name": "@platos/adapter-keyring-envelope",
       "ociImageClosure": {
@@ -51747,13 +52953,13 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 171,
+              "line": 180,
               "specifier": "@platos/adapter-node-crypto-digest"
             },
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 172,
+              "line": 181,
               "specifier": "@platos/adapter-node-crypto-digest"
             }
           ],
@@ -51910,7 +53116,7 @@
           "packages/adapters/node-crypto-digest"
         ]
       },
-      "evidenceSha256": "40870c97c5b2edcc07782a41332c047d1ce827a730347b744329705137a686cd",
+      "evidenceSha256": "e0496b250c28cc247b161eee4a7c8e969af23a94118c9f65c8c5f1f520c3299a",
       "manifestSha256": "229fe0120b22a0df9fb190c46ea80e762a3efc68e6e509531147796557ea58ce",
       "name": "@platos/adapter-node-crypto-digest",
       "ociImageClosure": {
@@ -52252,13 +53458,13 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 163,
+              "line": 172,
               "specifier": "@platos/adapter-notifier-email"
             },
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 167,
+              "line": 176,
               "specifier": "@platos/adapter-notifier-email"
             }
           ],
@@ -52385,7 +53591,7 @@
           "packages/adapters/notifier-email"
         ]
       },
-      "evidenceSha256": "3fffe1150fc53123118a90832d2c01dcf190b5a491edfaba0d46a29f4b618cf9",
+      "evidenceSha256": "4a54a63a9d4029365ca2a35dbad938310c2d4a8d8e0b29c5722b939482fa9fce",
       "manifestSha256": "7778edc160a0b8bfdefce902b87d94ea1361bf3700ac84cc4ae83468c69210b7",
       "name": "@platos/adapter-notifier-email",
       "ociImageClosure": {
@@ -52726,7 +53932,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 168,
+              "line": 177,
               "specifier": "@platos/adapter-notifier-webhook"
             }
           ],
@@ -52823,7 +54029,7 @@
           "packages/adapters/notifier-webhook"
         ]
       },
-      "evidenceSha256": "d8de636b737b014dc3d1fe9c0f0a0927c2dcceddc5463906cfaec3fe08a2d830",
+      "evidenceSha256": "eda71d72f8ddf22b9f1923c1be35fa49c5964cbc5535184857a85cbef9c30e84",
       "manifestSha256": "a5c1fd70b86c907c02a4fc57d582bc8c3b654208fedc056c2761b248ea1683cd",
       "name": "@platos/adapter-notifier-webhook",
       "ociImageClosure": {
@@ -53694,7 +54900,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 754
+              "line": 777
             },
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
@@ -53866,7 +55072,7 @@
           "packages/adapters/outbox"
         ]
       },
-      "evidenceSha256": "f23be363a2c1df90ad186a66e5929b3a7bb06fac0fc3d048666ad0f78a8a4bac",
+      "evidenceSha256": "c42b063a29e6a57f2aaccd768d1d8137d715593fda1c0b7d40652a4d955df98a",
       "manifestSha256": "83a45d455aac9f0e888c1045ad4b91d9111960486ba77a4a087018299d5941b2",
       "name": "@platos/adapter-outbox",
       "ociImageClosure": {
@@ -56470,7 +57676,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 316
+              "line": 321
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -56672,7 +57878,7 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "1510f070dbaba986eb4af04bf3328228e989e959463b470fe5e55e404ea73616",
+      "evidenceSha256": "df9ace773381183ee04e57bb84e0e520ea6f30275df3ba522267d932b3026e67",
       "manifestSha256": "28d8382e77863b7c6b09e45dbccdcb4dd2e5d292e3dcdef574a37a2e21dac28d",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
@@ -57061,7 +58267,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 998
+              "line": 1005
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -57203,7 +58409,7 @@
           "packages/adapters/redis-ratelimit"
         ]
       },
-      "evidenceSha256": "d82c7abc8e7f7c687b272ab285c3cc7489aaf359e2932e043d32ccc438d256c5",
+      "evidenceSha256": "84c8c878e054e1d9ad4b6464d1879f556212352c3c2b9982bfa18c6c99d5fbc1",
       "manifestSha256": "c34050bbafd7dbb339e9a1a8dabffc4ab2ab84203fc1f1739d9045c883563955",
       "name": "@platos/adapter-redis-ratelimit",
       "ociImageClosure": {
@@ -57602,7 +58808,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 1037
+              "line": 1044
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -57749,7 +58955,7 @@
           "packages/adapters/redis-streams"
         ]
       },
-      "evidenceSha256": "fdf1f60300e1b195018182eabe73531e87f805e073bcb03f38986afca975da33",
+      "evidenceSha256": "5427d81b125f5d5c6621872312023dd984b5903308f38fb20f49508bc4f6966e",
       "manifestSha256": "0b7ad7cf97137ad450d2033aed4deafc061f743a4fab118a56f7effe5b6031d8",
       "name": "@platos/adapter-redis-streams",
       "ociImageClosure": {
@@ -58081,13 +59287,13 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 173,
+              "line": 182,
               "specifier": "@platos/adapter-tokenmint-totp"
             },
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 174,
+              "line": 183,
               "specifier": "@platos/adapter-tokenmint-totp"
             }
           ],
@@ -58284,7 +59490,7 @@
           "packages/adapters/tokenmint-totp"
         ]
       },
-      "evidenceSha256": "8816c890dee0e0ff0f6cf0d7371cd979b6c679560911cea9335ea64439f50444",
+      "evidenceSha256": "62e6167c7b874fbe763681d34ebc26e021d4dc6cb4662ed9b83e7bcb7b1be37c",
       "manifestSha256": "6786de357df47e9fb13ec8d4c69ca91bb24c9ee6c47ebc7aa5565fa77883979b",
       "name": "@platos/adapter-tokenmint-totp",
       "ociImageClosure": {
@@ -59129,7 +60335,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 528
+              "line": 535
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -59487,7 +60693,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "cc0c7d24644c8b0936c484e1d5d258b641370e831a191f3de7e04675f0969f22",
+      "evidenceSha256": "d90b05ba281f9df8f2a09195c26eae02826aad70e4115b31873d3d5d0e1ef76d",
       "manifestSha256": "e43db9efa534960ba5ade2f86cf89a88453e7575222d56297d6b6ccfe816a8f3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
@@ -59625,6 +60831,40 @@
               "optionalDependencies"
             ],
             "path": [
+              "packages/adapters/channel-telegram",
+              "packages/contexts/channels"
+            ],
+            "root": "packages/adapters/channel-telegram",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-whatsapp",
+              "packages/contexts/channels"
+            ],
+            "root": "packages/adapters/channel-whatsapp",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "packages/adapters/postgres-tenancy",
               "packages/contexts/channels"
             ],
@@ -59667,6 +60907,14 @@
             "packages/contexts/channels"
           ],
           [
+            "packages/adapters/channel-telegram",
+            "packages/contexts/channels"
+          ],
+          [
+            "packages/adapters/channel-whatsapp",
+            "packages/contexts/channels"
+          ],
+          [
             "packages/adapters/postgres-tenancy",
             "packages/contexts/channels"
           ],
@@ -59678,6 +60926,8 @@
           "apps/core-api",
           "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
+          "packages/adapters/channel-telegram",
+          "packages/adapters/channel-whatsapp",
           "packages/adapters/postgres-tenancy",
           "packages/contexts/channels"
         ]
@@ -60000,6 +61250,78 @@
               "specifier": "@platos/context-channels/application/ports/index.js"
             },
             {
+              "file": "packages/adapters/channel-telegram/src/adapter.ts",
+              "from": "packages/adapters/channel-telegram",
+              "line": 103,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-telegram/src/failure.ts",
+              "from": "packages/adapters/channel-telegram",
+              "line": 47,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-telegram/src/fixtures.ts",
+              "from": "packages/adapters/channel-telegram",
+              "line": 31,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-telegram/src/normalize.ts",
+              "from": "packages/adapters/channel-telegram",
+              "line": 40,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-telegram/src/send.ts",
+              "from": "packages/adapters/channel-telegram",
+              "line": 30,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-telegram/src/verify.ts",
+              "from": "packages/adapters/channel-telegram",
+              "line": 36,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-whatsapp/src/adapter.ts",
+              "from": "packages/adapters/channel-whatsapp",
+              "line": 72,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-whatsapp/src/failure.ts",
+              "from": "packages/adapters/channel-whatsapp",
+              "line": 47,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-whatsapp/src/fixtures.ts",
+              "from": "packages/adapters/channel-whatsapp",
+              "line": 36,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-whatsapp/src/normalize.ts",
+              "from": "packages/adapters/channel-whatsapp",
+              "line": 52,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-whatsapp/src/send.ts",
+              "from": "packages/adapters/channel-whatsapp",
+              "line": 22,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/channel-whatsapp/src/verify.ts",
+              "from": "packages/adapters/channel-whatsapp",
+              "line": 48,
+              "specifier": "@platos/context-channels/application/ports/index.js"
+            },
+            {
               "file": "packages/adapters/postgres-tenancy/src/adapter.ts",
               "from": "packages/adapters/postgres-tenancy",
               "line": 265,
@@ -60174,6 +61496,54 @@
               "packages/adapters/channel-slack/src/verify.ts"
             ],
             [
+              "packages/adapters/channel-telegram",
+              "packages/adapters/channel-telegram/src/adapter.ts"
+            ],
+            [
+              "packages/adapters/channel-telegram",
+              "packages/adapters/channel-telegram/src/failure.ts"
+            ],
+            [
+              "packages/adapters/channel-telegram",
+              "packages/adapters/channel-telegram/src/fixtures.ts"
+            ],
+            [
+              "packages/adapters/channel-telegram",
+              "packages/adapters/channel-telegram/src/normalize.ts"
+            ],
+            [
+              "packages/adapters/channel-telegram",
+              "packages/adapters/channel-telegram/src/send.ts"
+            ],
+            [
+              "packages/adapters/channel-telegram",
+              "packages/adapters/channel-telegram/src/verify.ts"
+            ],
+            [
+              "packages/adapters/channel-whatsapp",
+              "packages/adapters/channel-whatsapp/src/adapter.ts"
+            ],
+            [
+              "packages/adapters/channel-whatsapp",
+              "packages/adapters/channel-whatsapp/src/failure.ts"
+            ],
+            [
+              "packages/adapters/channel-whatsapp",
+              "packages/adapters/channel-whatsapp/src/fixtures.ts"
+            ],
+            [
+              "packages/adapters/channel-whatsapp",
+              "packages/adapters/channel-whatsapp/src/normalize.ts"
+            ],
+            [
+              "packages/adapters/channel-whatsapp",
+              "packages/adapters/channel-whatsapp/src/send.ts"
+            ],
+            [
+              "packages/adapters/channel-whatsapp",
+              "packages/adapters/channel-whatsapp/src/verify.ts"
+            ],
+            [
               "packages/adapters/postgres-tenancy",
               "packages/adapters/postgres-tenancy/src/adapter.ts"
             ],
@@ -60218,6 +61588,8 @@
             "apps/core-api",
             "packages/adapters/channel-discord",
             "packages/adapters/channel-slack",
+            "packages/adapters/channel-telegram",
+            "packages/adapters/channel-whatsapp",
             "packages/adapters/postgres-tenancy"
           ]
         },
@@ -60258,6 +61630,36 @@
               "from": "packages/adapters/channel-slack/src/slack-transport.test.ts",
               "kind": "reference",
               "line": 18
+            },
+            {
+              "from": "packages/adapters/channel-telegram/src/normalize.test.ts",
+              "kind": "reference",
+              "line": 16
+            },
+            {
+              "from": "packages/adapters/channel-telegram/src/signed-admission.test.ts",
+              "kind": "reference",
+              "line": 24
+            },
+            {
+              "from": "packages/adapters/channel-telegram/src/telegram-transport.test.ts",
+              "kind": "reference",
+              "line": 36
+            },
+            {
+              "from": "packages/adapters/channel-whatsapp/src/normalize.test.ts",
+              "kind": "reference",
+              "line": 14
+            },
+            {
+              "from": "packages/adapters/channel-whatsapp/src/signed-admission.test.ts",
+              "kind": "reference",
+              "line": 29
+            },
+            {
+              "from": "packages/adapters/channel-whatsapp/src/whatsapp-transport.test.ts",
+              "kind": "reference",
+              "line": 29
             },
             {
               "from": "packages/adapters/postgres-tenancy/src/channels-conformance.integration.test.ts",
@@ -60392,7 +61794,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 1032
+              "line": 1039
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -60438,6 +61840,30 @@
             [
               "packages/adapters/channel-slack/src/slack-transport.test.ts",
               "packages/adapters/channel-slack/src/slack-transport.test.ts"
+            ],
+            [
+              "packages/adapters/channel-telegram/src/normalize.test.ts",
+              "packages/adapters/channel-telegram/src/normalize.test.ts"
+            ],
+            [
+              "packages/adapters/channel-telegram/src/signed-admission.test.ts",
+              "packages/adapters/channel-telegram/src/signed-admission.test.ts"
+            ],
+            [
+              "packages/adapters/channel-telegram/src/telegram-transport.test.ts",
+              "packages/adapters/channel-telegram/src/telegram-transport.test.ts"
+            ],
+            [
+              "packages/adapters/channel-whatsapp/src/normalize.test.ts",
+              "packages/adapters/channel-whatsapp/src/normalize.test.ts"
+            ],
+            [
+              "packages/adapters/channel-whatsapp/src/signed-admission.test.ts",
+              "packages/adapters/channel-whatsapp/src/signed-admission.test.ts"
+            ],
+            [
+              "packages/adapters/channel-whatsapp/src/whatsapp-transport.test.ts",
+              "packages/adapters/channel-whatsapp/src/whatsapp-transport.test.ts"
             ],
             [
               "packages/adapters/postgres-tenancy/src/channels-conformance.integration.test.ts",
@@ -60568,6 +61994,12 @@
             "packages/adapters/channel-slack/src/normalize.test.ts",
             "packages/adapters/channel-slack/src/signed-admission.test.ts",
             "packages/adapters/channel-slack/src/slack-transport.test.ts",
+            "packages/adapters/channel-telegram/src/normalize.test.ts",
+            "packages/adapters/channel-telegram/src/signed-admission.test.ts",
+            "packages/adapters/channel-telegram/src/telegram-transport.test.ts",
+            "packages/adapters/channel-whatsapp/src/normalize.test.ts",
+            "packages/adapters/channel-whatsapp/src/signed-admission.test.ts",
+            "packages/adapters/channel-whatsapp/src/whatsapp-transport.test.ts",
             "packages/adapters/postgres-tenancy/src/channels-conformance.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/channels-constraints.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/channels-rows.test.ts",
@@ -60673,6 +62105,40 @@
               "optionalDependencies"
             ],
             "path": [
+              "packages/adapters/channel-telegram",
+              "packages/contexts/channels"
+            ],
+            "root": "packages/adapters/channel-telegram",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-whatsapp",
+              "packages/contexts/channels"
+            ],
+            "root": "packages/adapters/channel-whatsapp",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "packages/adapters/postgres-tenancy",
               "packages/contexts/channels"
             ],
@@ -60715,6 +62181,14 @@
             "packages/contexts/channels"
           ],
           [
+            "packages/adapters/channel-telegram",
+            "packages/contexts/channels"
+          ],
+          [
+            "packages/adapters/channel-whatsapp",
+            "packages/contexts/channels"
+          ],
+          [
             "packages/adapters/postgres-tenancy",
             "packages/contexts/channels"
           ],
@@ -60726,11 +62200,13 @@
           "apps/core-api",
           "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
+          "packages/adapters/channel-telegram",
+          "packages/adapters/channel-whatsapp",
           "packages/adapters/postgres-tenancy",
           "packages/contexts/channels"
         ]
       },
-      "evidenceSha256": "4e9b16479f737d086680d12cfee9f9eadd85aab37d7c4f08bfb7af291f520a4c",
+      "evidenceSha256": "98e70247b28714587d7dba53765e707b25b2433b840d6af7572e5ef0b2488796",
       "manifestSha256": "b5fbc0c06d27c2b781db3fccb0996d17b57bb89630803848fc5ae1a6f5af2c3f",
       "name": "@platos/context-channels",
       "ociImageClosure": {
@@ -64793,7 +66269,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 278
+              "line": 283
             },
             {
               "from": "scripts/arch/env-access.test.mjs",
@@ -65178,7 +66654,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "eee51e7335d2af448147ed1876b02bc71c6915bb8a834e80866dcad095450bb9",
+      "evidenceSha256": "7097ee97d5350fd23a54db99a3229e7331452fe3e62b94d839ceb0f2e605588a",
       "manifestSha256": "04f2bdfba4b1da3e7f346d18651413984ebb48a301fe8c4465fae84618fff8e4",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -66629,6 +68105,42 @@
               "optionalDependencies"
             ],
             "path": [
+              "packages/adapters/channel-telegram",
+              "packages/contexts/channels",
+              "packages/contexts/identity-access"
+            ],
+            "root": "packages/adapters/channel-telegram",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-whatsapp",
+              "packages/contexts/channels",
+              "packages/contexts/identity-access"
+            ],
+            "root": "packages/adapters/channel-whatsapp",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "packages/adapters/clickhouse-observability",
               "packages/contexts/observability",
               "packages/contexts/tenancy",
@@ -67137,6 +68649,16 @@
             "packages/contexts/identity-access"
           ],
           [
+            "packages/adapters/channel-telegram",
+            "packages/contexts/channels",
+            "packages/contexts/identity-access"
+          ],
+          [
+            "packages/adapters/channel-whatsapp",
+            "packages/contexts/channels",
+            "packages/contexts/identity-access"
+          ],
+          [
             "packages/adapters/clickhouse-observability",
             "packages/contexts/observability",
             "packages/contexts/tenancy",
@@ -67271,6 +68793,8 @@
           "apps/mcp-stdio",
           "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
+          "packages/adapters/channel-telegram",
+          "packages/adapters/channel-whatsapp",
           "packages/adapters/clickhouse-observability",
           "packages/adapters/keyring-envelope",
           "packages/adapters/model-router-providers",
@@ -68433,17 +69957,17 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 270
+              "line": 275
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 217
+              "line": 224
             },
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 988
+              "line": 995
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -68830,6 +70354,42 @@
               "packages/contexts/identity-access"
             ],
             "root": "packages/adapters/channel-slack",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-telegram",
+              "packages/contexts/channels",
+              "packages/contexts/identity-access"
+            ],
+            "root": "packages/adapters/channel-telegram",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-whatsapp",
+              "packages/contexts/channels",
+              "packages/contexts/identity-access"
+            ],
+            "root": "packages/adapters/channel-whatsapp",
             "rootReasons": [
               {
                 "from": "tsconfig.json",
@@ -69351,6 +70911,16 @@
             "packages/contexts/identity-access"
           ],
           [
+            "packages/adapters/channel-telegram",
+            "packages/contexts/channels",
+            "packages/contexts/identity-access"
+          ],
+          [
+            "packages/adapters/channel-whatsapp",
+            "packages/contexts/channels",
+            "packages/contexts/identity-access"
+          ],
+          [
             "packages/adapters/clickhouse-observability",
             "packages/contexts/observability",
             "packages/contexts/tenancy",
@@ -69485,6 +71055,8 @@
           "apps/mcp-stdio",
           "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
+          "packages/adapters/channel-telegram",
+          "packages/adapters/channel-whatsapp",
           "packages/adapters/clickhouse-observability",
           "packages/adapters/keyring-envelope",
           "packages/adapters/model-router-providers",
@@ -69514,7 +71086,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "66a22b1e02ca6b29ae56b62ffc1b9193728ea5432ca622f22a7742eced8a5b03",
+      "evidenceSha256": "68af4dfc7793f889157f5de802b39914b376e7334cb31fe8ea4c17c3d31fd65b",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -74944,7 +76516,7 @@
             {
               "from": "apps/core-api/src/composition/installation.test.ts",
               "kind": "reference",
-              "line": 954
+              "line": 984
             },
             {
               "from": "packages/adapters/model-router-providers/src/adapter.test.ts",
@@ -75848,7 +77420,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "8ee13df8ea2369315675c1ceb2758044da63660553f6918595478d5f8702cd47",
+      "evidenceSha256": "a37121f965907147303edfd5ac90934c6b70a12778bea92d3359f9ec79ed11bd",
       "manifestSha256": "7462dcd3934c960646a6d3528915863411b9e195545de995cb54d10e6c43da83",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -79292,6 +80864,42 @@
               "optionalDependencies"
             ],
             "path": [
+              "packages/adapters/channel-telegram",
+              "packages/contexts/channels",
+              "packages/contexts/tenancy"
+            ],
+            "root": "packages/adapters/channel-telegram",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-whatsapp",
+              "packages/contexts/channels",
+              "packages/contexts/tenancy"
+            ],
+            "root": "packages/adapters/channel-whatsapp",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "packages/adapters/clickhouse-observability",
               "packages/contexts/observability",
               "packages/contexts/tenancy"
@@ -79693,6 +81301,16 @@
             "packages/contexts/tenancy"
           ],
           [
+            "packages/adapters/channel-telegram",
+            "packages/contexts/channels",
+            "packages/contexts/tenancy"
+          ],
+          [
+            "packages/adapters/channel-whatsapp",
+            "packages/contexts/channels",
+            "packages/contexts/tenancy"
+          ],
+          [
             "packages/adapters/clickhouse-observability",
             "packages/contexts/observability",
             "packages/contexts/tenancy"
@@ -79791,6 +81409,8 @@
           "apps/mcp-stdio",
           "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
+          "packages/adapters/channel-telegram",
+          "packages/adapters/channel-whatsapp",
           "packages/adapters/clickhouse-observability",
           "packages/adapters/model-router-providers",
           "packages/adapters/notifier-email",
@@ -81225,7 +82845,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 238
+              "line": 243
             },
             {
               "from": "scripts/arch/env-access.test.mjs",
@@ -81235,7 +82855,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 598
+              "line": 605
             },
             {
               "from": "scripts/arch/kernel-content.test.mjs",
@@ -81660,6 +83280,42 @@
               "optionalDependencies"
             ],
             "path": [
+              "packages/adapters/channel-telegram",
+              "packages/contexts/channels",
+              "packages/contexts/tenancy"
+            ],
+            "root": "packages/adapters/channel-telegram",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-whatsapp",
+              "packages/contexts/channels",
+              "packages/contexts/tenancy"
+            ],
+            "root": "packages/adapters/channel-whatsapp",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "packages/adapters/clickhouse-observability",
               "packages/contexts/observability",
               "packages/contexts/tenancy"
@@ -82061,6 +83717,16 @@
             "packages/contexts/tenancy"
           ],
           [
+            "packages/adapters/channel-telegram",
+            "packages/contexts/channels",
+            "packages/contexts/tenancy"
+          ],
+          [
+            "packages/adapters/channel-whatsapp",
+            "packages/contexts/channels",
+            "packages/contexts/tenancy"
+          ],
+          [
             "packages/adapters/clickhouse-observability",
             "packages/contexts/observability",
             "packages/contexts/tenancy"
@@ -82159,6 +83825,8 @@
           "apps/mcp-stdio",
           "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
+          "packages/adapters/channel-telegram",
+          "packages/adapters/channel-whatsapp",
           "packages/adapters/clickhouse-observability",
           "packages/adapters/model-router-providers",
           "packages/adapters/notifier-email",
@@ -82183,7 +83851,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "6d4fc07bd7e0743c596fd9920ba3fda8f36efd2dc4d9f85df205a0c41acc05f7",
+      "evidenceSha256": "1cd36c5c96fc84bdc1fdfe53631f8a010261d74af610a27a1f3bd90b5ed79c96",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -82902,7 +84570,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 2485,
+              "line": 2548,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -83019,7 +84687,7 @@
             {
               "from": "apps/core-api/src/composition/installation.test.ts",
               "kind": "reference",
-              "line": 1285
+              "line": 1317
             },
             {
               "from": "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
@@ -83029,7 +84697,7 @@
             {
               "from": "apps/core-api/src/process.test.ts",
               "kind": "reference",
-              "line": 419
+              "line": 441
             },
             {
               "from": "packages/adapters/postgres-tenancy/src/plans-tools.integration.test.ts",
@@ -83577,7 +85245,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "e8c760d9872bc409f01ab2fd8c604aa71c697ffd58c1815cfb8d664fe3b9951c",
+      "evidenceSha256": "865b0b4b18b9d3f69347e155e51e19c1b574b2d084734afe5f8ffa46fa3bcee2",
       "manifestSha256": "164953cbfdcf1a718a65f058aa90a6b74be609a0c2c7ede9f88c30ed277fb8b7",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -85458,6 +87126,42 @@
               "optionalDependencies"
             ],
             "path": [
+              "packages/adapters/channel-telegram",
+              "packages/contexts/channels",
+              "packages/kernel"
+            ],
+            "root": "packages/adapters/channel-telegram",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-whatsapp",
+              "packages/contexts/channels",
+              "packages/kernel"
+            ],
+            "root": "packages/adapters/channel-whatsapp",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "packages/adapters/clickhouse-observability",
               "packages/contexts/observability",
               "packages/kernel"
@@ -86038,6 +87742,16 @@
             "packages/kernel"
           ],
           [
+            "packages/adapters/channel-telegram",
+            "packages/contexts/channels",
+            "packages/kernel"
+          ],
+          [
+            "packages/adapters/channel-whatsapp",
+            "packages/contexts/channels",
+            "packages/kernel"
+          ],
+          [
             "packages/adapters/clickhouse-observability",
             "packages/contexts/observability",
             "packages/kernel"
@@ -86179,6 +87893,8 @@
           "apps/mcp-stdio",
           "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
+          "packages/adapters/channel-telegram",
+          "packages/adapters/channel-whatsapp",
           "packages/adapters/clickhouse-observability",
           "packages/adapters/durable-runtime",
           "packages/adapters/keyring-envelope",
@@ -90943,7 +92659,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 2366,
+              "line": 2429,
               "specifier": "@platos/kernel"
             }
           ],
@@ -94879,7 +96595,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 778
+              "line": 801
             },
             {
               "from": "scripts/arch/env-access.test.mjs",
@@ -96439,6 +98155,42 @@
               "optionalDependencies"
             ],
             "path": [
+              "packages/adapters/channel-telegram",
+              "packages/contexts/channels",
+              "packages/kernel"
+            ],
+            "root": "packages/adapters/channel-telegram",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/channel-whatsapp",
+              "packages/contexts/channels",
+              "packages/kernel"
+            ],
+            "root": "packages/adapters/channel-whatsapp",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "packages/adapters/clickhouse-observability",
               "packages/contexts/observability",
               "packages/kernel"
@@ -97019,6 +98771,16 @@
             "packages/kernel"
           ],
           [
+            "packages/adapters/channel-telegram",
+            "packages/contexts/channels",
+            "packages/kernel"
+          ],
+          [
+            "packages/adapters/channel-whatsapp",
+            "packages/contexts/channels",
+            "packages/kernel"
+          ],
+          [
             "packages/adapters/clickhouse-observability",
             "packages/contexts/observability",
             "packages/kernel"
@@ -97160,6 +98922,8 @@
           "apps/mcp-stdio",
           "packages/adapters/channel-discord",
           "packages/adapters/channel-slack",
+          "packages/adapters/channel-telegram",
+          "packages/adapters/channel-whatsapp",
           "packages/adapters/clickhouse-observability",
           "packages/adapters/durable-runtime",
           "packages/adapters/keyring-envelope",
@@ -97194,7 +98958,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "9947a1b7f18ffa577f91d12115447446ea2d3b46f757e955a7086fab57eae4d4",
+      "evidenceSha256": "f0261d53dfa58d2ed4edbed390cd6e1b17768437576f0dd876e29629bdc34084",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
@@ -97335,7 +99099,7 @@
             {
               "from": "docker-compose.platos.yml",
               "kind": "reference",
-              "line": 805
+              "line": 815
             },
             {
               "from": "references/entity-docs-mcp-bridge/Dockerfile",
@@ -97997,7 +99761,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5fddc00b5311494aa82df8472ddf50cd4bcd207be10e2604cfc88401f4dc728f",
+      "evidenceSha256": "55fa0a7a5a2829c3deb16040f2741f2b8e6a3b5d2046ce9df48a04217b4afac5",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {
