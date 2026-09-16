@@ -62,7 +62,7 @@ export function secretsMatch(configured: string, presented: string): boolean {
   const offered = digest(presented);
   // Both are 32 bytes by construction; the guard is kept because it is the
   // precondition `timingSafeEqual` throws on, and a future change to `digest`
-  // must not turn that into a 500 an anonymous caller can trigger.
+  // must not turn that into a 500 an anonymous caller can provoke.
   if (expected.length !== offered.length) return false;
   return timingSafeEqual(expected, offered);
 }

@@ -15,7 +15,7 @@
     },
     {
       "name": "W02 the length guard before timingSafeEqual is removed",
-      "guards": "a truncated digest is FALSE and never a RangeError an anonymous caller can trigger",
+      "guards": "a truncated digest is FALSE and never a RangeError an anonymous caller can provoke",
       "file": "packages/adapters/channel-whatsapp/src/hmac.ts",
       "command": "whatsappSig",
       "from": "  if (expected.length !== presented.length) return false;\n  return timingSafeEqual(expected, presented);",
@@ -199,10 +199,10 @@
     },
     {
       "name": "T01 the comparison runs over raw tokens with no length guard",
-      "guards": "a length mismatch is FALSE and never a RangeError an anonymous caller can trigger",
+      "guards": "a length mismatch is FALSE and never a RangeError an anonymous caller can provoke",
       "file": "packages/adapters/channel-telegram/src/secret-token.ts",
       "command": "telegramSecret",
-      "from": "  const expected = digest(configured);\n  const offered = digest(presented);\n  // Both are 32 bytes by construction; the guard is kept because it is the\n  // precondition `timingSafeEqual` throws on, and a future change to `digest`\n  // must not turn that into a 500 an anonymous caller can trigger.\n  if (expected.length !== offered.length) return false;\n  return timingSafeEqual(expected, offered);",
+      "from": "  const expected = digest(configured);\n  const offered = digest(presented);\n  // Both are 32 bytes by construction; the guard is kept because it is the\n  // precondition `timingSafeEqual` throws on, and a future change to `digest`\n  // must not turn that into a 500 an anonymous caller can provoke.\n  if (expected.length !== offered.length) return false;\n  return timingSafeEqual(expected, offered);",
       "to": "  return timingSafeEqual(Buffer.from(configured, \"utf8\"), Buffer.from(presented, \"utf8\"));"
     },
     {

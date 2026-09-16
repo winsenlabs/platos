@@ -31,7 +31,7 @@
     },
     {
       "name": "W02 the length guard before timingSafeEqual is removed",
-      "guards": "a truncated digest is FALSE and never a RangeError an anonymous caller can trigger",
+      "guards": "a truncated digest is FALSE and never a RangeError an anonymous caller can provoke",
       "file": "packages/adapters/channel-whatsapp/src/hmac.ts",
       "command": "pnpm --filter @platos/adapter-channel-whatsapp exec vitest run src/whatsapp-signature.test.ts src/rfc4231.test.ts",
       "exit": 1,
@@ -298,7 +298,7 @@
     },
     {
       "name": "T01 the comparison runs over raw tokens with no length guard",
-      "guards": "a length mismatch is FALSE and never a RangeError an anonymous caller can trigger",
+      "guards": "a length mismatch is FALSE and never a RangeError an anonymous caller can provoke",
       "file": "packages/adapters/channel-telegram/src/secret-token.ts",
       "command": "pnpm --filter @platos/adapter-channel-telegram exec vitest run src/secret-token.test.ts",
       "exit": 1,

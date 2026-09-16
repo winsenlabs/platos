@@ -35,7 +35,7 @@
 //        raises. That is a join to Node's documented behaviour, and it is the
 //        half that actually protects the token: a byte-at-a-time comparison is a
 //        remote timing oracle, and a length mismatch reaching `timingSafeEqual`
-//        is a 500 an anonymous caller can trigger at will.
+//        is a 500 an anonymous caller can provoke at will.
 //
 //     2. THE UPDATE SHAPE, through fixtures transcribed from the published Bot
 //        API reference. `normalize.ts` decides a conversation identity, a bot
@@ -93,7 +93,7 @@
 //      administrative act with a URL in it, performed once per installation. It
 //      is not a `ChannelAdapter` method, it is not on the inbound path, and
 //      putting it here would give this object a reason to know the public base
-//      URL of the deployment.
+//      URL this process is served at.
 //
 //   4. MEDIA. A photo, a voice note or a document is IGNORABLE: this build
 //      answers typed text. Downloading a file needs `getFile` plus a second host

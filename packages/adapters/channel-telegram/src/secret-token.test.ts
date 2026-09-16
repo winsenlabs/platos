@@ -13,7 +13,7 @@
 //   `timingSafeEqual` THROWS this must answer `false`. Node's documented
 //   behaviour is the oracle, and it is the half that protects the token — a
 //   byte-at-a-time comparison is a remote timing oracle, and an unguarded
-//   `timingSafeEqual` is a 500 an anonymous caller can trigger at will.
+//   `timingSafeEqual` is a 500 an anonymous caller can provoke at will.
 //
 //   REFUSALS, WHICH ARE REAL DEFECTS A PLAUSIBLE IMPLEMENTATION HAS. A wrong
 //   token, a missing header, a blank header, a token that is a PREFIX of the right
