@@ -27,15 +27,27 @@
 // `?access=` IS A PARAMETER, BECAUSE THE ORACLE'S IS LOAD-BEARING.
 //
 // `requireEnvironmentScope` takes `access` ("metadata" | "secret:mutate",
-// defaulting to "metadata") and refuses at the level asked for. The webapp asks
-// for `secret:mutate` in `m4Mutation.server.ts` and in the agent-tools,
-// agents.$agentId.tools, agents.$agentId.canary, apikeys and
-// environment-variables.new routes. All but the last then call apps/agent, which
+// defaulting to "metadata") and refuses at the level asked for. THE ENUMERATION
+// BELOW IS A GREP A READER CAN RE-RUN, not a list to take on trust — the first
+// version of this banner named six of the eight:
+//
+//     grep -rl 'secret:mutate' apps/webapp/app     ->  8 files (2026-09-16)
+//     grep -rl 'm4Mutation'    apps/webapp/app     -> 26 files
+//
+// The eight are `services/m4Mutation.server.ts` and seven routes under
+// `_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.`:
+// agent-tools._index, agents.$agentId.tools, agents.$agentId.canary,
+// agents.$agentId.skills, agent-providers._index, apikeys and
+// environment-variables.new. The last three ask through a local `scoped`
+// wrapper rather than a bare literal, which is why counting literals gives four
+// and counting call sites gives seven.
+//
+// ALL BUT environment-variables.new then call apps/agent, which
 // trusts the workload token the webapp mints for that tenant
 // (`platosAgent.server.ts`), so for those calls the operator-level gate 4 exists
-// ONLY in this resolver. (The last writes the table directly; its replacement,
-// `PUT /environments/:id/variables/:key`, authorizes `secret:mutate` itself.)
-// A route that could
+// ONLY in this resolver. (environment-variables.new writes the table directly;
+// its replacement, `PUT /environments/:id/variables/:key`, authorizes
+// `secret:mutate` itself.) A route that could
 // answer "may this operator see it" but not "may this operator mutate it" would
 // leave the T8 cutover two bad options: drop the gate, or copy the four-gate
 // policy into the webapp from the roles this resource exposes. So the level is

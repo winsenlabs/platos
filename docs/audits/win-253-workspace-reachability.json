@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "0a404e2431a8bf4ba8623c315cb0012b780f07169919b35f771bb8fef9a2ae44",
+  "evidenceSha256": "6e51806257b8263fb020408cfb04298d6ef86f8fa68d85d90e8e9189be7f6805",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "99d2e702bc5c38ff6a36e6da5da5f209482fe65f0107eafb0e21a96b9f13accd",
+    "aggregateSha256": "7f3bd577ecccde1c377b90c41e433e5e790e634433e93799730ec668394965d1",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2955,7 +2955,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/environment-scope.controller.ts",
-        "sha256": "748e57eb30c093ddb364841d108dd73b1b51cba31d3d4b73bb24800f76a72e86"
+        "sha256": "d12eec7663fb9db0215c755755bb6f10024e298afecb99cf994c06e6c4a0f133"
       },
       {
         "path": "apps/core-api/src/transports/rest/environment-variables.controller.ts",
@@ -20783,7 +20783,7 @@
       },
       {
         "path": "scripts/mutations-win267-a3.json",
-        "sha256": "20953024668bd09b258b991f20cdc904956740a1bbc9507769ee694e10fc2c5b"
+        "sha256": "e368861e78b25eae131f87fed7258b0394a2108aec25dc97ae7910822f548b26"
       },
       {
         "path": "scripts/mutations-win267-a4.json",
@@ -79040,7 +79040,7 @@
             {
               "file": "apps/core-api/src/transports/rest/environment-scope.controller.ts",
               "from": "apps/core-api",
-              "line": 57,
+              "line": 69,
               "specifier": "@platos/context-tenancy"
             },
             {
@@ -81130,7 +81130,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "12b443a63296e76e5a58598111109d1f9c742f4c1127048a03f61301b62c6511",
+      "evidenceSha256": "8665cd0070ca932cea0457183303893afdeb3e01af501567dd322ee96e552427",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -85588,7 +85588,7 @@
             {
               "file": "apps/core-api/src/transports/rest/environment-scope.controller.ts",
               "from": "apps/core-api",
-              "line": 56,
+              "line": 68,
               "specifier": "@platos/kernel"
             },
             {
@@ -96073,7 +96073,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "0a4f8f2c83a32a24cf8d6494ad6a57443bdb5ec1405efb152a9087ed49d99f2a",
+      "evidenceSha256": "895933db4a20b6cdfddc1c53296e79cd1e6428f7f50b3ceedfd59ad2996b0fe3",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
