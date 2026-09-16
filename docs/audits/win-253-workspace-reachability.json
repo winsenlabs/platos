@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "541d515b3ab93fa42fdf88e22359bf89a83c549a89a2e3c0ad084bf9cfb2b19c",
+  "evidenceSha256": "9ad9376599508c680800c5dbd5d4365d13a9a200f98f5345c3507adf9cd8c429",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 40,
@@ -117,7 +117,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "d2e22adae0ba7e8dbf22c6ed7386ba183a5aefffd4b0096098bcbf54737053c7",
+    "aggregateSha256": "c03364744047a824b2c1158bca3c4ed9d075628c7342085a1f24f1454c360534",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -1737,7 +1737,7 @@
       },
       {
         "path": "apps/agent/src/monitoring/trace-request-abort.test.ts",
-        "sha256": "d8f6af43afba4d8ed8de3f9a3367c785661ff7b6c135b53ae4811d75f1ec69c1"
+        "sha256": "319e055d41b54295fda0394c1e65c9a07023a291ddab093b53624d7445535d79"
       },
       {
         "path": "apps/agent/src/monitoring/trace.service.ts",
