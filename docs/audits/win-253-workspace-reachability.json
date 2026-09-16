@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "6fd1282891d040406bfe0bc54e17148bb09a6b8c542f82de0a591e5058dbb237",
+  "evidenceSha256": "74b7a2e16829dfef20bd209ec628f139bf06bcf73dfd25a520fe396289344f03",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 42,
@@ -121,7 +121,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "89f03367f0e19453447d0c93504cdd62f4976db8007b80bcf63258a92a747c9e",
+    "aggregateSha256": "964800da7cf3def59024dc25eaebf2ce5eccee193c64211930c7aab7e8f05e1b",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6649,7 +6649,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "c99b506c2381cde58387bbd532338c3f666e469c415b9dc14e214d3d05cd75b1"
+        "sha256": "1f2f9c794b37ef6b70ff201de49662545e2778d81163aa8808a08bf558e477cd"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -11645,7 +11645,7 @@
       },
       {
         "path": "packages/adapters/channel-telegram/src/adapter.ts",
-        "sha256": "94d20e404d63de0a923ccb5fec77e57d24065276451fc9274eedebfa392c5ca9"
+        "sha256": "2a64dcea6af1e393865f79b9d986ebd537bc7399608f29e28e8c7531c5626697"
       },
       {
         "path": "packages/adapters/channel-telegram/src/failure.ts",
@@ -11681,11 +11681,11 @@
       },
       {
         "path": "packages/adapters/channel-telegram/src/secret-token.test.ts",
-        "sha256": "57af589ee90b71773d7033ef26961abfed32a7d2ebcf27cab34a6d372fd0394f"
+        "sha256": "e4fc8880ed50fc37aef86b963fd3aea6b91ffcf1052e76be2f8d7cf9c6422f75"
       },
       {
         "path": "packages/adapters/channel-telegram/src/secret-token.ts",
-        "sha256": "76922c4d1c7b1bc49dc08dbbfd06dd63d3b23c6f19c6176b6e7918b25d43a79a"
+        "sha256": "5861b73f58a751ddb1a118614cbb765b12e8b4ad71711d4b4464f87eb4d21c0b"
       },
       {
         "path": "packages/adapters/channel-telegram/src/send.ts",
@@ -21141,7 +21141,7 @@
       },
       {
         "path": "scripts/mutations-win271-channels-rest.json",
-        "sha256": "9e0120a5f3aa9754b764ffa7abfdf8b6d02d9384bf6d76717c437bc91f34be10"
+        "sha256": "5fa66d03fd6796f53c3ee13f76c25c5becb1964beb58607a759ca54134f808b7"
       },
       {
         "path": "scripts/mutations-win271-discord.json",
@@ -21365,7 +21365,7 @@
       },
       {
         "path": "scripts/win271-channels-rest-mutation-plan.json",
-        "sha256": "3f0f694431078f326559041d4e9f6b9d91b0ee5b27f85cad99a048be52a7e898"
+        "sha256": "c4baa96d563e676a32e1d0b879f36f4cb71c8ae3bd5c772eae686857c955a8b8"
       },
       {
         "path": "scripts/win271-discord-mutation-plan.json",

@@ -1053,12 +1053,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "cd2b1ff560c6a8e6239e6f69a92d4975dc48006bd898280b0333d90c57fbfea3"
+      "sha256": "e8f2a322d3e50d55e0d413f29d9836434cc57508d6193dd0027e86893221d63f"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "7f6e1c9c1e86e1bfb93ee38548dcac1821eda13edc15bb441ffe416745de2d76"
+      "sha256": "5f6959345a4edb2ac6d565ab66a2fea2459759f99cbc65f90fd7c65726f6b51d"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1098,7 +1098,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "db1424a314012a2e8a92be22e5a79ee928b64ee28d5e87a1c34fae2fc2da58ea"
+      "sha256": "884c67a47b4e8afcc8b57e1157655fa125eb59392263918badb00b45b39c6f95"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1108,7 +1108,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "6cecd78741a67a9c45b2c1d4bd77b047eeaaa644069fd4d6056ab04dafed29dc"
+      "sha256": "2de385c89f3f5f54674d57f45c44afafc35deb8adc6288528983fa0ce79233aa"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3553,7 +3553,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "c99b506c2381cde58387bbd532338c3f666e469c415b9dc14e214d3d05cd75b1"
+      "sha256": "1f2f9c794b37ef6b70ff201de49662545e2778d81163aa8808a08bf558e477cd"
     },
     {
       "path": "docs/vocabulary-boundary.md",
