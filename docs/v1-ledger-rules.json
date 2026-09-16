@@ -2122,34 +2122,34 @@
     ]
   },
   "expected": {
-    "totalFiles": 5371,
+    "totalFiles": 5374,
     "areaCounts": {
       "apps-agent": 532,
       "apps-core-api": 138,
       "apps-mcp-stdio": 8,
-      "apps-webapp": 185,
+      "apps-webapp": 186,
       "docs-content": 747,
       "internal-packages": 1174,
       "packages": 2236,
-      "root-infra": 351
+      "root-infra": 353
     },
     "kindCounts": {
       "asset": 155,
-      "config": 326,
+      "config": 327,
       "doc": 614,
       "fixture": 6,
       "generated": 49,
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2196,
-      "test": 1112
+      "source": 2197,
+      "test": 1113
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1720,
+      "move-refactor": 1722,
       "regenerate": 44,
-      "retain": 3598,
+      "retain": 3599,
       "unresolved": 2
     },
     "protectedCount": 1643,
@@ -2184,7 +2184,7 @@
       "apps-webapp.entry.server": 2,
       "apps-webapp.infra.container": 1,
       "apps-webapp.source.instrumentation": 1,
-      "apps-webapp.source.remix": 111,
+      "apps-webapp.source.remix": 112,
       "apps-webapp.style.sheet": 1,
       "apps-webapp.test.suites": 31,
       "apps-webapp.tooling.scripts": 10,
@@ -2287,13 +2287,13 @@
       "root-infra.lockfile.workspace": 1,
       "root-infra.pin.public-proxy-example": 1,
       "root-infra.pin.submodule-index": 1,
-      "root-infra.release.changesets": 19,
-      "root-infra.test.harness": 83,
+      "root-infra.release.changesets": 20,
+      "root-infra.test.harness": 84,
       "root-infra.test.script-suites": 36,
       "root-infra.test.workspace-reachability": 1,
       "root-infra.tooling.scripts": 126,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "7b19cb08605e5a214d402d60db9fa774e79ef26ab299cd5ad8c46e39b0d0bde9"
+    "classificationSha256": "a999005c8390a1e4cd987e64b48a7f568659596727084d744162390489c2cc60"
   }
 }

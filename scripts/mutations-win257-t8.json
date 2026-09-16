@@ -1,0 +1,157 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file. Same shape as the other scripts/mutations-*.json ledgers \u2014 `from` is the committed text, `to` is the edit that must break the guard, and `kills` is the output that was actually observed, not what it was expected to be.",
+  "issue": "WIN-257",
+  "tranche": "T8 \u2014 the webapp cutover: the dashboard reaches Core over HTTP and holds no database credential",
+  "branch": "tejas/m2m4-lane-webapp-cutover",
+  "base": "2bc41e17 (tejas/m2m4-lane-evidence-registers)",
+  "purpose": [
+    "T8 deletes an oracle and adds three guards in its place, and each of the",
+    "three is the kind that fails silently rather than loudly:",
+    "",
+    "  THE MIGRATION LOCK. `webapp-no-prisma` is the rule named after this exact",
+    "  migration and it was inert in BOTH halves \u2014 its `to` pattern could not",
+    "  match the specifier the webapp actually wrote, and `DEFAULT_SCAN_ROOTS`",
+    "  scanned no file that could contain one. Either half alone is enough to make",
+    "  it green over a tree full of violations, so both are mutated separately.",
+    "",
+    "  THE FROZEN ORACLE. `oracle-transcripts.json` is now the only account of",
+    "  what the deleted code answered. What makes it believable is not a digest \u2014",
+    "  half the pinned sources are files T8 rewrote on purpose \u2014 but the claim that",
+    "  the oracle cannot come back. M04 brings it back and M05 blinds the scan.",
+    "",
+    "  THE REPLAY. A differential whose oracle has been deleted goes QUIET rather",
+    "  than red, which looks exactly like success. M03 moves the candidate one",
+    "  field and requires the replay to notice."
+  ],
+  "procedure": [
+    "For each entry: apply `to` in place of `from`, run `command`, confirm the",
+    "exit code and that the named cases fail, then restore `from` and confirm the",
+    "suite is green again. Every entry below was run this way on this branch; the",
+    "`kills` text is copied from the run.",
+    "",
+    "M03 needs Docker (PostgreSQL, Redis and a Mailpit relay) because the candidate",
+    "side is the composed process answering real HTTP. The other five need none."
+  ],
+  "commands": {
+    "boundaries": "node --test scripts/arch/arch-boundaries.test.mjs",
+    "boundaries-scan": "node scripts/arch/arch-boundaries.mjs",
+    "transcripts": "node --test tests/differential-harness/oracle-transcripts.test.mjs",
+    "differential": "CI=true pnpm --filter @platos/core-api exec vitest run src/composition/transport-differential.integration.test.ts --no-file-parallelism",
+    "rest-unit": "CI=true pnpm --filter @platos/core-api exec vitest run src/transports/rest/identity-rest.test.ts"
+  },
+  "mutations": [
+    {
+      "name": "M01 `webapp-no-prisma` reverts to the pre-fix `to` pattern that could not see the specifier the webapp wrote",
+      "guards": "scripts/arch/boundary-rules.mjs \u2014 the `webapp-no-prisma` rule. THE HALF THE RULE'S OWN NAME PROMISED: `arch-boundaries.mjs` resolves a bare specifier to `node_modules/<specifier>`, so `@platos/tenancy-database` resolved to `node_modules/@platos/tenancy-database` and the pattern's only `node_modules/` branch was `@prisma/`.",
+      "file": "scripts/arch/boundary-rules.mjs",
+      "from": "      path: `^(${TENANCY_DATABASE_SOURCE}|node_modules/@platos/database(?:/|$)|internal-packages/database(?:/|$))`,",
+      "to": "      path: \"^(node_modules/@prisma/|internal-packages/(database|tenancy-database)/)\",",
+      "command": "boundaries",
+      "exit": 1,
+      "kills": [
+        "x (k) webapp-no-prisma: the webapp must not import Prisma directly",
+        "-> webapp importing the GENERATED workspace client must fire \u2014 this is the import the rule was written for",
+        "x (k) webapp-no-prisma binds over the REAL apps/webapp: a planted import turns the default scan red"
+      ],
+      "killCount": 2,
+      "observed": "# pass 24 / # fail 2",
+      "control": "The rest of the boundary suite stays green: 24 of 26 cases pass, so the mutation is attributable to this rule and not to a broken checker."
+    },
+    {
+      "name": "M02 `DEFAULT_SCAN_ROOTS` loses `apps/webapp`, so the rule is correct and scans nothing",
+      "guards": "scripts/arch/arch-boundaries.mjs \u2014 DEFAULT_SCAN_ROOTS. THE OTHER HALF, and the one that survived a whole milestone: the comment that stood there said the migration locks 'are proven in fixtures and bind once those trees move under the V1 layout'. Proven in fixtures is not enforced over the tree.",
+      "file": "scripts/arch/arch-boundaries.mjs",
+      "from": "const DEFAULT_SCAN_ROOTS = [...V1_SCAN_ROOTS, \"apps/webapp\"];",
+      "to": "const DEFAULT_SCAN_ROOTS = [...V1_SCAN_ROOTS];",
+      "command": "boundaries",
+      "exit": 1,
+      "kills": [
+        "x (k) webapp-no-prisma binds over the REAL apps/webapp: a planted import turns the default scan red",
+        "-> a Prisma import planted in the real apps/webapp/app must fire webapp-no-prisma under the DEFAULT scan; if it does not, either the rule's pattern or the scan root is wrong"
+      ],
+      "killCount": 2,
+      "observed": "# pass 24 / # fail 2",
+      "control": "EVERY FIXTURE CASE STILL PASSES under this mutation, which is the whole point of the entry: a fixture builds its own tree and passes its own `scanRoots`, so no number of them can tell you whether the rule is applied to anything real. Only the live negative control moves."
+    },
+    {
+      "name": "M03 the candidate answers a different organization name, and the replay must notice",
+      "guards": "apps/core-api/src/composition/transport-differential.integration.test.ts \u2014 the twelve `replays \u2026 against the frozen oracle transcript` cases. The oracle was deleted by this tranche, so the ONLY thing standing between a regression and a green suite is the frozen record.",
+      "file": "apps/core-api/src/transports/rest/organizations.controller.ts",
+      "from": "    name: row.organization.name,",
+      "to": "    name: `${row.organization.name} (mutated)`,",
+      "command": "differential",
+      "exit": 1,
+      "kills": [
+        "x replays transport-organization-list against the frozen oracle transcript",
+        "-> expected 'transport-organization-list: DIVERGENT\u2026' to contain 'PARITY'"
+      ],
+      "killCount": 1,
+      "observed": "Tests 1 failed | 17 passed (18)",
+      "control": "The other eleven replays, the three seeds and the in-suite non-vacuity control all stay green, so the divergence is attributable to the one field this mutation moved. Unmutated the suite is 18/18."
+    },
+    {
+      "name": "M04 the oracle comes back: a Prisma delegate call is replanted in a surviving oracle source",
+      "guards": "tests/differential-harness/oracle-transcripts.mjs \u2014 `retirementFailures`. This REPLACES the digest rule once the driver is gone, and it is the stronger claim: a transcript that recorded an oracle which has since been restored is the one state in which believing it is wrong.",
+      "file": "apps/webapp/app/services/auth.server.ts",
+      "from": "export async function readOperatorToken(request: Request): Promise<string | null> {",
+      "to": "export async function replanted(): Promise<unknown> {\n  return database.environment.findFirst({});\n}\n\nexport async function readOperatorToken(request: Request): Promise<string | null> {",
+      "command": "transcripts",
+      "exit": 1,
+      "kills": [
+        "x the committed transcript is believable: provenance, digests, every scenario, no credential",
+        "x THE RETIREMENT GATE: with the oracle deleted, it must be unable to come back",
+        "x MUTATION: while the oracle is LIVE, a source that changed since the recording fails"
+      ],
+      "killCount": 3,
+      "observed": "# pass 18 / # fail 3",
+      "control": "The IMPORT form of the same revival is caught by a second, independent enforcer: adding `import { PrismaClient } from \"@platos/tenancy-database\"` to the same file makes `node scripts/arch/arch-boundaries.mjs` report one `webapp-no-prisma` violation. Two mechanisms, one claim \u2014 a byte scan the transcript makes for itself, and the structural rule."
+    },
+    {
+      "name": "M05 the revival scan loses its delegate-call branch and can only see the import",
+      "guards": "tests/differential-harness/oracle-transcripts.mjs \u2014 `oracleRevivalsIn`. The import is the obvious revival and the delegate call is the one that would survive a re-export or a provider indirection; without this branch the scan reports the tree as retired while a query runs in it.",
+      "file": "tests/differential-harness/oracle-transcripts.mjs",
+      "from": "    if (/(?:^|[^A-Za-z0-9_$.])(?:database|transaction)\\.[A-Za-z$][A-Za-z0-9_]*\\s*[.(]/u.test(line)) {\n      found.push(\"calls a Prisma delegate again\");\n    }",
+      "to": "",
+      "command": "transcripts",
+      "exit": 1,
+      "kills": [
+        "x MUTATION: the retirement gate is not vacuous \u2014 a revived oracle is caught, prose is not"
+      ],
+      "killCount": 1,
+      "observed": "# pass 20 / # fail 1",
+      "control": "The comment-exclusion half of the same function is what keeps this from being a scan nobody could leave on: every file T8 rewrote QUOTES the delegate calls it deleted in its own banner, and the case that dies here also asserts those are not reported."
+    },
+    {
+      "name": "M06 `offset` and `cursor` stop contradicting each other and one silently wins",
+      "guards": "apps/core-api/src/transports/rest/environment-end-users.controller.ts \u2014 `explicitOffset`. Two fields carrying one fact can disagree; a precedence rule would let a self-contradicting request succeed with an answer nobody asked for.",
+      "file": "apps/core-api/src/transports/rest/environment-end-users.controller.ts",
+      "from": "  if (cursorPresent) {\n    violations.push({\n      field: \"query.offset\",\n      code: \"conflict\",\n      message: \"Send offset or cursor, never both: they address the same position.\",\n    });\n    return null;\n  }",
+      "to": "",
+      "command": "rest-unit",
+      "exit": 1,
+      "kills": [
+        "x REFUSES offset and cursor together rather than picking one"
+      ],
+      "killCount": 1,
+      "observed": "Tests 1 failed | 26 passed (27)",
+      "control": "The other four offset cases stay green, so the mutation is attributable to the conflict branch and not to the parameter's grammar."
+    }
+  ],
+  "declared": [
+    "WHAT IS NOT MUTATED HERE, AND WHY.",
+    "",
+    "The three sensitivity SEEDS and the non-vacuity control inside the transport",
+    "differential are PERMANENT, IN-SUITE mutations: they run on every execution",
+    "and each asserts the dimension it is designated to move. They are not entries",
+    "in this file because there is no committed text to swap \u2014 the mutation is the",
+    "request the suite makes.",
+    "",
+    "The webapp image inventory and the SBOM reconciliation MOVE with this tranche",
+    "and are not regenerated on this branch. They are produced by running the",
+    "scanner inside the built `production-deps` image, which needs BuildKit; this",
+    "host has no buildx and the classic builder cannot cross-build the stage. The",
+    "reconciliation in `scripts/audit-sbom.mjs` is therefore correctly RED, and it",
+    "is red for the true reason: the committed inventory still lists the Prisma",
+    "closure the lockfile no longer carries."
+  ]
+}

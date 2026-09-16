@@ -160,6 +160,52 @@ describe("WIN-267 R1 — pagination the contract does and does not have", () => 
     expect(outcome.ok).toBe(false);
     expect(violations(outcome)).toEqual(["query.cursor", "query.limit"]);
   });
+
+  // ---------------------------------------------------------------------------
+  // WIN-257 T8 — `offset`, the spelling a caller can construct
+  // ---------------------------------------------------------------------------
+  //
+  // The controller's banner argues why it exists: this collection publishes
+  // `total`, its "opaque" cursor is `base64url({"offset":N})`, and the dashboard
+  // screen it serves is page-numbered with deep links. What these cases pin is
+  // the part that could go wrong quietly — the two spellings meeting.
+
+  it("takes an explicit offset, so a page-numbered caller can address a page", () => {
+    const outcome = endUserQueryValidator({ offset: "40", limit: "20" });
+    expect(outcome.ok).toBe(true);
+    expect(outcome.ok ? outcome.value : null).toEqual({ offset: 40, limit: 20, status: null, search: null });
+  });
+
+  it("REFUSES offset and cursor together rather than picking one", () => {
+    // TWO FIELDS CARRYING ONE FACT CAN CONTRADICT EACH OTHER. A precedence rule
+    // would let a self-contradicting request succeed with an answer nobody asked
+    // for, and nobody would remember which side won.
+    const outcome = endUserQueryValidator({ offset: "40", cursor: encodeCursor({ offset: 80 }) });
+    expect(outcome.ok).toBe(false);
+    expect(violations(outcome)).toEqual(["query.offset"]);
+    expect(outcome.ok ? null : outcome.error.fields[0]?.code).toBe("conflict");
+  });
+
+  it("refuses a negative, fractional or oversized offset, and accepts zero", () => {
+    expect(endUserQueryValidator({ offset: "0" }).ok).toBe(true);
+    for (const offset of ["-1", "1.5", " 4", "40x", "99999999999999999999"]) {
+      const outcome = endUserQueryValidator({ offset });
+      expect(outcome.ok, `offset ${offset} was accepted`).toBe(false);
+      expect(violations(outcome)).toEqual(["query.offset"]);
+    }
+  });
+
+  it("still reads the cursor when no offset is sent, so the opaque form keeps working", () => {
+    const outcome = endUserQueryValidator({ cursor: encodeCursor({ offset: 75 }) });
+    expect(outcome.ok).toBe(true);
+    expect(outcome.ok ? outcome.value.offset : null).toBe(75);
+  });
+
+  it("reports a repeated offset once, and never reaches the cursor for its value", () => {
+    const outcome = endUserQueryValidator({ offset: ["1", "2"] });
+    expect(outcome.ok).toBe(false);
+    expect(violations(outcome)).toEqual(["query.offset"]);
+  });
 });
 
 describe("WIN-267 R1 — the cookie the BFF writes is the contract's", () => {
