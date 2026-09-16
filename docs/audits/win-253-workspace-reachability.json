@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "2903a2bce907ece570edbc4e7240f01d37179502d5174edaabe69185578ba826",
+  "evidenceSha256": "a39c2b7d3b0a4d51ca6dd8740d01ffc0265649d4128a8b4b1d08de0289d25fa9",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 40,
@@ -117,7 +117,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "8d848840712ac1a76b8eb96ea589e3b100e8d55cd65e473c5b6f1889c5809cc3",
+    "aggregateSha256": "31404a24035628f82ce03d5390722fc5622c5e9bc2a7c5eb1b121f29ba1c6f00",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -20733,7 +20733,7 @@
       },
       {
         "path": "scripts/arch/agent-area-cycles.mjs",
-        "sha256": "8d4786788bb467e71fe34e4c17a40e5e7b748181487ec808c6acdbad8d537138"
+        "sha256": "487570a0943e1f1153c26431cff8abba08d4ecda37780cc1bfa2fc0588ee72a1"
       },
       {
         "path": "scripts/arch/agent-area-cycles.test.mjs",
