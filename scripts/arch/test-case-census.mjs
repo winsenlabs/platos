@@ -2792,8 +2792,8 @@ export const EXPECTED = Object.freeze({
   //
   // 366 + 8 + 26 = 400; 19 + 2 = 21.
   //
-  // WIN-268 (M4.2) SDK 1.30.x CANDIDATE: 400 -> 414, files UNCHANGED, all fourteen
-  // in `adapters/dispatch.integration.test.ts` (26 -> 40). NINE existing cases that
+  // WIN-268 (M4.2) SDK 1.30.x CANDIDATE: 400 -> 415, files UNCHANGED, all fifteen
+  // in `adapters/dispatch.integration.test.ts` (26 -> 41). NINE existing cases that
   // put the SDK'S OWN SERVER on the far side of the adopted client become
   // `it.each([ADOPTED, CANDIDATE])` — the handshake-and-call, the credential on
   // `initialize`, enumeration, `isError`, the slow-tool timeout and the four pool
@@ -3743,14 +3743,14 @@ export const EXPECTED = Object.freeze({
 // census moves not one number for them. A reader taking this file as the measure of
 // what stage 3 proved would be reading two thirds of it.
 //
-// WIN-268 (M4.2) SDK 1.30.x CANDIDATE: 8359 + 14 = 8373 over 564 files — files
-// UNCHANGED. All fourteen land in `packages/contexts/tools`, itemised on its row
+// WIN-268 (M4.2) SDK 1.30.x CANDIDATE: 8359 + 15 = 8374 over 564 files — files
+// UNCHANGED. All fifteen land in `packages/contexts/tools`, itemised on its row
 // above. The contexts term alone moves. The candidate is ALSO asked of Platos'
 // own MCP servers — by `apps/agent/src/mcp-platform/mcp-protocol-conformance
 // .integration.test.ts` and the two-process SSE suite beside it — and
 // `apps/agent` is outside `PACKAGE_ROOTS`, so this census moves not one number
 // for that half.
-export const EXPECTED_RUNTIME_TOTAL = 8373;
+export const EXPECTED_RUNTIME_TOTAL = 8374;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

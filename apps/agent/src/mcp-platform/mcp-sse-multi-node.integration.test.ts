@@ -265,11 +265,19 @@ describeWithServices("legacy MCP SSE across two agent processes sharing one Redi
           );
           expect(burst).toHaveLength(PHASE_TWO);
 
+          // A JSON-RPC id is a string or a number; a notification carries none.
+          // Narrowing here rather than only dropping `undefined` is what lets the
+          // published ids below be compared to the sent ids at all — both sides
+          // read `id` off parsed JSON, so both start out `unknown` — and an id of
+          // any other shape now fails the length assertions loudly instead of
+          // being compared as `unknown`.
+          const isJsonRpcId = (id: unknown): id is string | number =>
+            typeof id === "string" || typeof id === "number";
           const sentIds = (exchanges: typeof tap.exchanges) =>
             exchanges
               .filter((exchange) => exchange.method === "POST")
               .map((exchange) => (exchange.requestBody as { id?: unknown }).id)
-              .filter((id) => id !== undefined);
+              .filter(isJsonRpcId);
           const phaseOneIds = sentIds(tap.exchanges.slice(0, firstPhaseTwoExchange));
           const phaseTwoIds = sentIds(tap.exchanges.slice(firstPhaseTwoExchange));
           // initialize + the phase-one pings; the burst.
@@ -298,7 +306,8 @@ describeWithServices("legacy MCP SSE across two agent processes sharing one Redi
             agent.records
               .slice(from)
               .filter((record) => record.event === "publish" && record.channel?.startsWith(server.channel))
-              .map((record) => record.id);
+              .map((record) => record.id)
+              .filter(isJsonRpcId);
           const publishedByA = sessionPublishes(nodeA, publishedBefore.A);
           const publishedByB = sessionPublishes(nodeB, publishedBefore.B);
           expect(publishedByA).toEqual(phaseOneIds);

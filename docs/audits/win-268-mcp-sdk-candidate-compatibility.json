@@ -21,8 +21,8 @@
     "questions": 55,
     "adoptedPassed": 55,
     "candidatePassed": 55,
-    "sharedCases": 26,
-    "sharedPassed": 26
+    "sharedCases": 32,
+    "sharedPassed": 32
   },
   "verdict": "compatible",
   "questions": [
@@ -370,6 +370,26 @@
     },
     {
       "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "case": "MCP protocol conformance of the Platos servers hands a tool the request's abort signal UNABORTED when the client is still there",
+      "status": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "case": "MCP protocol conformance of the Platos servers leaves no entity SSE session behind when the client hangs up during the handshake",
+      "status": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "case": "MCP protocol conformance of the Platos servers loads two DIFFERENT SDK MODULE GRAPHS, not two manifests: the classes differ and each is its own specifier's",
+      "status": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "case": "MCP protocol conformance of the Platos servers mounts the production ScopeGuard and NOT the two production pieces the harness header names",
+      "status": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
       "case": "MCP protocol conformance of the Platos servers RECORDED_NON_CONFORMANCE a body that is not a JSON-RPC request is an HTTP 400 from the framework, not a JSON-RPC -32600",
       "status": "passed"
     },
@@ -386,6 +406,11 @@
     {
       "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
       "case": "MCP protocol conformance of the Platos servers runs two DIFFERENT SDK builds: the adopted pin and a 1.30.x candidate, both as the lockfile resolves them",
+      "status": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-sse-multi-node.integration.test.ts",
+      "case": "legacy MCP SSE across two agent processes sharing one Redis platform server: closing the stream on A aborts a dispatch already running on B",
       "status": "passed"
     },
     {
@@ -436,6 +461,11 @@
     {
       "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
       "case": "the SDK builds this suite runs against are two DIFFERENT installed versions: the adopted pin and a 1.30.x candidate, as the lockfile resolves them",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "the SDK builds this suite runs against are two DIFFERENT LOADED MODULE GRAPHS: the classes differ and each is its own specifier's export",
       "status": "passed"
     },
     {

@@ -484,11 +484,11 @@ describeWithServices("MCP protocol conformance of the Platos servers", () => {
     expect((await sessionKeys()).length).toBe(baseline + 1);
     healthy.abort();
     await reader.cancel().catch(() => undefined);
-    for (let attempt = 0; attempt < 40 && (await sessionKeys()).length > baseline; attempt += 1) await settle();
+    for (let index = 0; index < 40 && (await sessionKeys()).length > baseline; index += 1) await settle();
     expect((await sessionKeys()).length).toBe(baseline);
 
     // THE CASE: ten handshakes abandoned the instant the headers arrive.
-    for (let attempt = 0; attempt < 10; attempt += 1) {
+    for (let index = 0; index < 10; index += 1) {
       const aborting = new AbortController();
       const opened = await fetch(endpoint("entity", "legacy-sse"), {
         headers: { ...bearer("entity"), accept: "text/event-stream" },
@@ -498,7 +498,7 @@ describeWithServices("MCP protocol conformance of the Platos servers", () => {
       aborting.abort();
       await opened.body?.cancel().catch(() => undefined);
     }
-    for (let attempt = 0; attempt < 40 && (await sessionKeys()).length > baseline; attempt += 1) await settle();
+    for (let index = 0; index < 40 && (await sessionKeys()).length > baseline; index += 1) await settle();
     expect(await sessionKeys()).toHaveLength(baseline);
   }, 60_000);
 

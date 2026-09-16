@@ -606,7 +606,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // On `apps-agent.test.suites` (214 -> 217): the MCP protocol conformance
     // matrix, the two-process legacy SSE suite and the tool-call parity suite.
     // NO LEDGER RULE CHANGED.
-    "apps-agent": 21,
+    //
+    // THAT LANE'S ROUND-2 FIXES 21 -> 22. ONE file, on the same rule that already
+    // existed. On `apps-agent.test.suites` (217 -> 218):
+    //   `shared/url-validator.test.ts` — the IPv4-mapped and IPv4-compatible IPv6
+    //   spellings the SSRF screen must refuse, lifted out of the service-gated
+    //   integration suite so the security fix is gated with no database, no Redis
+    //   and no network. Everything else that round changed is an EDIT: the two
+    //   controllers, the harness, the three suites, `ci.yml`, the census and the
+    //   ci-policy suite. NO LEDGER RULE CHANGED.
+    "apps-agent": 22,
     // WIN-272 (M4.6) 0 -> 1. `test/publicGuestBoundary.test.ts`: the public-guest
     // and embed boundary over two real `node:http` listeners with `fetch`
     // unstubbed. It is the FIRST file this programme has added under
@@ -2425,7 +2434,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // AND THE MCP CONFORMANCE LANE — 1804 -> 1813. NINE files, itemised on their
   // areas' deltas above: six in `apps-agent`, one in `docs-content`, two in
   // `root-infra`: 21 + 1 + 97 + 4 + 10 + 1556 + 27 + 97 = 1813.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1813);
+  //
+  // AND THAT LANE'S ROUND-2 FIXES — 1813 -> 1814. ONE file,
+  // `apps/agent/src/shared/url-validator.test.ts`, in `apps-agent` and itemised on
+  // that area's delta above. The round's other six findings are closed by EDITS —
+  // the module-identity join in both two-build suites, the abort-signal pre-check
+  // in `McpPlatformController`, the cross-node cancellation case, the entity SSE
+  // listener ordering, the harness header and its join case, and the named-suite
+  // constant in `ci-policy.test.mjs` — so no other area moves. The eight-key
+  // re-derivation from the merged `expectedDeltas` is
+  // 22 + 1 + 97 + 4 + 10 + 1556 + 27 + 97 = 1814.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1814);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2738,7 +2757,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // the total and `expectedDeltas["docs-content"]`: one ADR, summed per area here.
     // AND THE MCP CONFORMANCE LANE — 1804 -> 1813, moved in the same edit as the
     // total and the three area deltas: six agent files, one receipt, two scripts.
-    rulesDocument.baseline.totalFiles + 1813
+    // AND THAT LANE'S ROUND-2 FIXES — 1813 -> 1814, moved in the same edit as the
+    // total and `expectedDeltas["apps-agent"]`: the one service-free SSRF suite,
+    // summed per area here.
+    rulesDocument.baseline.totalFiles + 1814
   );
 });
 
