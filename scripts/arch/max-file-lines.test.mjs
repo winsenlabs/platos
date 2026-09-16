@@ -953,7 +953,7 @@ test("the live selectors scan an exact nonzero source census", () => {
   // M4 GATES (founder decision D21) — 1653 -> 1655. TWO files, and here BOTH count:
   // `apps/core-api/src/http/mcp-body-cap.ts` and `mcp-body-cap.test.ts` sit under the
   // `APPS-HTTP` selector, which covers the whole directory.
-  assert.equal(result.fileCount, 1655);
+  assert.equal(result.fileCount, 1659);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -1057,7 +1057,18 @@ test("the live selectors scan an exact nonzero source census", () => {
       // M4 GATES (founder decision D21): TWO, under `apps/core-api/src/http/` --
       // `mcp-body-cap.ts` and its real-socket suite. `runtime/lifecycle.ts`, which
       // installs the cap, is an edit.
-      2
+      2 +
+      // WIN-269 (M4.3): FOUR. TWO under `packages/contexts/` — the published
+      // writers `tenancy/application/record-entity-connection.ts` and
+      // `tools/application/record-tool-health.ts` — and TWO under
+      // `apps/core-api/src/transports/tools/`: `tool-sync.controller.ts` and
+      // `tool-sync-body.ts`. THE SPLIT IS THIS GATE'S DOING: one file carrying
+      // the route, its wire reader and every field refusal would have crossed the
+      // 500-line budget, so the reader is its own module and is exercisable
+      // without a Nest application. The harness and the two integration suites are
+      // under `src/composition/`, which no selector here names, exactly as the MCP
+      // mints' and the rotation's own integration suites are absent from this sum.
+      4
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1285,8 +1296,17 @@ test("the live selectors scan an exact nonzero source census", () => {
   // cap and its suite. `runtime/lifecycle.ts` is edited in place and is outside every
   // selector here.
   //
-  // 30 + 1093 + 474 + 20 + 38 = 1655.
-  assert.equal(result.fileCount, 30 + 1093 + 474 + 20 + 38);
+  // WIN-269 (M4.3), +4, AND IT LANDS IN TWO TERMS. CONTEXTS 1093 -> 1095, the two
+  // published writers (`tenancy/application/record-entity-connection.ts` and
+  // `tools/application/record-tool-health.ts`); APPS-TRANSPORTS 38 -> 40, the
+  // `/tools/sync` controller and the body reader it is split from — split
+  // precisely so neither breaches the 500-line budget this file enforces.
+  // `KERNEL`, `ADAPTERS` and `APPS-HTTP` are flat: `http/http.module.ts` and the
+  // adapter row narrowing are EDITS, and `composition/` is outside every selector
+  // here, which is why the harness and the two integration suites do not count.
+  //
+  // 30 + 1095 + 474 + 20 + 40 = 1659.
+  assert.equal(result.fileCount, 30 + 1095 + 474 + 20 + 40);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

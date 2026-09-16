@@ -1417,7 +1417,12 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // apps/agent, and `mcp-body-cap.test.ts`, its real-socket proof. NOTHING under
     // `packages/`; `runtime/lifecycle.ts` is an edit. Integrated after the factory
     // entries: 1719 + 2 = 1721.
-    assert.equal(result.fileCount, 1721, "the generated V1 source census must stay exact");
+    // WIN-269 (M4.3) 1721 -> 1728. SEVEN files: the two published writers under
+    // `packages/contexts`, and five under `apps/core-api` — the `/tools/sync`
+    // controller, its body reader, the shared legacy harness and the two
+    // integration suites. `apps/agent` and `internal-packages` are outside this
+    // census, so the socket characterization and the seeding script do not count.
+    assert.equal(result.fileCount, 1728, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1512,7 +1517,17 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // `packages/`.
       18 +
       // M4 GATES (D21): http 2 -- `mcp-body-cap.ts` and its suite.
-      2);
+      2 +
+      // WIN-269 (M4.3) THE TOOLS-SYNC LANE: SEVEN. TWO under `packages/contexts/`
+      // — the published writers `tenancy/application/record-entity-connection.ts`
+      // and `tools/application/record-tool-health.ts` — and FIVE under
+      // `apps/core-api/src/`: transports 2 (`tools/tool-sync.controller.ts` and
+      // the body reader it is split from) and composition 3 (the shared legacy
+      // harness and the two integration suites). NOTHING under
+      // `packages/adapters/`: the `ToolHealth` row narrowing is an EDIT, and so
+      // are `http/http.module.ts` and every contract and domain file the two
+      // writers landed in.
+      7);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

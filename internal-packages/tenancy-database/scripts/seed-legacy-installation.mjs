@@ -35,10 +35,22 @@ import { fileURLToPath } from "node:url";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-const databaseUrl = process.argv[2] ?? process.env["DATABASE_URL"];
-if (typeof databaseUrl !== "string" || databaseUrl.trim() === "") {
+// TWO MODES, ONE SCRIPT, AND THE SECOND EXISTS BECAUSE OF A BOUNDARY RULE.
+//
+// `--print-fixture` writes the published constants as JSON and touches no
+// database. A suite in `apps/core-api` needs those values — the declaration it
+// re-sends, the content-addressed hash, the heartbeat and the row that heartbeat
+// must leave — and may not IMPORT them: `tenancy-prisma-only` in
+// `scripts/arch/boundary-rules.mjs` bans `@platos/tenancy-database` from that
+// deployable, and `scripts/arch/composition-root.mjs` enforces it. Reading them
+// back from this process is the same discipline the seed mode uses, and it keeps
+// ONE module the source of the values rather than a copy in each suite.
+const printOnly = process.argv.includes("--print-fixture");
+const databaseUrl = printOnly ? null : (process.argv[2] ?? process.env["DATABASE_URL"]);
+if (!printOnly && (typeof databaseUrl !== "string" || databaseUrl.trim() === "")) {
   process.stderr.write(
     "usage: node scripts/seed-legacy-installation.mjs <database-url>\n" +
+      "       node scripts/seed-legacy-installation.mjs --print-fixture\n" +
       "  (or set DATABASE_URL). The database must be EMPTY: the frozen baseline is\n" +
       "  applied to it as a genesis migration.\n",
   );
@@ -51,9 +63,22 @@ if (typeof databaseUrl !== "string" || databaseUrl.trim() === "") {
 const { rebuildUpgradeBaseline, soleStoredFieldOnlyIn } = await import(
   resolve(packageRoot, "dist/upgrade-baseline-clients.js")
 );
-const { ROLLOUT_IDS, LEGACY_RETRY_COUNT, seedAsLegacyBinary } = await import(
-  resolve(packageRoot, "dist/upgrade-fixture.js")
-);
+const fixture = await import(resolve(packageRoot, "dist/upgrade-fixture.js"));
+const { ROLLOUT_IDS, LEGACY_RETRY_COUNT, seedAsLegacyBinary } = fixture;
+
+if (printOnly) {
+  process.stdout.write(
+    `${JSON.stringify({
+      ids: ROLLOUT_IDS,
+      declaration: fixture.ROLLOUT_TOOL_DECLARATION,
+      schemaHash: fixture.ROLLOUT_TOOL_SCHEMA_HASH,
+      health: fixture.ROLLOUT_TOOL_HEALTH,
+      heartbeat: fixture.ROLLOUT_TOOL_HEARTBEAT,
+      after: fixture.ROLLOUT_TOOL_HEALTH_AFTER_HEARTBEAT,
+    })}\n`,
+  );
+  process.exit(0);
+}
 const { applyFrozenBaseline, applyOrderedMigrations, BASELINE_SQL_PATH, BASELINE_SQL_SHA256 } =
   await import(resolve(packageRoot, "dist/upgrade-rehearsal-support.js"));
 

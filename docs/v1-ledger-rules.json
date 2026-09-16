@@ -2108,15 +2108,15 @@
     ]
   },
   "expected": {
-    "totalFiles": 5297,
+    "totalFiles": 5306,
     "areaCounts": {
-      "apps-agent": 532,
-      "apps-core-api": 129,
+      "apps-agent": 533,
+      "apps-core-api": 134,
       "apps-mcp-stdio": 8,
       "apps-webapp": 184,
       "docs-content": 746,
-      "internal-packages": 1174,
-      "packages": 2193,
+      "internal-packages": 1175,
+      "packages": 2195,
       "root-infra": 331
     },
     "kindCounts": {
@@ -2128,14 +2128,14 @@
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2162,
-      "test": 1082
+      "source": 2168,
+      "test": 1085
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1693,
+      "move-refactor": 1695,
       "regenerate": 43,
-      "retain": 3552,
+      "retain": 3559,
       "unresolved": 2
     },
     "protectedCount": 1642,
@@ -2148,15 +2148,15 @@
       "apps-agent.generated.contract-artifacts": 2,
       "apps-agent.infra.container": 1,
       "apps-agent.source.runtime": 281,
-      "apps-agent.test.suites": 216,
+      "apps-agent.test.suites": 217,
       "apps-agent.tooling.scripts": 13,
       "apps-core-api.config.package": 8,
       "apps-core-api.doc.package": 1,
       "apps-core-api.entry.composition-root": 2,
       "apps-core-api.infra.container": 1,
-      "apps-core-api.source.process": 51,
-      "apps-core-api.source.transports": 30,
-      "apps-core-api.test.suites": 36,
+      "apps-core-api.source.process": 52,
+      "apps-core-api.source.transports": 32,
+      "apps-core-api.test.suites": 38,
       "apps-mcp-stdio.config.package": 2,
       "apps-mcp-stdio.doc.package": 1,
       "apps-mcp-stdio.entry.bin": 1,
@@ -2228,7 +2228,7 @@
       "internal-packages.schema.prisma": 3,
       "internal-packages.source.typescript": 112,
       "internal-packages.test.suites": 63,
-      "internal-packages.tooling.scripts": 9,
+      "internal-packages.tooling.scripts": 10,
       "packages.adapters.config": 58,
       "packages.adapters.doc": 15,
       "packages.adapters.fixture": 3,
@@ -2237,7 +2237,7 @@
       "packages.config.build": 29,
       "packages.contexts.config": 37,
       "packages.contexts.doc": 17,
-      "packages.contexts.source": 730,
+      "packages.contexts.source": 732,
       "packages.contexts.test": 363,
       "packages.doc.package": 9,
       "packages.generated.release-history": 5,
@@ -2279,6 +2279,6 @@
       "root-infra.tooling.scripts": 121,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "3fa2aa073d4d79d808ad733985f55115c471df5ed5bd95dfa9f4e7d38340e181"
+    "classificationSha256": "c2d5e7b79a997d68d6a4aba03970c2f831679df1175fa91e03a1326660ec3e9e"
   }
 }

@@ -56,6 +56,7 @@
 //   rather than a restatement.
 
 import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -73,30 +74,34 @@ import {
 } from "./tool-sync-legacy.js";
 
 /**
- * THE DECLARATION AND THE PIN, READ OFF THE FIXTURE PACKAGE AS DATA.
+ * THE DECLARATION AND THE EXPECTATIONS, ASKED FOR RATHER THAN IMPORTED.
  *
- * `@platos/tenancy-database` may not be IMPORTED from this deployable — see
- * `tool-sync-legacy.ts` — so the three published constants are read out of its
- * built module as TEXT and parsed. That is the same discipline
- * `rest-chassis.test.ts` uses for `docs/error-taxonomy.json`: a file this
- * dimension does not control, read rather than restated.
+ * `@platos/tenancy-database` may not be imported from this deployable —
+ * `tenancy-prisma-only` in `scripts/arch/boundary-rules.mjs` bans it and
+ * `scripts/arch/composition-root.mjs` enforces it — so the fixture module's
+ * published constants are read back from the same process that seeds the legacy
+ * rows, under its `--print-fixture` mode.
+ *
+ * A REQUIRE IN A STRING IS STILL A REQUIRE, and the boundary gate was right to
+ * say so: the first draft passed the import as `node -e` source, and
+ * `composition-root.mjs` reported `tenancy-prisma-only` against this file. It
+ * had to, because the alternative is a rule that a caller can step around by
+ * quoting. Spawning the script is the shape that does not need an exception.
  */
 const FIXTURE = (() => {
   const source = execFileSync(
     process.execPath,
     [
-      "-e",
-      'const m = require("../../internal-packages/tenancy-database/dist/upgrade-fixture.js");' +
-        "process.stdout.write(JSON.stringify({" +
-        "declaration: m.ROLLOUT_TOOL_DECLARATION," +
-        "schemaHash: m.ROLLOUT_TOOL_SCHEMA_HASH," +
-        "health: m.ROLLOUT_TOOL_HEALTH," +
-        "heartbeat: m.ROLLOUT_TOOL_HEARTBEAT," +
-        "after: m.ROLLOUT_TOOL_HEALTH_AFTER_HEARTBEAT }));",
+      resolve(
+        process.cwd(),
+        "../../internal-packages/tenancy-database/scripts/seed-legacy-installation.mjs",
+      ),
+      "--print-fixture",
     ],
-    { cwd: process.cwd(), encoding: "utf8" },
+    { encoding: "utf8" },
   );
   return JSON.parse(source) as {
+    readonly ids: Readonly<Record<string, string>>;
     readonly declaration: {
       readonly name: string;
       readonly description: string;
