@@ -236,6 +236,10 @@ jobs:
           pnpm test:mcp-store-ownership
           pnpm audit:tool-lifecycle-reach
           pnpm test:tool-lifecycle-reach
+          pnpm audit:mcp-disposition-register
+          pnpm test:mcp-disposition-register
+          pnpm audit:agent-area-cycles
+          pnpm test:agent-area-cycles
           pnpm audit:end-user-presence-ancestry
           pnpm test:end-user-presence-ancestry
           pnpm test:webapp-image-inventory

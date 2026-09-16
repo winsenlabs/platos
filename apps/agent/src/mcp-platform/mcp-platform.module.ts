@@ -17,6 +17,10 @@ import { ProvidersModule } from "../providers/providers.module";
 import { MonitoringModule } from "../monitoring/monitoring.module";
 import { OAuthModule } from "../oauth/oauth.module";
 import { AdminModule } from "../admin/admin.module";
+// WIN-269 (M4.3) — binds the ports `tool-gateway` and `privacy` own to the MCP
+// services that implement them. `@Global()`, so neither area has to import
+// mcp-platform back and close a cycle.
+import { McpPortBindingsModule } from "./mcp-port-bindings.module";
 
 /**
  * Theme K — Platform MCP.
@@ -51,6 +55,10 @@ import { AdminModule } from "../admin/admin.module";
     OAuthModule,
     // MCPF-W6 — Organization + Environment services for the settings/admin tools.
     AdminModule,
+    // WIN-269 (M4.3) — see the import comment. Registering it here is what puts
+    // the bindings in BOTH composition roots that run a tool gateway, because
+    // both reach this module.
+    McpPortBindingsModule,
   ],
   // PIFSP-21 — McpEntityController lives alongside the platform one;
   // both share OAuthModule + ToolGatewayModule (ToolExecutorService +

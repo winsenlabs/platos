@@ -224,6 +224,28 @@ const v1ReleaseGateCommands = [
   // claim that goes stale the moment a slot is added to the context.
   "pnpm audit:tool-lifecycle-reach",
   "pnpm test:tool-lifecycle-reach",
+  // WIN-268 (M4.2), +2. THE MCP DISPOSITION REGISTER. Every tool and resource
+  // surface the product ships, with what happens to it under D18. It is admitted
+  // for the reason the two registers above it are, and for one that is sharper:
+  // its rows are DERIVED from `operation-manifest.generated.json`, which the
+  // control-plane generator produces by executing the servers' own modules. A
+  // tool added to a server therefore arrives in this register as an
+  // undispositioned row, and without these two lines it would arrive with a
+  // green CI — the exact failure the census row exists to prevent. The audit
+  // runs against the COMMITTED artifact, not the freshly derived rows, so the
+  // check is a join to something the tree does not control.
+  "pnpm audit:mcp-disposition-register",
+  "pnpm test:mcp-disposition-register",
+  // WIN-269 (M4.3), +2. THE apps/agent LAYERING GATE. `arch-boundaries` scans
+  // `packages/**` and `apps/core-api` and DELIBERATELY excludes `apps/agent`, so
+  // until these lines the strangler's own import graph had no cycle gate at all
+  // and the runtime<->tool<->MCP cycle survived under a comment saying it was
+  // unavoidable. The rule is REACHABILITY over the whole apps/agent area graph,
+  // so an upward edge routed through `memory` or `privacy` fails it too, and the
+  // one surviving edge is allowlisted with M3.1 named as its owner. Without
+  // these lines an import could put the cycle back with nothing to see it.
+  "pnpm audit:agent-area-cycles",
+  "pnpm test:agent-area-cycles",
   // WIN-268 (M4.2), +2 (salvaged from the refused P3 branch). The STATIC half of
   // the `end_users` tenancy conjunction: every relation the presence clause names
   // must resolve to a model that carries the organization ancestry rule. The
@@ -549,6 +571,28 @@ const expectedV1EvidenceCommands = [
   // claim that goes stale the moment a slot is added to the context.
   "pnpm audit:tool-lifecycle-reach",
   "pnpm test:tool-lifecycle-reach",
+  // WIN-268 (M4.2), +2. THE MCP DISPOSITION REGISTER. Every tool and resource
+  // surface the product ships, with what happens to it under D18. It is admitted
+  // for the reason the two registers above it are, and for one that is sharper:
+  // its rows are DERIVED from `operation-manifest.generated.json`, which the
+  // control-plane generator produces by executing the servers' own modules. A
+  // tool added to a server therefore arrives in this register as an
+  // undispositioned row, and without these two lines it would arrive with a
+  // green CI — the exact failure the census row exists to prevent. The audit
+  // runs against the COMMITTED artifact, not the freshly derived rows, so the
+  // check is a join to something the tree does not control.
+  "pnpm audit:mcp-disposition-register",
+  "pnpm test:mcp-disposition-register",
+  // WIN-269 (M4.3), +2. THE apps/agent LAYERING GATE. `arch-boundaries` scans
+  // `packages/**` and `apps/core-api` and DELIBERATELY excludes `apps/agent`, so
+  // until these lines the strangler's own import graph had no cycle gate at all
+  // and the runtime<->tool<->MCP cycle survived under a comment saying it was
+  // unavoidable. The rule is REACHABILITY over the whole apps/agent area graph,
+  // so an upward edge routed through `memory` or `privacy` fails it too, and the
+  // one surviving edge is allowlisted with M3.1 named as its owner. Without
+  // these lines an import could put the cycle back with nothing to see it.
+  "pnpm audit:agent-area-cycles",
+  "pnpm test:agent-area-cycles",
   // WIN-268 (M4.2), +2 (salvaged from the refused P3 branch). The STATIC half of
   // the `end_users` tenancy conjunction: every relation the presence clause names
   // must resolve to a model that carries the organization ancestry rule. The
@@ -2873,10 +2917,19 @@ test("committed CI and image-build policy is executable, correlated, and complet
   //      than minting a second script for a sibling clause of the same section.
   //   +1 M2/M4 INTEGRATION: the authored docs examples and the quickstart
   //      environment (`test:docs-examples`). See its own note in the list above.
-  // 26 + 2 + 4 + 2 + 2 + 2 + 2 + 1 + 1 + 1 = 43, measured on the integrated tree.
+  //   +2 WIN-268 (M4.2): mcp-disposition-register (audit + test). The register of
+  //      what happens to every MCP tool and resource surface under D18, derived
+  //      from the control-plane manifest the servers themselves produce. Its
+  //      audit runs against the COMMITTED artifact, so a tool added to a server
+  //      since the last regeneration is a named RET-1 rather than a silent pass.
+  //   +2 WIN-269 (M4.3): agent-area-cycles (audit + test). The runtime<->tool<->MCP
+  //      layering in `apps/agent`, which `arch-boundaries` deliberately does not
+  //      scan. Reachability over the whole apps/agent area graph, with one
+  //      allowlisted edge naming M3.1 as its owner.
+  // 26 + 2 + 4 + 2 + 2 + 2 + 2 + 1 + 1 + 1 + 2 + 2 = 47, measured on the integrated tree.
   assert.equal(
     v1ReleaseGateCommands.length,
-    43,
+    47,
     "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate, the secret-response census, the MCP store-ownership register and the tool-lifecycle register"
   );
   assert.equal(
@@ -5269,12 +5322,16 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   for its commands — the derivation's own tests and the `--check` — and ONE for
   //   the Redis URL the conformance, two-process SSE and tool-call parity suites
   //   read. No setup-node step is added: it is the same job.
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 2 + 5 + 3 = 404. The
+  //   MCP REGISTER LANE (WIN-268/WIN-269), +4. Four new evidence commands join the
+  //   V1 release gate selector and the exact script table, and each contributes
+  //   one control: `audit:mcp-disposition-register`, `test:mcp-disposition-register`,
+  //   `audit:agent-area-cycles` and `test:agent-area-cycles`.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 2 + 5 + 3 + 4 = 408. The
   // count is pinned rather than derived so that a control silently disappearing is a
   // failure rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    404,
+    408,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

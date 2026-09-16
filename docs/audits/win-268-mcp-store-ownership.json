@@ -88,6 +88,7 @@
         "listTools",
         "pageTools",
         "readToolAudit",
+        "recordToolHealth",
         "registerTools",
         "resolvePermission",
         "setEntityToolPolicy",
@@ -159,6 +160,7 @@
         "listOrganizationMembers",
         "listProjectEntities",
         "listVisibleProjects",
+        "recordEntityConnection",
         "resolveEnvironmentScope",
         "resolveOperatorEnvironment",
         "revokeAccessKeyGeneration",
@@ -1306,7 +1308,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 495,
+      "line": 500,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "environment",
@@ -1317,7 +1319,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 520,
+      "line": 525,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "organizationMcpPolicy",
@@ -1328,7 +1330,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 546,
+      "line": 551,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "agentBinding",
@@ -1339,7 +1341,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/token.service.ts",
-      "line": 97,
+      "line": 101,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "environment",
@@ -1350,7 +1352,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/token.service.ts",
-      "line": 137,
+      "line": 141,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "organizationMembership",
@@ -1361,7 +1363,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/token.service.ts",
-      "line": 154,
+      "line": 158,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "mcpToken",
@@ -1372,7 +1374,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/token.service.ts",
-      "line": 204,
+      "line": 208,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "mcpToken",
@@ -1383,7 +1385,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/token.service.ts",
-      "line": 230,
+      "line": 234,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "mcpToken",
@@ -1394,7 +1396,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/token.service.ts",
-      "line": 280,
+      "line": 284,
       "shape": "client",
       "receiver": "this.prisma",
       "delegate": null,
@@ -1405,7 +1407,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/token.service.ts",
-      "line": 281,
+      "line": 285,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "mcpToken",
@@ -1416,7 +1418,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/token.service.ts",
-      "line": 282,
+      "line": 286,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "mcpToken",
@@ -1427,7 +1429,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/token.service.ts",
-      "line": 321,
+      "line": 325,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "mcpToken",
@@ -1438,7 +1440,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/token.service.ts",
-      "line": 328,
+      "line": 332,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "mcpToken",

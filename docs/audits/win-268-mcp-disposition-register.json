@@ -1,0 +1,3477 @@
+{
+  "issue": "WIN-268",
+  "milestone": "M4.2",
+  "decision": "D18 — retire none by default; a tool is retired only with evidence it is dead",
+  "sources": {
+    "operationManifest": "apps/agent/src/control-plane/operation-manifest.generated.json",
+    "storeOwnershipRegister": "scripts/arch/mcp-store-ownership.mjs",
+    "docsController": "apps/agent/src/mcp-docs/docs-mcp.controller.ts"
+  },
+  "dispositions": [
+    "MAPPED",
+    "REPLACED",
+    "RETAINED",
+    "RETIRED"
+  ],
+  "violationCodes": [
+    "RET-1-UNDISPOSITIONED_TOOL",
+    "RET-2-ORPHAN_ROW",
+    "RET-3-METHOD_NOT_PUBLISHED",
+    "RET-4-REPLACEMENT_NOT_FOUND",
+    "RET-5-RETIRED_WITHOUT_EVIDENCE",
+    "RET-6-UNDISPOSITIONED_SURFACE"
+  ],
+  "protocolMethods": [
+    "initialize",
+    "notifications/ping",
+    "tools/list",
+    "tools/call"
+  ],
+  "violations": [],
+  "summary": {
+    "rows": 205,
+    "platformTools": 202,
+    "docsTools": 1,
+    "docsResourceSurfaces": 2,
+    "docsDeclaredMethods": [
+      "initialize",
+      "notifications/ping",
+      "resources/list",
+      "resources/read",
+      "tools/call",
+      "tools/list"
+    ],
+    "byDisposition": {
+      "MAPPED": 30,
+      "REPLACED": 76,
+      "RETAINED": 99,
+      "RETIRED": 0
+    },
+    "byClassification": {
+      "MAPPED": 82,
+      "MCP_ONLY": 120
+    },
+    "composedContexts": [
+      "identityAccess",
+      "providers",
+      "secrets",
+      "tenancy",
+      "tools"
+    ],
+    "retainedWaitingOn": {
+      "docs-mcp-bridge-deployable": 3,
+      "contract-method": 30,
+      "context-composition": 19,
+      "no-orm-site-in-declaring-file": 47
+    },
+    "retirements": 0
+  },
+  "rows": [
+    {
+      "surface": "resources/list",
+      "kind": "resource",
+      "server": "docs",
+      "declaredIn": "apps/agent/src/mcp-docs/docs-mcp.controller.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "docs-mcp-bridge-deployable",
+      "retirement": null
+    },
+    {
+      "surface": "resources/read",
+      "kind": "resource",
+      "server": "docs",
+      "declaredIn": "apps/agent/src/mcp-docs/docs-mcp.controller.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "docs-mcp-bridge-deployable",
+      "retirement": null
+    },
+    {
+      "surface": "search_docs",
+      "kind": "tool",
+      "server": "docs",
+      "declaredIn": "apps/agent/src/mcp-docs/docs-mcp.controller.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "docs-mcp-bridge-deployable",
+      "retirement": null
+    },
+    {
+      "surface": "agents.canary.promote",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/agents/:agentId/canary/promote"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "agents.canary.set",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "PATCH /api/v1/agent/agents/:agentId/canary"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "agents.census",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/admin.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy",
+        "agents"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "agents.clone_from",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/orchestration.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tools.discoverEntityTools",
+        "tools.registerTools"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "agents.create",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/agents"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "agents.delete",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "DELETE /api/v1/agent/agents/:agentId"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "agents.deploy_with_skills",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/orchestration.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tools.discoverEntityTools",
+        "tools.registerTools"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "agents.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/agents/:agentId"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "agents.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/agents"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "agents.update",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "PATCH /api/v1/agent/agents/:agentId"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "alert_channels.create",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "cost-monitoring",
+        "<client-level>"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "alert_channels.delete",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "cost-monitoring",
+        "<client-level>"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "alert_channels.get_integration",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "cost-monitoring",
+        "<client-level>"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "alert_channels.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "cost-monitoring",
+        "<client-level>"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "alert_channels.test",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "cost-monitoring",
+        "<client-level>"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "alert_channels.update",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "cost-monitoring",
+        "<client-level>"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "approvals.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/monitoring/approvals/:approvalId"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "approvals.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/monitoring/approvals"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "approvals.resolve",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/approvals/:approvalId/resolve"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "artifacts.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/threads/:threadId/artifacts"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "audit.safety_events.query",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/monitoring/safety-events"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "budgets.delete",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "DELETE /api/v1/agent/budgets/:capId"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "budgets.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "budgets.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/budgets"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "budgets.rollup_org_wide",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/admin.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy",
+        "agents"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "budgets.upsert",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/budgets"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "channel_apps.bind_installation",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channel-apps.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/channel-apps/:id/installations/:installationId/bind"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channel_apps.create",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channel-apps.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/channel-apps"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channel_apps.delete",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channel-apps.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "DELETE /api/v1/agent/channel-apps/:id"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channel_apps.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channel-apps.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/channel-apps/:id"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channel_apps.import_installation",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channel-apps.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/channel-apps/:id/installations/import"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channel_apps.installations_status",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channel-apps.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/channel-apps/:id/installations/status"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channel_apps.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channel-apps.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/channel-apps"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channel_apps.list_installations",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channel-apps.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/channel-apps/:id/installations"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channel_apps.revoke_installation",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channel-apps.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "DELETE /api/v1/agent/channel-apps/:id/installations/:installationId"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channel_apps.update",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channel-apps.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "PATCH /api/v1/agent/channel-apps/:id"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channels.create",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channels.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/channels"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channels.delete",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channels.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "DELETE /api/v1/agent/channels/:id"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channels.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channels.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/channels/:id"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channels.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channels.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/channels"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channels.mint_from_manifest",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channels.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/channels/mint"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channels.rotate_webhook_secret",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channels.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/channels/:id/rotate-secret"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "channels.update",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/channels.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "PATCH /api/v1/agent/channels/:id"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "clusters.add_agent",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MAPPED",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [
+        "POST /api/v1/agent/clusters/:clusterId/agents"
+      ],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "clusters.create",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MAPPED",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [
+        "POST /api/v1/agent/clusters"
+      ],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "clusters.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MAPPED",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [
+        "GET /api/v1/agent/clusters"
+      ],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "end_users.bind_external_id",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "identity-access",
+        "conversations"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "end_users.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "identity-access",
+        "conversations"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "end_users.link_identity",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "identity-access",
+        "conversations"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "end_users.unlink_identity",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "identity-access",
+        "conversations"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.census",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/admin.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy",
+        "agents"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.delete",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "DELETE /api/v1/agent/entities/:entityId"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.generate_mcp_token",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/entities/:entityId"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.get_linked_agents",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.get_mcp_config",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/entities/:entityId/mcp/config"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.get_test_credentials",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/entities/:entityId/test-credentials"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.get_tools",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/entities"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.provision",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/orchestration.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tools.discoverEntityTools",
+        "tools.registerTools"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "entities.refresh_discovery",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/entities/:entityId/refresh-discovery"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.regenerate_secret",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/entities/:entityId/regenerate-secret"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.register",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/entities"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.set_linked_agents",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.set_mcp_enabled",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.set_mcp_inject_context",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.set_test_credentials",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.set_tool_acl",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.update",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "PATCH /api/v1/agent/entities/:entityId"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "entities.wire_test",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/entities/:entityId/wire-test"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "environments.create",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "environments.delete",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "environments.delete_secret",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "environments.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "environments.list_secrets",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "environments.set_secret",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "evals.dispatch",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/evals/dispatch"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "evals.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/evals/:evalId"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "evals.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/evals"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "evals.regression_sweep",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/orchestration.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tools.discoverEntityTools",
+        "tools.registerTools"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "events.recent",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/events.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "events.subscribe",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/events.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "gdpr.export",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "gdpr.export_user_everywhere",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/admin.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy",
+        "agents"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "gdpr.import",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "gdpr.purge",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "health.check",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/monitoring.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "jobs.create",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/jobs"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "jobs"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "jobs.delete",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "DELETE /api/v1/agent/jobs/:id"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "jobs"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "jobs.dispatch",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/jobs/:id/dispatch"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "jobs"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "jobs.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/jobs/:id"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "jobs"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "jobs.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/jobs"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "jobs"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "jobs.set_enabled",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "jobs"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "jobs.update",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "PATCH /api/v1/agent/jobs/:id"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "jobs"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "jobs.validate_handler",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "jobs"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "kg.create_node",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/kg.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "kg.delete_node",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/kg.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "kg.discover_links",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/kg.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "kg.get_entity",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/kg.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "kg.link_nodes",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/kg.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "kg.list_entities",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/kg.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "kg.search_entities",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/kg.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "kg.update_node",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/kg.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "macros.delete",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "macros.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "macros.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "macros.record_start",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "macros.record_stop",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "macros.replay",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "macros.share",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "macros.update",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "mcp.list_clients",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/mcp.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "mcp.list_tokens",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/mcp.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "memories.archive",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "memories.bulk_delete",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "memories.delete",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "DELETE /api/v1/memory/:id"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "memories.extract_now",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/memory/extract"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "memories.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "memories.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/memory"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "memories.restore",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "memories.search",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/memory/search"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "memories.upsert",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/memory"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "messages.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/threads/:threadId/messages"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "messages.rate",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/messages/:messageId/rating"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "monitoring.cost.daily",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "monitoring.cost.range",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "notifications.delete",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/events.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "notifications.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/events.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "notifications.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/events.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "notifications.register",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/events.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "notifications.test",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/events.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "notifications.update",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/events.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "oauth.create_client",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/oauth.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "oauth.delete_client",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/oauth.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "oauth.list_clients",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/oauth.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "oauth.list_tokens",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/oauth.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "oauth.revoke_token",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/oauth.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "oauth.rotate_secret",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/oauth.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "org.add_member",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "org.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "org.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "org.list_members",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "org.remove_member",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "org.set_member_role",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "org.update",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "platos.diff_agents",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/reflection.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy",
+        "tools",
+        "conversations",
+        "governance"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "platos.explain_turn",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/reflection.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy",
+        "tools",
+        "conversations",
+        "governance"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "platos.list_accessible_scopes",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "platos.simulate_turn",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/reflection.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy",
+        "tools",
+        "conversations",
+        "governance"
+      ],
+      "waitingOn": "context-composition",
+      "retirement": null
+    },
+    {
+      "surface": "platos.whoami",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "projects.list_all",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tenancy.listVisibleProjects"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "providers.add_key",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/providers.ts",
+      "classification": "MAPPED",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "providers.listProviderKeys"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [
+        "POST /api/v1/agent/providers/keys"
+      ],
+      "owningContexts": [
+        "providers"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "providers.delete_key",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/providers.ts",
+      "classification": "MAPPED",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "providers.listProviderKeys"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [
+        "DELETE /api/v1/agent/providers/keys/:id"
+      ],
+      "owningContexts": [
+        "providers"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "providers.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/providers.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "providers.listProviderKeys"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "providers"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "providers.get_routes",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/providers.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "providers.listProviderKeys"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "providers"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "providers.link",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/providers/:provider/link"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "providers.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/providers"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "providers.list_keys",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/providers.ts",
+      "classification": "MAPPED",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "providers.listProviderKeys"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [
+        "GET /api/v1/agent/providers/keys"
+      ],
+      "owningContexts": [
+        "providers"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "providers.rotate_key",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/providers.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "providers.listProviderKeys"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "providers"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "providers.set_routes",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/providers.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "providers.listProviderKeys"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "providers"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "providers.test_credentials",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/providers.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "providers.listProviderKeys"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "providers"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "providers.unlink",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "DELETE /api/v1/agent/providers/:provider/link"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "scopes.bootstrap_demo_data",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/orchestration.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "MAPPED",
+      "mappedTo": [
+        "tools.discoverEntityTools",
+        "tools.registerTools"
+      ],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tools"
+      ],
+      "waitingOn": "transport-move",
+      "retirement": null
+    },
+    {
+      "surface": "scopes.list_all",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/admin.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy",
+        "agents"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "skills.disable",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/skills.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "DELETE /api/v1/agent/skills/agent/:agentId/:id"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "skills.disable_globally",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/skills.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "skills.enable",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/skills.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/skills/agent/:agentId/:id"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "skills.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/skills.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/skills/:id"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "skills.get_installed_config",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/skills.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "skills.install",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/skills.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/skills/import"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "skills.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/skills.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/skills"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "skills.uninstall",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/skills.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "DELETE /api/v1/agent/skills/:id"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "skills.update",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/skills.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "threads.create",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/threads"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "threads.delete",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "DELETE /api/v1/agent/threads/:threadId"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "threads.edit_and_rerun",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/threads/:threadId/messages/:messageId/edit-and-rerun"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "threads.fork",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "POST /api/v1/agent/threads/:threadId/fork"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "threads.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/threads/:threadId"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "threads.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/threads"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "threads.update",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/index.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "PATCH /api/v1/agent/threads/:threadId"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "tool_calls.cross_scope_audit",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/admin.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "tenancy",
+        "agents"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "tool_calls.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/tool-calls"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "retirement": null
+    },
+    {
+      "surface": "traces.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/monitoring.ts",
+      "classification": "MAPPED",
+      "disposition": "REPLACED",
+      "mappedTo": [],
+      "replacedBy": [
+        "GET /api/v1/agent/monitoring/trace/:threadId"
+      ],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "traces.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/monitoring.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.batches.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.deployments.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.deployments.promote",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.queues.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.queues.pause",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.queues.resume",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.runs.cancel",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.runs.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.runs.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.runs.replay",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.schedules.activate",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.schedules.create",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.schedules.deactivate",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.schedules.delete",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.schedules.get",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.schedules.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.tasks.trigger",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    },
+    {
+      "surface": "trigger.workers.list",
+      "kind": "tool",
+      "server": "platform",
+      "declaredIn": "apps/agent/src/mcp-platform/tools/trigger.ts",
+      "classification": "MCP_ONLY",
+      "disposition": "RETAINED",
+      "mappedTo": [],
+      "replacedBy": [],
+      "alsoServedBy": [],
+      "owningContexts": [],
+      "waitingOn": "no-orm-site-in-declaring-file",
+      "retirement": null
+    }
+  ]
+}

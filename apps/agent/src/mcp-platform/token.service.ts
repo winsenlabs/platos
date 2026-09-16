@@ -2,6 +2,10 @@ import { Inject, Injectable } from "@nestjs/common";
 import * as crypto from "node:crypto";
 import { PRISMA_TOKEN, type ControlDatabaseClient } from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
+// WIN-269 (M4.3) — the port `privacy` owns. Declaring `implements` here is what
+// makes the inversion compiler-checked: a change to `verify` that the erasure
+// API could not consume fails the build at this file, not at the consumer.
+import type { AdminCredentialVerifier } from "../privacy/admin-credential.port";
 
 /**
  * Opaque MCP control-plane tokens. Raw values use the established `plt_mcp_`
@@ -82,7 +86,7 @@ function constantTimeHexEqual(a: string, b: string): boolean {
 }
 
 @Injectable()
-export class PlatosMCPTokenService {
+export class PlatosMCPTokenService implements AdminCredentialVerifier {
   constructor(@Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient) {}
 
   private hashToken(raw: string): string {
