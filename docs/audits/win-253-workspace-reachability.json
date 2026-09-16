@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "9ad9376599508c680800c5dbd5d4365d13a9a200f98f5345c3507adf9cd8c429",
+  "evidenceSha256": "2808cee85436a40bacca0ee24aac448caf28d53e42791a32866c7f8e9ef9491d",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 40,
@@ -117,7 +117,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "c03364744047a824b2c1158bca3c4ed9d075628c7342085a1f24f1454c360534",
+    "aggregateSha256": "87a8842ea4fcfc70a5a190cecff272b183a0e64547132edbac57692a83a981cf",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -1073,7 +1073,7 @@
       },
       {
         "path": "apps/agent/src/http/request-body-limits.test.ts",
-        "sha256": "0c481655ec9edfa71fd90c87feec8a8e454f952acbad14d0048ca5f9fb468d8f"
+        "sha256": "3ace7f475a1fe5d229bd8e2a852faaf52aa29a0f987f9923ccfd54b1253d44eb"
       },
       {
         "path": "apps/agent/src/http/request-body-limits.ts",
@@ -4581,7 +4581,7 @@
       },
       {
         "path": "docs/audits/M0.8-operator-operations.md",
-        "sha256": "d8b2651f4c92669ac4edc91a18be2bd291f9be22384b5b54af3e2bbbbed126fa"
+        "sha256": "b59a7c757bf790de5cd08f4e6de5e0345e69457674004b049a6b85af2c83a157"
       },
       {
         "path": "docs/audits/M0.9-rest-census-independent.json",

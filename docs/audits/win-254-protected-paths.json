@@ -848,7 +848,7 @@
     {
       "path": "docs/audits/M0.8-operator-operations.md",
       "mode": "100644",
-      "sha256": "d8b2651f4c92669ac4edc91a18be2bd291f9be22384b5b54af3e2bbbbed126fa"
+      "sha256": "b59a7c757bf790de5cd08f4e6de5e0345e69457674004b049a6b85af2c83a157"
     },
     {
       "path": "docs/audits/M0.9-rest-census-independent.json",
@@ -1053,12 +1053,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "b5e39dabde46e119e1ed75295f1f231dc22ce9a8e285b6200e467976d48b475f"
+      "sha256": "a032ab614f5dce2a5e32ca926b8b7c76850782653c327382d13fcd2b870f59bd"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "2c4a61b488a9c5514923a1817a472bfccd91178606517c66b64ac4d264ac5bb6"
+      "sha256": "57d757937ef29f3aa11d7dd9229cae1822fbc189aaa65f73f5477ad21fbff463"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1113,7 +1113,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "b96ab117335dc7b1a43919961542dbfe0988bd8cd5fbdd7ad5320913717b4d0f"
+      "sha256": "7b70c51ecdb758280151bad0a7e2eb07ec6809c06bb9c6452db7d0f2c8ae6ca4"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",

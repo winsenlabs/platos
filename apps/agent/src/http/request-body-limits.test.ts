@@ -490,7 +490,27 @@ describe("WIN-268 body limit — the composition root installs it, and nothing e
     expect(main).toContain('from "./http/request-body-limits"');
     expect(main).toMatch(/^\s*installRequestBodyLimits\(\s*$/mu);
 
+    // The claim is about what SHIPS, so the scope is taken from the thing that
+    // decides that — tsconfig.build.json's `exclude` — rather than restated as a
+    // suffix list here. A file the production compile drops cannot register a
+    // parser ahead of the cap at runtime. If a pattern ever leaves that list
+    // those files start shipping AND start being scanned, in one move.
+    const appDir = join(srcDir as string, "..");
+    const buildConfig = JSON.parse(readFileSync(join(appDir, "tsconfig.build.json"), "utf8")) as {
+      exclude?: string[];
+    };
+    const srcGlobPrefix = "src/**/*";
+    const unshippedSuffixes = (buildConfig.exclude ?? [])
+      .filter((pattern) => pattern.startsWith(srcGlobPrefix))
+      .map((pattern) => pattern.slice(srcGlobPrefix.length));
+    // Non-vacuity: the derivation produced real suffixes, not an empty list that
+    // would silently scan everything (or, worse, skip nothing and never fail).
+    expect(unshippedSuffixes.length).toBeGreaterThan(0);
+    expect(unshippedSuffixes.every((suffix) => suffix.endsWith(".ts"))).toBe(true);
+
     const offenders: string[] = [];
+    const scanned: string[] = [];
+    const skippedAsUnshipped: string[] = [];
     const walk = (dir: string): void => {
       for (const entry of readdirSync(dir)) {
         if (entry === "node_modules" || entry === "dist") continue;
@@ -499,12 +519,23 @@ describe("WIN-268 body limit — the composition root installs it, and nothing e
           walk(path);
           continue;
         }
-        if (!path.endsWith(".ts") || path.endsWith(".test.ts")) continue;
+        if (!path.endsWith(".ts")) continue;
+        if (unshippedSuffixes.some((suffix) => path.endsWith(suffix))) {
+          skippedAsUnshipped.push(path);
+          continue;
+        }
         if (path === join(srcDir as string, "http", "request-body-limits.ts")) continue;
+        scanned.push(path);
         if (/\.useBodyParser\(/u.test(readFileSync(path, "utf8"))) offenders.push(path);
       }
     };
     walk(srcDir as string);
+    // Non-vacuity: the walk really reaches the composition root it is policing,
+    // and the build config's fixture exclusion is load-bearing here — a fixture
+    // that calls useBodyParser is in the tree and is skipped only because the
+    // production compile drops it.
+    expect(scanned).toContain(join(srcDir as string, "main.ts"));
+    expect(skippedAsUnshipped.some((path) => path.endsWith(".test-fixture.ts"))).toBe(true);
     // A second parser registered anywhere else could run ahead of the cap.
     expect(offenders).toEqual([]);
   });
