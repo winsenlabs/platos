@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "20b682cb1d781b97e8496448a1964c879b0a307bcd1553e69308968c6f8abb0b",
+  "evidenceSha256": "6a85e2d89ef54e2a057b7727255fc8770ccc2392109752ec655a2479eac0e38f",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 40,
@@ -117,7 +117,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "90245557936c609dcf5f666f0430858830f975ae59fe493e9f915306e306f7f0",
+    "aggregateSha256": "7453a48cbc1ce06e7eca8cc545b30715593d614aede0727aeabce28516bce2cd",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -1845,7 +1845,7 @@
       },
       {
         "path": "apps/agent/src/openapi/openapi.generated.json",
-        "sha256": "96fcffeaf6da4183db3b222d236dd880adbf74e7fa991186c09206f523e4caac"
+        "sha256": "03f6c2b860e3fa8639a8c675b5b220931a1c2ef0df9a673d5e8a5c1c02987a4c"
       },
       {
         "path": "apps/agent/src/openapi/openapi.module.ts",
@@ -5049,7 +5049,7 @@
       },
       {
         "path": "docs/error-taxonomy.json",
-        "sha256": "574acde11e2f91cbeda3237a05c98b1f2156be08fdd551910ca40d1f3e47ba3c"
+        "sha256": "2253290113adf87ef4f1510d02782e0cb79a9d3d7271e4a03d1c973fa3686785"
       },
       {
         "path": "docs/errors-retrying.mdx",
@@ -6225,7 +6225,7 @@
       },
       {
         "path": "docs/openapi-v1-baseline.json",
-        "sha256": "752d961893071e1b805a95bf75b45cb884331bd3539f2fdbcdd08c529882648a"
+        "sha256": "8ea709c9c8c0341d577b4e35e41f555fea0d11815a773c2e85bc97d5cf1c16d0"
       },
       {
         "path": "docs/openapi.yml",
@@ -20081,7 +20081,7 @@
       },
       {
         "path": "packages/platos-client-py/platos_client/generated/v1.py",
-        "sha256": "992383267e44235ffe55fe36c9b7f5ae49320bce8b23152f3834c081f0ff13d4"
+        "sha256": "b86441d10a4cd6a6848af7c02a2d240a4858fb410cd9c15d5ccdf60bb92fb92d"
       },
       {
         "path": "packages/platos-client-py/platos_client/py.typed",
@@ -20185,7 +20185,7 @@
       },
       {
         "path": "packages/platos-client/src/generated/v1.ts",
-        "sha256": "206615350ee6d273b97eef0dd96c49e6b3c57fb555daf21ced52ccd0522129e3"
+        "sha256": "37ba04c6a80c919570b4927b4d6ea0ecf38e599f0834c0b9fcf81abbad9af878"
       },
       {
         "path": "packages/platos-client/src/index.ts",
@@ -21625,7 +21625,7 @@
       },
       {
         "path": "tests/sdk-contract/v1-fixtures.json",
-        "sha256": "1644ad734b578cd26a9110150d9ac869c88285c0102b78e31549a8eca4ceb577"
+        "sha256": "3b12adfbc3c64efccf79da5e1511cfae24cdade14f9823c964516530c2ca053d"
       },
       {
         "path": "tests/sdk-contract/v1-stream-resume.json",

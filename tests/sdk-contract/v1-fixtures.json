@@ -22,7 +22,7 @@
     ]
   },
   "sourceDigests": {
-    "apps/agent/src/openapi/openapi.generated.json": "96fcffeaf6da4183",
+    "apps/agent/src/openapi/openapi.generated.json": "03f6c2b860e3fa86",
     "apps/agent/src/control-plane/operation-manifest.generated.json": "ba1517cd779330f4",
     "apps/core-api/src/http/idempotency-policy.ts": "fe4daadf7e1e2547",
     "apps/core-api/src/http/idempotency-errors.ts": "768dd58139007391",

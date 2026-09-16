@@ -1621,7 +1621,7 @@
     },
     "INVALID_EMAIL_ADDRESS": {
       "category": "invalid_input",
-      "status": null,
+      "status": 400,
       "contexts": [
         "identity-access"
       ]
@@ -1873,14 +1873,14 @@
     },
     "MAGIC_LINK_DELIVERY_FAILED": {
       "category": "unavailable",
-      "status": null,
+      "status": 503,
       "contexts": [
         "identity-access"
       ]
     },
     "MAGIC_LINK_DELIVERY_UNAVAILABLE": {
       "category": "unavailable",
-      "status": null,
+      "status": 503,
       "contexts": [
         "identity-access"
       ]
@@ -2104,42 +2104,42 @@
     },
     "NOTIFIER_EMAIL_CONFIGURATION_INVALID": {
       "category": "invalid_input",
-      "status": null,
+      "status": 400,
       "contexts": [
         "adapters"
       ]
     },
     "NOTIFIER_EMAIL_INSECURE_AUTH_REFUSED": {
       "category": "unavailable",
-      "status": null,
+      "status": 503,
       "contexts": [
         "adapters"
       ]
     },
     "NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED": {
       "category": "unavailable",
-      "status": null,
+      "status": 503,
       "contexts": [
         "adapters"
       ]
     },
     "NOTIFIER_EMAIL_MESSAGE_REFUSED": {
       "category": "invalid_input",
-      "status": null,
+      "status": 400,
       "contexts": [
         "adapters"
       ]
     },
     "NOTIFIER_EMAIL_RELAY_REFUSED": {
       "category": "unavailable",
-      "status": null,
+      "status": 503,
       "contexts": [
         "adapters"
       ]
     },
     "NOTIFIER_EMAIL_RELAY_UNREACHABLE": {
       "category": "unavailable",
-      "status": null,
+      "status": 503,
       "contexts": [
         "adapters"
       ]
@@ -2664,7 +2664,7 @@
     },
     "RATE_LIMIT_FAILED_CLOSED": {
       "category": "unavailable",
-      "status": null,
+      "status": 503,
       "contexts": [
         "identity-access"
       ]
@@ -2995,7 +2995,7 @@
     },
     "TENANCY_INVALID_EMAIL": {
       "category": "invalid_input",
-      "status": null,
+      "status": 400,
       "contexts": [
         "tenancy"
       ]
@@ -3009,7 +3009,7 @@
     },
     "TENANCY_INVALID_ROLE": {
       "category": "invalid_input",
-      "status": null,
+      "status": 400,
       "contexts": [
         "tenancy"
       ]
@@ -3044,7 +3044,7 @@
     },
     "TENANCY_INVITATION_FORBIDDEN": {
       "category": "forbidden",
-      "status": null,
+      "status": 403,
       "contexts": [
         "tenancy"
       ]
@@ -3072,7 +3072,7 @@
     },
     "TENANCY_MEMBER_LIST_FORBIDDEN": {
       "category": "forbidden",
-      "status": null,
+      "status": 403,
       "contexts": [
         "tenancy"
       ]
@@ -3324,7 +3324,7 @@
     },
     "TRANSPORT_SESSION_COOKIE_REQUIRES_TLS": {
       "category": "precondition_failed",
-      "status": null,
+      "status": 412,
       "contexts": [
         "core-api"
       ]
@@ -3338,7 +3338,7 @@
     },
     "TRANSPORT_STORE_UNAVAILABLE": {
       "category": "unavailable",
-      "status": null,
+      "status": 503,
       "contexts": [
         "core-api"
       ]
@@ -3372,7 +3372,7 @@
       "code": "CHANNELS_SIGNATURE_INVALID",
       "sites": 2,
       "shapes": 1,
-      "reason": ""
+      "reason": "Two guards, ONE fact for the caller: nothing presented verifies as Discord's signature over these bytes. One refuses when the CONFIGURED public key is not a raw Ed25519 key at all and the other when a well-formed key does not verify the signature, and they MUST be indistinguishable -- an endpoint that answered a forger differently for a misconfigured key would announce that every forgery is currently equally good. The operator repair is read off the boot diagnostic, not the refusal: PLATOS_CHANNELS_DISCORD_PUBLIC_KEY is refused at load unless it is exactly sixty-four hex digits, so the first guard is the second line of defence and the common cause of the second is a key copied from the wrong application."
     },
     {
       "file": "packages/adapters/channel-discord/src/verify.ts",
@@ -3380,7 +3380,7 @@
       "code": "CHANNELS_SIGNATURE_STALE",
       "sites": 2,
       "shapes": 1,
-      "reason": ""
+      "reason": "Two guards, ONE fact for the caller, exactly as in channel-slack's verifier: the instant this interaction claims is not one this process will act on. One refuses a timestamp that is not a decimal integer and the other one whose distance from receipt exceeds the replay window; telling a caller which would hand a forger a probe for the window's width. The repair is the same after both: check the clock, or widen PLATOS_CHANNELS_DISCORD_REQUEST_MAX_AGE_S deliberately."
     },
     {
       "file": "packages/adapters/channel-slack/src/verify.ts",

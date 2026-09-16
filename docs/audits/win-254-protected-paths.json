@@ -1053,12 +1053,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "4d677364408a1ce43b78b986c493470d76647837f611b7cf6f6af3f59d3a8393"
+      "sha256": "6181671ef1e0d196adea446a4dacc67488e2f7c86e347440874bf7265d06663a"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "c8a7b1022c119b6bace214b9a59b1bf868f296e707ec2a4a86ca67351bc1779f"
+      "sha256": "5683f2f010abc93ac2553c60d3340540779ec1669d860eb1af8bef485fbf9fb4"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1113,7 +1113,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "0d54044ee41ab2a3cb94010ebc03c867c27c43e4c28b0857a3302c6e71a9ada1"
+      "sha256": "42a0a5060d58bf3a40d1d0035679c97d624c32662876c601b07419bfceffda35"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -1453,7 +1453,7 @@
     {
       "path": "docs/error-taxonomy.json",
       "mode": "100644",
-      "sha256": "574acde11e2f91cbeda3237a05c98b1f2156be08fdd551910ca40d1f3e47ba3c"
+      "sha256": "2253290113adf87ef4f1510d02782e0cb79a9d3d7271e4a03d1c973fa3686785"
     },
     {
       "path": "docs/errors-retrying.mdx",
@@ -2923,7 +2923,7 @@
     {
       "path": "docs/openapi-v1-baseline.json",
       "mode": "100644",
-      "sha256": "752d961893071e1b805a95bf75b45cb884331bd3539f2fdbcdd08c529882648a"
+      "sha256": "8ea709c9c8c0341d577b4e35e41f555fea0d11815a773c2e85bc97d5cf1c16d0"
     },
     {
       "path": "docs/openapi.yml",
