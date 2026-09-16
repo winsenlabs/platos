@@ -283,7 +283,7 @@
     {
       "path": "content/docs/self-hosting.md",
       "mode": "100644",
-      "sha256": "2d0d910e42001e99c9121bc9b666a3f0682cf3c91a23b6abb2e56bbab50c3df9"
+      "sha256": "8877b24a4747fcc6db55f34459b86ac8329d393ffb56b09a326c31a82d7a96b2"
     },
     {
       "path": "content/docs/skills.md",
@@ -1053,12 +1053,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "158793b11d973a82c6ebd9fff6de5d77661fae8d314de9810d6644a271728197"
+      "sha256": "75c7b30d7cf23a2b653c3ccbfcf032e4625a42803bc107caaca416f1c0377dc7"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "1cc7eaa5a7885c205e373e62bb9bc2bdc0bfd94454afc994cfd67f3be73b2bc0"
+      "sha256": "e1e958569ba370e20b1b0aa442e3a46b5fccd191eb5f9b6085f1bc1a7bffc713"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1098,7 +1098,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "dd4189b16361621cde89df4179e7ef5d8b988a53b46233209504a9fdb1db1937"
+      "sha256": "1f0829c445060b4340ef1d6b0a78c10925e64c4609602e7201768a9351698e4c"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1108,7 +1108,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "230a55ae60ea3024bfae2460af61181b7f58cfc998d49e74b389d1f7846dfc04"
+      "sha256": "f3db7a9cef899b6419d994e23be6ebe046f46fe17668e7d378df43d58d049ee2"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",

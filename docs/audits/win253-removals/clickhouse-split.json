@@ -1883,7 +1883,7 @@
       {
         "path": "docker-compose.platos.yml",
         "ownerAuthorizationSha256": "186f4a921d9d51adc8ce23e7de729e65ac9bf5879987246be74962dfd0aef882",
-        "currentSha256": "34189f22d17649923e314bc4cd610f0ec3e34df1395cbae32868ed2989b8e999",
+        "currentSha256": "af2fc947f51b519ec45ee14b8de56863d521a73df49293410de32530a3aab0af",
         "requiredReferences": [
           "dockerfile: internal-packages/tenancy-database/Dockerfile.migrations",
           "PLATOS_CLICKHOUSE_TIMEOUT_MS"

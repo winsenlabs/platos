@@ -749,6 +749,15 @@ services:
       PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "${PLATOS_CHANNELS_SLACK_SIGNING_SECRET:-}"
       # channels.discord — the application public key; blank leaves it unwired.
       PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: "${PLATOS_CHANNELS_DISCORD_PUBLIC_KEY:-}"
+      # channels.emailNotifier — the relay budget alerts and operator sign-in
+      # links go out through. The group is anchored on the relay URL and is
+      # declared only when all three are set; blank leaves it unwired. It is here
+      # because `notifier-email` stopped being a generated interface: an adapter
+      # with a constructor that no variable can reach is one the composed smoke
+      # reports as unwired for a reason configuration could fix.
+      PLATOS_CHANNELS_EMAIL_SMTP_URL: "${PLATOS_CHANNELS_EMAIL_SMTP_URL:-}"
+      PLATOS_CHANNELS_EMAIL_FROM: "${PLATOS_CHANNELS_EMAIL_FROM:-}"
+      PLATOS_CHANNELS_EMAIL_LOGIN_URL: "${PLATOS_CHANNELS_EMAIL_LOGIN_URL:-}"
       # Gates the detailed /readyz body; blank keeps the detail off entirely.
       PLATOS_CORE_API_ADMIN_HEALTH_TOKEN: "${PLATOS_CORE_API_ADMIN_HEALTH_TOKEN:-}"
     healthcheck:

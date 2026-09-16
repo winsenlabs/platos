@@ -181,6 +181,15 @@ export function coreApiEnvironment({ postgresUrl, redisUrl, defaultModel, secret
     PLATOS_SECURITY_ENCRYPTION_KEY: secrets.encryptionKey,
     PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "1",
     PLATOS_CHANNELS_SLACK_SIGNING_SECRET: secrets.slackSigningSecret,
+    // EVERY CHANNEL GROUP IS DECLARED, and not because the smoke exercises them.
+    // `readinessViolations` refuses an adapter unwired for a reason CONFIGURATION
+    // could fix, so a group left undeclared here fails the smoke the moment its
+    // directory stops being a generated interface. `channel-discord` arrived with a
+    // constructor; `notifier-email` gained one with the magic-link delivery port.
+    PLATOS_CHANNELS_DISCORD_PUBLIC_KEY: secrets.discordPublicKey,
+    PLATOS_CHANNELS_EMAIL_SMTP_URL: secrets.emailSmtpUrl,
+    PLATOS_CHANNELS_EMAIL_FROM: secrets.emailFrom,
+    PLATOS_CHANNELS_EMAIL_LOGIN_URL: secrets.emailLoginUrl,
     PLATOS_CORE_API_ADMIN_HEALTH_TOKEN: secrets.adminHealthToken,
   };
 }
@@ -265,6 +274,16 @@ async function main() {
     sessionSecret: randomBytes(32).toString("hex"),
     encryptionKey: randomBytes(32).toString("hex"),
     slackSigningSecret: randomBytes(32).toString("hex"),
+    // 64 hex digits, which is the grammar the config field states. Constructing the
+    // Discord adapter never touches it — the key travels per delivery — so a random
+    // one is as good as a real point here, and a real one would be a credential in
+    // the source of a smoke that needs none.
+    discordPublicKey: randomBytes(32).toString("hex"),
+    // The relay is never dialled: constructing `notifier-email` opens no socket, and
+    // this smoke sends nothing. The address is unroutable on purpose.
+    emailSmtpUrl: "smtp://127.0.0.1:1",
+    emailFrom: "smoke@platos.invalid",
+    emailLoginUrl: "https://smoke.platos.invalid/magic",
     adminHealthToken: randomBytes(32).toString("hex"),
     messageEncryptionKey: randomBytes(32).toString("hex"),
   };
