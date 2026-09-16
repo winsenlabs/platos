@@ -194,12 +194,20 @@ test("deletion-set validation rejects a restored owner-authorized path", () => {
   );
 });
 
-test("post-base webapp patch deletions remain exact, reviewed, and outside the ClickHouse receipt", () => {
+test("post-base deletions outside the cluster remain exact, reviewed, and outside the ClickHouse receipt", () => {
+  // WIN-257 T8 ADDED THE LAST TWO, and they are the first entries here that are
+  // not patches: `apps/webapp/app/services/{database,projectAccess}.server.ts`,
+  // the dashboard's `PrismaClient` and the project-visibility rule the cutover
+  // deletes. Both audits that walk this deletion set need their own reason —
+  // `scripts/vendored-build-audit.mjs` carries the twin entries — because
+  // neither inherits the other's authorization.
   assert.deepEqual(
     ADDITIONAL_INTEGRATION_DELETIONS.map(({ path }) => path),
     [
       "patches/@upstash__ratelimit.patch",
       "patches/@window-splitter__state@0.4.1.patch",
+      "apps/webapp/app/services/database.server.ts",
+      "apps/webapp/app/services/projectAccess.server.ts",
     ]
   );
   for (const deletion of ADDITIONAL_INTEGRATION_DELETIONS) assert.ok(deletion.reason.trim());

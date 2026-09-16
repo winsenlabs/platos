@@ -221,7 +221,13 @@ test("live audit is green and derives every deletion from the exact primary base
   assert.deepEqual(violations, []);
   assert.equal(report.integrationBase.sha, INTEGRATION_BASE);
   assert.equal(report.deletion.workspaceCount, 6);
-  assert.equal(report.deletion.actualFileCount, 124);
+  // 124 -> 126 with WIN-257 T8, and the two are named rather than counted:
+  // `apps/webapp/app/services/{database,projectAccess}.server.ts`, the webapp's
+  // `PrismaClient` and the project-visibility rule. They are the FIRST deletions
+  // outside the six-workspace cluster that are not patches — a deletion there is a
+  // violation by default, so both carry a reason in
+  // `allowedAdditionalIntegrationDeletions`.
+  assert.equal(report.deletion.actualFileCount, 126);
   assert.equal(report.reviewedSource.base, REVIEWED_SOURCE_BASE);
   assert.equal(report.reviewedSource.commit, REVIEWED_SOURCE_COMMIT);
   assert.equal(report.reviewedSource.deletion.workspaceCount, 6);
@@ -234,13 +240,22 @@ test("live audit is green and derives every deletion from the exact primary base
   );
   assert.deepEqual(
     report.reviewedSource.integrationCoverage.separatelyAuthorizedOutsideRootDeletions.map(({ path }) => path),
-    ["patches/@upstash__ratelimit.patch", "patches/@window-splitter__state@0.4.1.patch"]
+    // DECLARATION ORDER, not sorted: the list is read off
+    // `allowedAdditionalIntegrationDeletions` in the order that table is written,
+    // so the two obsolete patches stay ahead of WIN-257 T8's two webapp modules.
+    [
+      "patches/@upstash__ratelimit.patch",
+      "patches/@window-splitter__state@0.4.1.patch",
+      "apps/webapp/app/services/database.server.ts",
+      "apps/webapp/app/services/projectAccess.server.ts",
+    ]
   );
   assert.deepEqual(report.deletion.composition, {
     reviewedSourceSixRootFileCount: 120,
     primaryBaseSixRootAdditionCount: 2,
-    separatelyAuthorizedOutsideRootFileCount: 2,
-    totalFileCount: 124,
+    // 2 -> 4: the two obsolete patches, and WIN-257 T8's two webapp modules.
+    separatelyAuthorizedOutsideRootFileCount: 4,
+    totalFileCount: 126,
   });
   assert.ok(
     report.reviewedSource.integrationCoverage.primaryBaseAdditions.every(({ path }) => isTombstonedPath(path)),
@@ -255,6 +270,12 @@ test("live audit is green and derives every deletion from the exact primary base
   assert.ok(
     report.reviewedSource.integrationCoverage.primaryBaseAdditions.every(({ reason }) => reason.includes("WIN-252")),
     "every primary-base addition must carry an explicit explanation"
+  );
+  assert.ok(
+    report.reviewedSource.integrationCoverage.separatelyAuthorizedOutsideRootDeletions.every(
+      ({ reason }) => /WIN-\d+/u.test(reason)
+    ),
+    "every authorized deletion outside the cluster must name the issue that authorized it"
   );
   const actual = execFileSync(
     "git",

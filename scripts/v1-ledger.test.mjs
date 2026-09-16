@@ -620,7 +620,28 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `@remix-run/node`, the generated Prisma client and the `~/*` alias resolve
     // only inside `apps/webapp`. It lands on the existing `apps-webapp.test.suites`
     // rule; NO LEDGER RULE CHANGED.
-    "apps-webapp": 2,
+    //
+    // WIN-257 T8, THE CUTOVER — 2 -> 3, AND IT IS THE FIRST ROW IN THIS BLOCK
+    // WHOSE ARITHMETIC HAS A SUBTRACTION IN IT. Four files land, three leave, and
+    // one of the three is the oracle driver the line above added:
+    //   +4  `app/services/coreApi.server.ts` (the per-route operation table and
+    //       the dispatcher), `app/services/coreApiError.ts` (the two refusal types,
+    //       apart from the client because an error type must not need a configured
+    //       upstream to be imported), `app/utils/coreVocabulary.ts` (the closed
+    //       lists restated off the generated Prisma client) and
+    //       `test/coreApiClient.test.ts` (the joins those restatements make to the
+    //       files that own them).
+    //   -1  `test/differential-oracle.mts`: the oracle cannot be asked a question
+    //       once the code it executed is gone, and a driver that could still be run
+    //       would mean the transcript is not frozen.
+    //   -2  `app/services/database.server.ts` and
+    //       `app/services/projectAccess.server.ts`: the `PrismaClient` and the
+    //       project-visibility rule. Both are baseline files, so they come off the
+    //       BASELINE count rather than off this delta, which is why 2 + 4 - 1 - 2
+    //       reads 3 and not 1.
+    // All four additions land on `apps-webapp.source.remix` and
+    // `apps-webapp.test.suites`, rules that already existed. NO LEDGER RULE CHANGED.
+    "apps-webapp": 3,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
     // health/readiness, http/{health.controller,http.module,token},
@@ -2238,7 +2259,21 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   the transport scenario registry, the oracle-transcript module, its
     //   no-Docker controls, and the recorded transcript itself.
     // 95 + 7 + 2 + 11 = 115 on the merged tree.
-    "root-infra": 115,
+    //
+    // WIN-257 T8, THE CUTOVER — 115 -> 118. THREE files, all on existing
+    // `root-infra` rules; NO LEDGER RULE CHANGED.
+    //   `scripts/mutations-win257-t8.json`, the tranche's mutation ledger — the
+    //   seventh tranche to use that convention, on `root-infra.tooling.scripts`
+    //   beside the others.
+    //   `tests/persisted-state-gate/read-back.ts`, the gate's OWN database handle
+    //   and session mint, on `root-infra.test.harness`. It used to import the
+    //   webapp's production `database.server` and `auth.server`, which T8 deletes —
+    //   and reading a gate's evidence through the subject's own client was wrong
+    //   before the cutover made it impossible.
+    //   `.changeset/webapp-cutover-project-environments.md`, the version intent for
+    //   the two additive contract changes, on `root-infra.release.changesets`.
+    // 95 + 7 + 2 + 11 + 3 = 118 on this lane.
+    "root-infra": 118,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2569,7 +2604,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // each itemised on its delta above: `root-infra` +11, `apps-core-api` +1,
   // `apps-webapp` +1 and `docs-content` +1. Re-measured on the integrated tree:
   // 18 + 1 + 127 + 4 + 10 + 1599 + 27 + 115 = 1902.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1902);
+  //
+  // WIN-257 T8, THE CUTOVER — 1902 -> 1906, and it is the FIRST tranche in this
+  // ledger's life whose delta has a subtraction in it. Seven files land and three
+  // leave, so the net is +4:
+  //   `root-infra` 115 -> 118 (+3: the mutation ledger, the persisted-state
+  //   gate's own read-back handle, the changeset).
+  //   `apps-webapp` 2 -> 3, which is +4 - 1 - 2: four new files, minus the oracle
+  //   driver the previous lane added, minus the two BASELINE modules
+  //   `app/services/{database,projectAccess}.server.ts`. Those two come off the
+  //   baseline area count, which is why this delta moves by one for four
+  //   additions.
+  // Re-measured on this tree:
+  // 18 + 127 + 4 + 3 + 27 + 10 + 1599 + 118 = 1906.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1906);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2895,7 +2943,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // suite, one apps-webapp oracle driver and one docs-content register. Reached
     // here by summing the per-area counts rather than by reading the total, so the
     // two derivations can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1902
+    // AND WIN-257 T8, THE CUTOVER — 1902 -> 1906, the THIRTY-THIRD hand move and
+    // the first with a SUBTRACTION in it: `root-infra` +3 and `apps-webapp` +1,
+    // where that +1 is four new files less the oracle driver and less two baseline
+    // modules this tranche deletes. Moved in the same edit as the total and both
+    // area deltas, for the reason the note above gives.
+    rulesDocument.baseline.totalFiles + 1906
   );
 });
 
