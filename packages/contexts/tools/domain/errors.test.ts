@@ -31,6 +31,7 @@ const MINTED = [
   errors.callSequenceConflict("step-1", 0),
   errors.callTransitionInvalid("SUCCEEDED", "ACTIVE"),
   errors.scopeMismatch("org/a", "org/b"),
+  errors.healthReportInvalid("files.upload", "on fire"),
   errors.repositoryUnavailable("down"),
 ];
 
