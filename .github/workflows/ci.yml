@@ -1116,13 +1116,14 @@ jobs:
           node --test scripts/mcp-sdk-candidate-compatibility.test.mjs
           node scripts/mcp-sdk-candidate-compatibility.mjs --check
 
-      - name: WIN-269 tool-call parity across direct, Trigger and channel turns
+      - name: WIN-269 tool-call parity across the direct, bridged and channel turns
         # THE SAME CLAUSE AS THE `typecheck` JOB'S WIN-269 STEP, IN THE JOB THAT HAS
         # THE STORES. The parity suite drives the same `McpConnectionPool` through
-        # the whole executor seam — the direct turn, the Trigger bridge controller
-        # and the channel turn are asked for the SAME tool call and must produce the
-        # same arguments, the same audit and the same result — and it composes the
-        # real application, so it needs this job's PostgreSQL and Redis. The
+        # the whole executor seam — the direct turn, the bridged turn that reaches
+        # `InternalExecuteToolController`, and the channel turn are asked for the
+        # SAME tool call and must produce the same arguments, the same audit and the
+        # same result — and it composes the real application, so it needs this job's
+        # PostgreSQL and Redis. The
         # `typecheck` job has neither, which is why this clause has two steps rather
         # than one.
         #

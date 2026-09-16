@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "6a85e2d89ef54e2a057b7727255fc8770ccc2392109752ec655a2479eac0e38f",
+  "evidenceSha256": "541d515b3ab93fa42fdf88e22359bf89a83c549a89a2e3c0ad084bf9cfb2b19c",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 40,
@@ -117,7 +117,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "7453a48cbc1ce06e7eca8cc545b30715593d614aede0727aeabce28516bce2cd",
+    "aggregateSha256": "d2e22adae0ba7e8dbf22c6ed7386ba183a5aefffd4b0096098bcbf54737053c7",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -285,7 +285,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "4faedb7b38189bc473e1101b3c68524b00d9b45d1084610b01978956a35b095d"
+        "sha256": "c02119a7d03b5dd1b4737ff02f9da0bf500267ed56da5f7cb8a997114879e203"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -4669,7 +4669,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "b75fdb2b3171c5ee24360f3d23aa8804b09c1f490ea08319cece0f50265e9fa3"
+        "sha256": "642c2c6ae200d67eac96b80c84f1e3a2a57d5d3f97abb11fc79e490aeae326a7"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -20905,7 +20905,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "16b193c60a054c34ac0d704c7cc54f55e69344b256be55e70c1a8ecaa188c86d"
+        "sha256": "6c7c84da6e7fd203edcbd4e9627d4372681b2b4d7dee894a4aa5eca7fab04618"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",

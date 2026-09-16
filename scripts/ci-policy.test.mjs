@@ -6137,7 +6137,7 @@ const M4_GATE_STEPS = Object.freeze([
     // nothing going red.
     servicesStep: {
       job: "agent-tenancy-postgres",
-      name: "WIN-269 tool-call parity across direct, Trigger and channel turns",
+      name: "WIN-269 tool-call parity across the direct, bridged and channel turns",
       suites: ["src/tool-gateway/tool-call-parity.integration.test.ts"],
       after: ["pnpm --filter @internal/workload-identity build", "pnpm --filter @internal/docs build"],
     },
@@ -6535,10 +6535,10 @@ test("M4 gates: the checkers fail on the mutations they exist to catch", () => {
     {
       name: "the WIN-269 services step renamed",
       text: pristine.replace(
-        "- name: WIN-269 tool-call parity across direct, Trigger and channel turns",
+        "- name: WIN-269 tool-call parity across the direct, bridged and channel turns",
         "- name: Tool call parity"
       ),
-      expected: 'exactly one step named "WIN-269 tool-call parity across direct, Trigger and channel turns"',
+      expected: 'exactly one step named "WIN-269 tool-call parity across the direct, bridged and channel turns"',
     },
     {
       name: "the parity suite dropped from the WIN-269 services step",
@@ -6551,8 +6551,8 @@ test("M4 gates: the checkers fail on the mutations they exist to catch", () => {
     {
       name: "the WIN-269 services step allowed to fail",
       text: pristine.replace(
-        "      - name: WIN-269 tool-call parity across direct, Trigger and channel turns\n",
-        "      - name: WIN-269 tool-call parity across direct, Trigger and channel turns\n        continue-on-error: true\n"
+        "      - name: WIN-269 tool-call parity across the direct, bridged and channel turns\n",
+        "      - name: WIN-269 tool-call parity across the direct, bridged and channel turns\n        continue-on-error: true\n"
       ),
       expected: "must be unconditional and fail-fast",
     },
