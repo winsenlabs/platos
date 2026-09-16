@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "66f5c1399ace6357cb4045ffd0d18d41b66b5d6fea218c4c89f5343e60f5d536",
+  "evidenceSha256": "bed780ab952a393bcc55ef4dc7aa169513188af4a19be36804093e855f6172c7",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 42,
@@ -121,7 +121,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "658d31593fb6d3b7adc71780c35ec2adbdeeaad95617977c704544f25dda9437",
+    "aggregateSha256": "94d8ad582b37e8185b8efbe4d7ab48243f072af4499f02e9d98e350e7ea06411",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4597,7 +4597,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "c82276ae9815ed50320f1881a9a1a1899d80c0ffdeb4dcdf72e667d485d72122"
+        "sha256": "98b979f16637fd70b1c3ae9026993c8235aa33d36b4466ba12711ff7406ba5b8"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
