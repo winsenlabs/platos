@@ -2,7 +2,7 @@
 
 > Non-destructive evidence only. This report does not authorize deletion, quarantine, merge, or publication.
 
-Evidence SHA-256: `cbfc3e2fb9f65ca876f4eebf3624ccdf8801cf4ad0ca3f6fc9aa57d40a01804d`
+Evidence SHA-256: `15840cbb4ddd9e279e1b05c8bc9fe92d37a5e9965cb657e168140d2e4caf30e4`
 
 ## Baseline
 
@@ -42,7 +42,7 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | `apps/agent` | `platos-agent` | yes | yes | yes | yes | retain-oci-image | no | no | `6ff4979483950d8f…` |
 | `apps/core-api` | `@platos/core-api` | yes | yes | yes | yes | retain-oci-image | no | no | `82e4bc2df3a87ade…` |
 | `apps/mcp-stdio` | `@platos/mcp-stdio` | no | yes | yes | no | retain-application-deployable | no | no | `e49073d7249f29a7…` |
-| `apps/webapp` | `webapp` | yes | yes | yes | yes | retain-oci-image | no | no | `0c2decbfedb66ac6…` |
+| `apps/webapp` | `webapp` | yes | yes | yes | yes | retain-oci-image | no | no | `77bc58a9970f9898…` |
 | `docs` | `docs` | no | no | no | no | owner-review-repository-referenced | no | yes | `98fdc79e04e89b1b…` |
 | `internal-packages/cache` | `@internal/cache` | no | no | no | no | owner-review-repository-referenced | no | yes | `f9f2db1155272a42…` |
 | `internal-packages/compute` | `@internal/compute` | no | no | no | no | owner-review-repository-referenced | no | yes | `744fd4bd20e8d379…` |
@@ -97,7 +97,7 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | `packages/core` | `@platos/core` | no | no | no | yes | owner-review-public-boundary | yes | yes | `b56e272ecb83860c…` |
 | `packages/kernel` | `@platos/kernel` | yes | yes | yes | yes | retain-oci-image | no | no | `fb09e4d1933673dd…` |
 | `packages/platools-js` | `@platosdev/platools-sdk` | no | no | no | no | owner-review-public-boundary | yes | yes | `019dd67030fc71b7…` |
-| `packages/platos-client` | `@platosdev/client` | no | no | no | no | owner-review-public-boundary | yes | yes | `f8b6241d1c5832e9…` |
+| `packages/platos-client` | `@platosdev/client` | no | no | no | no | owner-review-public-boundary | yes | yes | `9315b4946948a9c3…` |
 | `packages/platos-embed` | `@platosdev/embed` | no | no | no | no | owner-review-public-boundary | yes | yes | `cb5e9f72990a3fce…` |
 | `packages/platos-react-widget` | `@platosdev/react-widget` | no | no | no | no | owner-review-public-boundary | yes | yes | `17dc16ca0f1b7141…` |
 | `packages/platos-token-mint` | `@platosdev/token-mint` | no | no | no | yes | owner-review-public-boundary | yes | yes | `d035ad1355712b4b…` |

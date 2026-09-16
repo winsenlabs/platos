@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "cbfc3e2fb9f65ca876f4eebf3624ccdf8801cf4ad0ca3f6fc9aa57d40a01804d",
+  "evidenceSha256": "15840cbb4ddd9e279e1b05c8bc9fe92d37a5e9965cb657e168140d2e4caf30e4",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 40,
@@ -117,7 +117,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "5e44c180a209eecab4be6fbf33b43f36911aced0b98a385cb7dfa5386288cac6",
+    "aggregateSha256": "01545a3278177eb4376386bf37f0d9616501762f1eed93f6feb1a016cfff5273",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -186,6 +186,10 @@
       {
         "path": ".changeset/react-hooks-f8-artifact-renderer.md",
         "sha256": "f959362b9183d03dabf587c542aa2643169a7f151583b422ce84f44be5373bf1"
+      },
+      {
+        "path": ".changeset/webapp-cutover-project-environments.md",
+        "sha256": "54033e2ba6240a5e92240cc53b9afffc7b9698c9c72d2ded1725cec2c19fe1ff"
       },
       {
         "path": ".changeset/win-146-sdk-v1.md",
@@ -1825,7 +1829,7 @@
       },
       {
         "path": "apps/agent/src/openapi/openapi.generated.json",
-        "sha256": "c180bc86b657798632054cb1a5369827e1d57a824c3fccba7b0a84972866f371"
+        "sha256": "566bbfb216cfa5a5c385df81ec46bbc502c25b5170f5340b6de2910e1c4cf2fc"
       },
       {
         "path": "apps/agent/src/openapi/openapi.module.ts",
@@ -3021,7 +3025,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/projects.controller.ts",
-        "sha256": "46c5d27fe37578e7ee200bd9ccc9d59cd321f1e602a3401c3a85bee9d95320e5"
+        "sha256": "3a8dc01822a022d2c59d3ba216507437f1a099a6256c4f9a2cfcb59bb4514cb4"
       },
       {
         "path": "apps/core-api/src/transports/rest/provider-keys.controller.ts",
@@ -6153,7 +6157,7 @@
       },
       {
         "path": "docs/openapi-v1-baseline.json",
-        "sha256": "b77ec640c1988d300fe4606f8df43bffc9775901591ef87a1ce7a4b8f444face"
+        "sha256": "9985f9356ab5564db76d6f05a8bd0fc10025d519e48be30980062944200ffeec"
       },
       {
         "path": "docs/openapi.yml",
@@ -19989,7 +19993,7 @@
       },
       {
         "path": "packages/platos-client-py/platos_client/generated/v1.py",
-        "sha256": "573fa02bc76b701b334524bdf8e001e7f824d90e7886d1b1c69446aa7acb0ee9"
+        "sha256": "385182477324e2764521294f11a5f320a315cf3e293464fe4434f789a455bda1"
       },
       {
         "path": "packages/platos-client-py/platos_client/py.typed",
@@ -20093,7 +20097,7 @@
       },
       {
         "path": "packages/platos-client/src/generated/v1.ts",
-        "sha256": "d731b0d5a514b3f14fa09211abf730c82838708742c23ee222756e6c275a21ee"
+        "sha256": "3bb4c16e7ad63c064fd36a954f6bedeec6e8186672dd1b1265c5f44cf60f405f"
       },
       {
         "path": "packages/platos-client/src/index.ts",
@@ -21569,7 +21573,7 @@
       },
       {
         "path": "tests/sdk-contract/v1-fixtures.json",
-        "sha256": "7283d4100df0129d90b1039bc7c17ab62b0d5499eea388d192e0aa06ba8255b5"
+        "sha256": "a6ae1988c9e6d4a2d7e8450fc5f65f6be8667000c6023f48bc5038b1a40bd91c"
       },
       {
         "path": "tests/sdk-contract/v1-stream-resume.json",
@@ -29435,6 +29439,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": ".changeset/webapp-cutover-project-environments.md",
+              "kind": "reference",
+              "line": 5
+            },
+            {
               "from": "ai/references/repo.md",
               "kind": "reference",
               "line": 8
@@ -29862,6 +29871,10 @@
           ],
           "reversePaths": [
             [
+              ".changeset/webapp-cutover-project-environments.md",
+              ".changeset/webapp-cutover-project-environments.md"
+            ],
+            [
               "ai/references/repo.md",
               "ai/references/repo.md"
             ],
@@ -30203,6 +30216,7 @@
             ]
           ],
           "roots": [
+            ".changeset/webapp-cutover-project-environments.md",
             "CONTRIBUTING.md",
             "README.md",
             "RELEASE.md",
@@ -31657,7 +31671,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "0c2decbfedb66ac63515c128850710f3ddfea285a4fae64f921a711b7eb78462",
+      "evidenceSha256": "77bc58a9970f9898f65fc711d79399e513c82b5ab31b9f7c1be1b396f28e438e",
       "manifestSha256": "722dcbb8fb744bffc1e9fff480869af9260eee1d7d3153d2bfb156b225c50cdf",
       "name": "webapp",
       "ociImageClosure": {
@@ -98371,6 +98385,11 @@
               "line": 2
             },
             {
+              "from": ".changeset/webapp-cutover-project-environments.md",
+              "kind": "reference",
+              "line": 2
+            },
+            {
               "from": ".changeset/win-146-sdk-v1.md",
               "kind": "reference",
               "line": 2
@@ -98570,6 +98589,10 @@
               ".changeset/platos-client-v1-event-streams.md"
             ],
             [
+              ".changeset/webapp-cutover-project-environments.md",
+              ".changeset/webapp-cutover-project-environments.md"
+            ],
+            [
               ".changeset/win-146-sdk-v1.md",
               ".changeset/win-146-sdk-v1.md"
             ],
@@ -98722,6 +98745,7 @@
             ".changeset/platos-client-post-retry-guard.md",
             ".changeset/platos-client-tools-api.md",
             ".changeset/platos-client-v1-event-streams.md",
+            ".changeset/webapp-cutover-project-environments.md",
             ".changeset/win-146-sdk-v1.md",
             ".changeset/win-270-generated-v1-sdk.md",
             "CHANGESETS.md",
@@ -99221,7 +99245,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "f8b6241d1c5832e96c2c4e2a2c9b422f377d9c09c6abd845b7b88963e38bfb5a",
+      "evidenceSha256": "9315b4946948a9c3f8c18fbf685df66723d3dbd194d89cfe74985f1a378cae82",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {
