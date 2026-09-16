@@ -94,6 +94,7 @@
         "docs/audits/win-253-workspace-reachability.md",
         "docs/audits/win-284-differential-coverage.json",
         "docs/audits/win-284-differential-coverage.md",
+        "docs/audits/win-267-rest-cell-coverage.json",
         "docs/audits/win-259-secret-response-census.json",
         "docs/audits/win-268-mcp-store-ownership.json",
         "docs/audits/win-268-mcp-store-ownership.md",
@@ -131,7 +132,7 @@
       ]
     }
   ],
-  "protectedPathSetSha256": "d86a13c0f8b707974e0c2b0ad05581aaff1de689ec5042f4e0c7936f3ecaf436",
+  "protectedPathSetSha256": "e111d6b3c320f7cdf8e4639c4bb7d4c39cad0f186205b90a8a7a43d0705a7ed9",
   "currentStatuses": [
     "ACCEPTED"
   ],
@@ -141,9 +142,9 @@
     "DRAFT"
   ],
   "openQuestions": [],
-  "entryCount": 259,
+  "entryCount": 260,
   "counts": {
-    "ACCEPTED": 233,
+    "ACCEPTED": 234,
     "SUPERSEDED-BY": 4,
     "POINT-IN-TIME": 21,
     "DRAFT": 1
@@ -1549,14 +1550,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "75c7b30d7cf23a2b653c3ccbfcf032e4625a42803bc107caaca416f1c0377dc7",
+      "sha256": "21a49dc2cfc011ec0565577762d5b87f6d7eb860eda30366cba69a4fe133a21b",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "e1e958569ba370e20b1b0aa442e3a46b5fccd191eb5f9b6085f1bc1a7bffc713",
+      "sha256": "8c3a45487afc8b33d337efa6b1063afef60e0d377b55d58d5bb0f17033a8c6fe",
       "binds": "current-repository-truth"
     },
     {
@@ -1564,6 +1565,13 @@
       "status": "ACCEPTED",
       "mode": "100644",
       "sha256": "be085c5f26d749e4ebaf5e9a3800967f39a6153c324a474e729f58f98acc198b",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win-267-rest-cell-coverage.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "7999146019ff0f55c5ee7e93c759356da87ec191cc8f622dab16d56eb410b441",
       "binds": "current-repository-truth"
     },
     {
@@ -1598,14 +1606,14 @@
       "path": "docs/audits/win-284-differential-coverage.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "feeb730e0f05219e90a321fbc22464576aacb5221639174ac2ec4672f670d9cd",
+      "sha256": "a326364eb84d82c6552c2bd55d97f531a156a0f1b732d40fb575ea233f1d39f6",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "b4a02f2de93d03bd82f60188fff202aef6cce4f47bd86e26c4a5003049e33429",
+      "sha256": "4974e1a50f51b612583d4af760a22d50c3fc632379a86d786eb4c722bdb5f928",
       "binds": "current-repository-truth"
     },
     {
@@ -1626,7 +1634,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "f3db7a9cef899b6419d994e23be6ebe046f46fe17668e7d378df43d58d049ee2",
+      "sha256": "ce8605eb477f71196207354190a17542af520231ddd0a45047f33e3e599c5e90",
       "binds": "current-repository-truth"
     },
     {

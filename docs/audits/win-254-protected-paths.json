@@ -7,13 +7,13 @@
     "docs/audits/win-254-protected-paths.json",
     "docs/audits/win-254-evidence-lifecycle.json"
   ],
-  "pathCount": 801,
-  "pathSetSha256": "d86a13c0f8b707974e0c2b0ad05581aaff1de689ec5042f4e0c7936f3ecaf436",
+  "pathCount": 802,
+  "pathSetSha256": "e111d6b3c320f7cdf8e4639c4bb7d4c39cad0f186205b90a8a7a43d0705a7ed9",
   "entries": [
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "ad54bb3baaabfb83666d1c95dbfbfbbd078e67d678aa58ed931f69c3a9a855f8"
+      "sha256": "571262b9e5642f022a366e249fe6f43d93a5f821856d15f133f81ee4ec174086"
     },
     {
       "path": "LICENSE",
@@ -1053,17 +1053,22 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "75c7b30d7cf23a2b653c3ccbfcf032e4625a42803bc107caaca416f1c0377dc7"
+      "sha256": "21a49dc2cfc011ec0565577762d5b87f6d7eb860eda30366cba69a4fe133a21b"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "e1e958569ba370e20b1b0aa442e3a46b5fccd191eb5f9b6085f1bc1a7bffc713"
+      "sha256": "8c3a45487afc8b33d337efa6b1063afef60e0d377b55d58d5bb0f17033a8c6fe"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
       "mode": "100644",
       "sha256": "be085c5f26d749e4ebaf5e9a3800967f39a6153c324a474e729f58f98acc198b"
+    },
+    {
+      "path": "docs/audits/win-267-rest-cell-coverage.json",
+      "mode": "100644",
+      "sha256": "7999146019ff0f55c5ee7e93c759356da87ec191cc8f622dab16d56eb410b441"
     },
     {
       "path": "docs/audits/win-268-mcp-store-ownership.json",
@@ -1088,12 +1093,12 @@
     {
       "path": "docs/audits/win-284-differential-coverage.json",
       "mode": "100644",
-      "sha256": "feeb730e0f05219e90a321fbc22464576aacb5221639174ac2ec4672f670d9cd"
+      "sha256": "a326364eb84d82c6552c2bd55d97f531a156a0f1b732d40fb575ea233f1d39f6"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.md",
       "mode": "100644",
-      "sha256": "b4a02f2de93d03bd82f60188fff202aef6cce4f47bd86e26c4a5003049e33429"
+      "sha256": "4974e1a50f51b612583d4af760a22d50c3fc632379a86d786eb4c722bdb5f928"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -1108,7 +1113,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "f3db7a9cef899b6419d994e23be6ebe046f46fe17668e7d378df43d58d049ee2"
+      "sha256": "ce8605eb477f71196207354190a17542af520231ddd0a45047f33e3e599c5e90"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3528,7 +3533,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "5d6554e82700fc5dddde679c46041b2cedd72bf1edf0fcbc385b87c564fe791b"
+      "sha256": "9a68a3c5d47d6eeb7e9611ad877b0fc4c52ca516500214c170328f8776257d36"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3918,12 +3923,12 @@
     {
       "path": "scripts/evidence-lifecycle.mjs",
       "mode": "100644",
-      "sha256": "5cd8cf9cf4501c8ce1589ab7df483d0eb2c49d5565071843ecc8a2626aeb2279"
+      "sha256": "edf64334c06dd0eca2b088e1fa759fcff7c84734a46cae32a0b65b138f4f0d33"
     },
     {
       "path": "scripts/evidence-lifecycle.test.mjs",
       "mode": "100644",
-      "sha256": "feeb3e36283e719f77e569995b6bbdfa528a82d1a8f266cc7b39d54faccc051e"
+      "sha256": "254879bb730431fc8b9b128f5204d76cbee077019e94e9bb8a29f48d3f351502"
     },
     {
       "path": "scripts/lib/advisory-dispositions.mjs",
@@ -3943,7 +3948,7 @@
     {
       "path": "scripts/protected-paths.mjs",
       "mode": "100644",
-      "sha256": "7c4ffd0cfc59b3250c4ffc6bed532b6df18e7801fed3edb96a739349ec10e8f2"
+      "sha256": "f5dc390b01fc7a27495360cf7332820b5e19460b5b45828f4e1877d5d7dc033f"
     },
     {
       "path": "scripts/protected-paths.test.mjs",
@@ -3968,7 +3973,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "c09fb801104863fc008000cb7c9bda199872cf45f664ee5e65b18d7dd53cc158"
+      "sha256": "d4513f7bd7c647470f00c0a58b247844367bd6f67b339e2e02c412ee8b724464"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",

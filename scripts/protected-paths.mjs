@@ -154,10 +154,22 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // 3f422333: the 801 paths are exactly those 800 plus that one, with nothing
 // removed and nothing substituted.
 //
+// THE PER-REST-CELL REGISTER adds ONE, no removals and no content substitutions,
+// taking the set from 801 to 802:
+//   docs/audits/win-267-rest-cell-coverage.json  (the register joining every M0.2
+//                                                 REST cell to the contract or
+//                                                 integration cases that exercise
+//                                                 it, beside the differential
+//                                                 coverage matrix)
+// It falls inside the existing `docs/**` selection rather than widening it, and the
+// difference was verified SET-WISE against the committed 801-path manifest at
+// a7133988: the 802 paths are exactly those 801 plus that one, with nothing
+// removed and nothing substituted.
+//
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "d86a13c0f8b707974e0c2b0ad05581aaff1de689ec5042f4e0c7936f3ecaf436";
+export const EXPECTED_PATH_SET_SHA256 = "e111d6b3c320f7cdf8e4639c4bb7d4c39cad0f186205b90a8a7a43d0705a7ed9";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",

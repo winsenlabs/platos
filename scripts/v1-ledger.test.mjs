@@ -613,7 +613,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `apps/webapp`, which is why this row moves off zero for the first time --
     // and it lands on the `apps-webapp.test.suites` rule that already existed, so
     // NO LEDGER RULE CHANGED.
-    "apps-webapp": 1,
+    // EVIDENCE REGISTERS (WIN-257/WIN-284) 1 -> 2. ONE file,
+    // `test/differential-oracle.mts`: the driver that EXECUTES the webapp's own
+    // Remix loaders and actions so the transport differential compares against
+    // the oracle rather than against a description of it. It lives here because
+    // `@remix-run/node`, the generated Prisma client and the `~/*` alias resolve
+    // only inside `apps/webapp`. It lands on the existing `apps-webapp.test.suites`
+    // rule; NO LEDGER RULE CHANGED.
+    "apps-webapp": 2,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
     // health/readiness, http/{health.controller,http.module,token},
@@ -921,7 +928,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // where they live: `EXPECTED_FILE_COUNT` in `scripts/arch/env-access.mjs`
     // (1701 -> 1742 integrated), `arch-boundaries.test.mjs` (1742) and
     // `max-file-lines.test.mjs` (1653 -> 1675).
-    "apps-core-api": 126,
+    // EVIDENCE REGISTERS (WIN-257/WIN-284) 126 -> 127. ONE file,
+    // `src/composition/transport-differential.integration.test.ts`: twelve REST
+    // scenarios twin-run against the webapp oracle over one PostgreSQL server and
+    // two databases. It lands on the existing `apps-core-api.test.suites` rule and
+    // is selected by `test:core-api:integration` with no new CI line, because that
+    // script selects the PACKAGE rather than the file. NO LEDGER RULE CHANGED.
+    "apps-core-api": 127,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -2013,7 +2026,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // decisions the founder delegated on 2026-09-15, filed beside ADR M0.3 and M0.4.
     // It lands on the existing `docs-content.evidence.adr` rule (2 -> 3) as a
     // `doc`/`retain`, under `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
-    "docs-content": 26,
+    // EVIDENCE REGISTERS (WIN-267) 26 -> 27. ONE file:
+    // `docs/audits/win-267-rest-cell-coverage.json`, the register joining every
+    // M0.2 REST cell to the contract or integration cases that exercise it. It
+    // lands on the existing `docs-content.evidence.audits` rule, under `docs/**`
+    // and therefore PROTECTED. NO LEDGER RULE CHANGED.
+    "docs-content": 27,
     // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
     // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
     // for the same reason T0's ledger took it — the blanket rule's verdict
@@ -2208,7 +2226,19 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // applies (the driver itself is edited in place to take a plan path), and
     // `scripts/mutations-win271-discord.json`, the ledger that sweep wrote.
     // NO LEDGER RULE CHANGED. 95 + 7 + 2 = 104 on the merged tree.
-    "root-infra": 104,
+    // EVIDENCE REGISTERS (WIN-257/WIN-259/WIN-267) — 104 -> 115. ELEVEN files, all
+    // on existing `root-infra` rules; NO LEDGER RULE CHANGED.
+    //   TWO for the per-REST-cell register: `scripts/rest-cell-coverage.mjs` and
+    //   its controls.
+    //   FIVE for the emitted-log secret scan under `tests/log-secret-scan/`: the
+    //   runner, the pure scanner, the scanner's controls, the fixture seeder that
+    //   registers a provider key through the composed contracts, and the leaky
+    //   negative control that proves the scan fires.
+    //   FOUR for the transport differential under `tests/differential-harness/`:
+    //   the transport scenario registry, the oracle-transcript module, its
+    //   no-Docker controls, and the recorded transcript itself.
+    // 95 + 7 + 2 + 11 = 115 on the merged tree.
+    "root-infra": 115,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2534,7 +2564,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // +21 and `root-infra` +2. Re-measured on the integrated tree, not summed from
   // the lane report (which read 1827 against a tree with none of the four earlier
   // lanes in it): 18 + 1 + 126 + 4 + 10 + 1599 + 26 + 104 = 1888.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1888);
+  //
+  // AND THE EVIDENCE REGISTERS LANE — 1888 -> 1902. FOURTEEN files in four areas,
+  // each itemised on its delta above: `root-infra` +11, `apps-core-api` +1,
+  // `apps-webapp` +1 and `docs-content` +1. Re-measured on the integrated tree:
+  // 18 + 1 + 127 + 4 + 10 + 1599 + 27 + 115 = 1902.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1902);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2855,7 +2890,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // area deltas: nine packages files and seven root-infra files.
     // AND THE SECOND CHANNEL RUNTIME — 1865 -> 1888, moved in the same edit as the
     // total and both area deltas: twenty-one packages files and two root-infra files.
-    rulesDocument.baseline.totalFiles + 1888
+    // AND THE EVIDENCE REGISTERS LANE — 1888 -> 1902, moved in the same edit as the
+    // total and all four area deltas: eleven root-infra files, one apps-core-api
+    // suite, one apps-webapp oracle driver and one docs-content register. Reached
+    // here by summing the per-area counts rather than by reading the total, so the
+    // two derivations can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1902
   );
 });
 

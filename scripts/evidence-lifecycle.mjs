@@ -121,6 +121,14 @@ export const EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS = Object.freeze([
   // what coverage looked like on some past date.
   "docs/audits/win-284-differential-coverage.json",
   "docs/audits/win-284-differential-coverage.md",
+  // WIN-267. The per-REST-cell register, ACCEPTED for exactly the reason its two
+  // neighbours above are: `node scripts/rest-cell-coverage.mjs --check` re-derives
+  // the whole thing on every run from the capability matrix, the operation
+  // manifest and every tracked test file, and fails when the committed register
+  // and the tree disagree. A route that lands with no test, a test that stops
+  // naming a route and a moved denominator all reach it, so this is current
+  // repository truth rather than a record of what coverage looked like on a date.
+  "docs/audits/win-267-rest-cell-coverage.json",
   // WIN-259 (M2.4). ACCEPTED rather than POINT-IN-TIME because it binds CURRENT
   // repository truth: `audit:secret-response-census` re-scans the request
   // surfaces on every run and fails when the live result and this file disagree,

@@ -114,8 +114,15 @@ test("committed lifecycle manifest classifies every approved evidence path exact
   // docs/adr/ root, beside ADR M0.3 and M0.4, and rightly so: the decisions bind
   // the branch now, and the record is not a dated measurement that later work is
   // expected to leave behind. POINT-IN-TIME, SUPERSEDED-BY and DRAFT are unchanged.
-  assert.equal(manifest.entryCount, 259, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, the WIN-260 M2.5 milestone note, the WIN-268 MCP store-ownership register, the WIN-269 tool-lifecycle register, the WIN-272 stream vocabulary census, the core-api image SBOM, and the M2/M4 delegated-decisions ADR");
-  assert.deepEqual(manifest.counts, { ACCEPTED: 233, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
+  // REST CELL REGISTER: 259 -> 260 and ACCEPTED 233 -> 234. ONE addition,
+  // docs/audits/win-267-rest-cell-coverage.json, the per-REST-cell test register.
+  // ACCEPTED beside the differential coverage matrix for its reason: the gate
+  // re-derives the whole register from the capability matrix, the operation
+  // manifest and every tracked test file on every run and fails on drift, so it
+  // is current repository truth rather than a dated measurement. POINT-IN-TIME,
+  // SUPERSEDED-BY and DRAFT are unchanged.
+  assert.equal(manifest.entryCount, 260, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-267 per-REST-cell register, the WIN-259 secret-response census, the WIN-260 M2.5 milestone note, the WIN-268 MCP store-ownership register, the WIN-269 tool-lifecycle register, the WIN-272 stream vocabulary census, the core-api image SBOM, and the M2/M4 delegated-decisions ADR");
+  assert.deepEqual(manifest.counts, { ACCEPTED: 234, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
   assert.equal(POINT_IN_TIME_PATHS.length, 21);
   assert.equal(Object.keys(SUPERSESSIONS).length, 4);
   assert.deepEqual(Object.keys(manifest.counts), STATUSES);
