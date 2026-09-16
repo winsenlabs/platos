@@ -1053,17 +1053,17 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "07b3462e7a0625e614e0c55d89a7820ef7fbeecb423e6365ccf27ff9c0fcc044"
+      "sha256": "da8f91111e1c906402e19d15f25824ec93f7a2fbaefd5121ac12eb457d5eec51"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "c9803aac10d4ff055cd3f346270175816a392b07e5dc1d30613992db83aa9309"
+      "sha256": "1f5fb968cf21fd8062f32bb6fe41cc6522f918364f12b58718355b4b8b742938"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
       "mode": "100644",
-      "sha256": "be085c5f26d749e4ebaf5e9a3800967f39a6153c324a474e729f58f98acc198b"
+      "sha256": "55ac0c0dee7c3ce93aa634970a9e44bae79880fa8e877c3d1ddaaad1924eebb8"
     },
     {
       "path": "docs/audits/win-267-rest-cell-coverage.json",
@@ -1103,7 +1103,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "1f0829c445060b4340ef1d6b0a78c10925e64c4609602e7201768a9351698e4c"
+      "sha256": "edd8e137f9a3fdf62b868e6cf2d628954216dcfd48c9864f497a85d715322439"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1113,12 +1113,12 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "30b45d3c6cb75604a09322849264275d6dda266889119d3c5c70d217eaa06992"
+      "sha256": "cd2ab7822e091907b39bbb0b505ef9d10c1d14d5fdd2eef30c0581cc708b619f"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
       "mode": "100644",
-      "sha256": "ccf6d8c074f7195ea7cc26c148156f556dc315aa28e02c5e842c39c0b833b39e"
+      "sha256": "589cdab39ef549a0ad89c7f6c14402e31e61200807e8995eb71c9c9b78741607"
     },
     {
       "path": "docs/authentication.md",
@@ -3713,7 +3713,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "6dafadf93e0f5264a2ba5571dffcca335f879a565ffd5a14065c6ebb4402b34c"
+      "sha256": "e8c054e5e1cf30f9f40e8e6e6e676702620ea970d67ce1e6360eea26c9b98e52"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",

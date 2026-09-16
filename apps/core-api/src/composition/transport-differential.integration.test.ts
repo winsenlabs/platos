@@ -70,8 +70,14 @@ import { sessionTokenFromCookieValue } from "../transports/rest/session-cookie-v
 // The harness is plain ESM beside the repository root; this suite imports it the
 // way `route-manifest.test.ts` reads the operation manifest — as a sibling
 // artifact, never as a package dependency of this deployable.
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-const HARNESS = "../../../../tests/differential-harness";
+//
+// EVERY SPECIFIER IS A STRING LITERAL, which is a rule and not a style. A
+// template literal built from a shared prefix reads better and is invisible to
+// every static checker in `scripts/arch`: `composition-root.mjs` (C4) allows a
+// run-time-resolved specifier in exactly ONE declared file, `apps/mcp-stdio/src/
+// runtime.ts`, and fails any other — this suite included, which is how the shape
+// was found. Written out, each import is a target `arch-boundaries.mjs` can
+// resolve and judge like any other edge.
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any */
 
@@ -284,14 +290,30 @@ INSERT INTO "EnvironmentVariable" (id, "environmentId", key, kind, value, versio
   ('${ID.variable}', '${ID.alphaProd}', 'SEEDED_PLAIN', 'PLAIN', 'seeded-value', 1, '${AT}', '${AT}');
 `;
 
+// THE HARNESS MODULES, IMPORTED ONCE AT THE TOP.
+//
+// `@ts-expect-error` ON EACH, AND IT IS LOAD-BEARING RATHER THAN A MUTE. These
+// are plain `.mjs` with no declaration files, so TypeScript cannot type them; the
+// directive says exactly that, and — unlike `@ts-ignore` — it FAILS if the error
+// ever stops happening, which is what would happen the day somebody adds
+// declarations and these casts become wrong.
+// @ts-expect-error plain ESM beside the repository root; no declaration file.
+const twin = await import("../../../../tests/differential-harness/twin-run.mjs");
+// @ts-expect-error plain ESM beside the repository root; no declaration file.
+const normalisers = await import("../../../../tests/differential-harness/normalisers.mjs");
+// @ts-expect-error plain ESM beside the repository root; no declaration file.
+const transportScenarios = await import("../../../../tests/differential-harness/transport-scenarios.mjs");
+// @ts-expect-error plain ESM beside the repository root; no declaration file.
+const oracleTranscripts = await import("../../../../tests/differential-harness/oracle-transcripts.mjs");
+
 beforeAll(async () => {
+  scenarios = transportScenarios;
+  transcripts = oracleTranscripts;
   harness = {
-    twinRun: (await import(`${HARNESS}/twin-run.mjs`)).twinRun,
-    formatResult: (await import(`${HARNESS}/twin-run.mjs`)).formatResult,
-    normalise: (await import(`${HARNESS}/normalisers.mjs`)).normalise,
+    twinRun: twin.twinRun,
+    formatResult: twin.formatResult,
+    normalise: normalisers.normalise,
   };
-  scenarios = await import(`${HARNESS}/transport-scenarios.mjs`);
-  transcripts = await import(`${HARNESS}/oracle-transcripts.mjs`);
   recorded = transcripts.readTranscripts(REPOSITORY_ROOT).steps ?? {};
 
   const [startedPostgres, startedRedis, startedMailpit] = await Promise.all([

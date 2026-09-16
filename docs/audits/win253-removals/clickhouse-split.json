@@ -26,6 +26,14 @@
     {
       "path": "patches/@window-splitter__state@0.4.1.patch",
       "reason": "WIN-253 webapp dependency pruning removed the retired window-splitter patch."
+    },
+    {
+      "path": "apps/webapp/app/services/database.server.ts",
+      "reason": "WIN-257 T8 cut apps/webapp over to core-api: no PrismaClient, no DATABASE_URL."
+    },
+    {
+      "path": "apps/webapp/app/services/projectAccess.server.ts",
+      "reason": "WIN-257 T8: the project-visibility rule is the tenancy context's, served by GET /api/v1/projects."
     }
   ],
   "deletion": {
@@ -1883,7 +1891,7 @@
       {
         "path": "docker-compose.platos.yml",
         "ownerAuthorizationSha256": "186f4a921d9d51adc8ce23e7de729e65ac9bf5879987246be74962dfd0aef882",
-        "currentSha256": "af2fc947f51b519ec45ee14b8de56863d521a73df49293410de32530a3aab0af",
+        "currentSha256": "f98a93755995dde75bf34632d65c3d3c47824bfc86fff9c3268d7d8174e253ab",
         "requiredReferences": [
           "dockerfile: internal-packages/tenancy-database/Dockerfile.migrations",
           "PLATOS_CLICKHOUSE_TIMEOUT_MS"
@@ -1898,7 +1906,7 @@
     ]
   },
   "integration": {
-    "lockfileSha256": "6dafadf93e0f5264a2ba5571dffcca335f879a565ffd5a14065c6ebb4402b34c",
+    "lockfileSha256": "e8c054e5e1cf30f9f40e8e6e6e676702620ea970d67ce1e6360eea26c9b98e52",
     "vocabularySha256": "c99b506c2381cde58387bbd532338c3f666e469c415b9dc14e214d3d05cd75b1",
     "retainedSchemaVocabularyRows": 251,
     "deletedPathVocabularyRows": 0
