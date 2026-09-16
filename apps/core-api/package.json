@@ -18,7 +18,7 @@
     "clean": "tsc -b --clean",
     "test": "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
     "start": "node dist/main.js",
-    "dev": "tsc -b --watch"
+    "dev": "node scripts/dev.mjs"
   },
   "dependencies": {
     "@platos/kernel": "workspace:*",

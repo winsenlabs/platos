@@ -968,7 +968,15 @@ test("the live selectors scan an exact nonzero source census", () => {
   // INTEGRATED, RE-MEASURED ON THE MERGED TREE: 1653 + 2 + 20 + 18 = 1693. No lane
   // could see the others, so no number below 1693 is wrong at its own head and
   // none is right here.
-  assert.equal(result.fileCount, 1693);
+  //
+  // THE CORE-API DEPLOYABILITY RESIDUE — 1653 -> 1656 alone. THREE files inside
+  // selectors: `APPS-HTTP` +2 (`http/store-faults.ts` and its suite) and
+  // `APPS-TRANSPORTS` +1 (`transports/rest/session-cookie-transport.test.ts`). The
+  // tranche's other five new files are under `config/`, `runtime/`, `composition/`
+  // and `scripts/`, which no selector here names, so they are deliberately absent.
+  //
+  // ALL FOUR, RE-MEASURED ON THE MERGED TREE: 1653 + 2 + 20 + 18 + 3 = 1696.
+  assert.equal(result.fileCount, 1696);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -1079,7 +1087,10 @@ test("the live selectors scan an exact nonzero source census", () => {
       6 + 7 + 7 +
       // WIN-271 (M4.5), D10: EIGHTEEN under `packages/adapters/channel-discord/src`,
       // a new directory, so the whole directory and no net.
-      18
+      18 +
+      // THE CORE-API DEPLOYABILITY RESIDUE: `APPS-HTTP` 2 (`store-faults.ts` and its
+      // suite) and `APPS-TRANSPORTS` 1 (`session-cookie-transport.test.ts`).
+      2 + 1
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1316,7 +1327,15 @@ test("the live selectors scan an exact nonzero source census", () => {
   //
   // THE THREE TOGETHER, RE-MEASURED ON THE MERGED TREE:
   // 30 + 1100 + 498 + 20 + 45 = 1693.
-  assert.equal(result.fileCount, 30 + 1100 + 498 + 20 + 45);
+  //
+  // THE CORE-API DEPLOYABILITY RESIDUE, +3, IN TWO TERMS: APPS-HTTP 20 -> 22
+  // (`store-faults.ts` and its suite) and APPS-TRANSPORTS 45 -> 46
+  // (`session-cookie-transport.test.ts`). `KERNEL`, `CONTEXTS` and `ADAPTERS` are
+  // flat: the identity-access session-cookie change edits two files in place.
+  //
+  // ALL FOUR TOGETHER, RE-MEASURED ON THE MERGED TREE:
+  // 30 + 1100 + 498 + 22 + 46 = 1696.
+  assert.equal(result.fileCount, 30 + 1100 + 498 + 22 + 46);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

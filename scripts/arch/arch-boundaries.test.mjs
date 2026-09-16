@@ -1431,8 +1431,23 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // 1760 IS RE-MEASURED ON THIS MERGED TREE, not summed from the lane reports —
     // each lane measured its own delta against 1701, and only the merge can say
     // what the four together produce. `scripts/arch/env-access.mjs`'s
-    // EXPECTED_FILE_COUNT is the second independent copy and reads 1760 too.
-    assert.equal(result.fileCount, 1760, "the generated V1 source census must stay exact");
+    //
+    // THE CORE-API DEPLOYABILITY RESIDUE, 1701 -> 1709 alone. EIGHT files, ALL
+    // under `apps/core-api`: `config/trusted-proxy.ts` and its suite,
+    // `runtime/trusted-proxy.ts`, `http/store-faults.ts` and its suite,
+    // `transports/rest/session-cookie-transport.test.ts`,
+    // `composition/compose-readiness.test.ts`, and `scripts/dev.mjs` -- the one
+    // `.mjs`, which this census reads and `env-access.mjs` (1701 -> 1708) does not,
+    // so the two pins moved by different amounts ON PURPOSE. NOTHING under
+    // `packages/`: the identity-access session-cookie change is an EDIT.
+    //
+    // 1768 IS RE-MEASURED ON THIS MERGED TREE, not summed from the lane reports —
+    // each lane measured its own delta against 1701, and only the merge can say
+    // what the five together produce. `scripts/arch/env-access.mjs`'s
+    // EXPECTED_FILE_COUNT is the second independent copy and reads 1767, three
+    // short of nothing: it does not read `.mjs` files, so `scripts/dev.mjs` is in
+    // this census and not in that one.
+    assert.equal(result.fileCount, 1768, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1537,7 +1552,13 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       6 + 7 + 7 + 1 +
       // WIN-271 (M4.5), D10: adapters 18 -- `channel-discord`'s thirteen modules and
       // five suites, a new directory and so no placeholder to net against.
-      18);
+      18 +
+      // THE CORE-API DEPLOYABILITY RESIDUE: config 2 (`trusted-proxy.ts` and its
+      // suite), runtime 1 (`trusted-proxy.ts`), http 2 (`store-faults.ts` and its
+      // suite), transports 1 (`session-cookie-transport.test.ts`), composition 1
+      // (`compose-readiness.test.ts`) and the package's `scripts/dev.mjs` 1.
+      // 2 + 1 + 2 + 1 + 1 + 1 = 8, and NOTHING under `packages/`.
+      2 + 1 + 2 + 1 + 1 + 1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

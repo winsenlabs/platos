@@ -10,7 +10,7 @@
   "images": {
     "agent": {
       "file": "docs/audits/sbom/platos-agent.cdx.json",
-      "sha256": "828a09b58d9fcfd4c9c1cbf231ca4f942797fea051e4f799e9d5ca28d89d552e",
+      "sha256": "0d8dfddaab11cc4f3bbca893baa2fa1a9407adaf305aaa75e2548c7d04ff876e",
       "componentCount": 718,
       "distinctNames": 657,
       "roots": [
@@ -20,7 +20,7 @@
     },
     "webapp": {
       "file": "docs/audits/sbom/platos-webapp.cdx.json",
-      "sha256": "45eb8756ccebf614ab7ae12681583c4d5a62e68e3784479c9421efaf4863c15f",
+      "sha256": "4c00515664dc823f6eac34b98d044cc4470a61cc0bcd7f53706913e174251225",
       "componentCount": 330,
       "distinctNames": 303,
       "roots": [
@@ -54,7 +54,7 @@
       "buildInputs": [
         {
           "file": "apps/webapp/Dockerfile.platos",
-          "sha256": "9a4f8f0a784474ec29ffe3b450c61de3fa6649ab3864cef1a4772b7d0e47a3a5"
+          "sha256": "503120a85c46cc9bd282e48dabdebb7db2c9dd841fab76447d46e357461fec6c"
         },
         {
           "file": "apps/webapp/package.json",
@@ -89,13 +89,13 @@
           "sha256": "360b978afaf1d522a5b98479b5ab6f44e6b007e6cb71655f5c6ae55178f9fff7"
         }
       ],
-      "buildInputsSha256": "ab1aca268f16d4f38fb3638c756da10d87976665655fbf6c121a0d4abf4866d5"
+      "buildInputsSha256": "893e2850fd42da90f72ef49a84d103a3c53a6ae063a0cb87966b53dd3926ba77"
     },
     "core-api": {
       "file": "docs/audits/sbom/platos-core-api.cdx.json",
-      "sha256": "0940f2ec87d60f8a0fc5122615feb7dbd13f174ef2c28fb90a4c365502fe9c38",
-      "componentCount": 323,
-      "distinctNames": 310,
+      "sha256": "a178d363b5651af932583aa5359c344cd3793432e48ce857eb10bbfc4bc90c9c",
+      "componentCount": 326,
+      "distinctNames": 312,
       "roots": [
         "apps/core-api"
       ],

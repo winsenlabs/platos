@@ -235,6 +235,7 @@ without one is not a process.
 | `PLATOS_CORE_API_REQUEST_ID_HEADER` | `x-request-id` | No | Inbound header carrying an upstream correlation identifier. |
 | `PLATOS_LOG_LEVEL` | `info` | No | `debug` · `info` · `warn` · `error`. |
 | `PLATOS_CORE_API_ADMIN_HEALTH_TOKEN` | — | No | Bearer token gating the detailed readiness body. Minimum 16 characters. Omit to keep detail off entirely: the readiness detail names every unsatisfied binding, which is an inventory of what this install has not wired. |
+| `PLATOS_CORE_API_TRUSTED_PROXY` | — | No | The one TLS-terminating reverse proxy whose `X-Forwarded-Proto` is believed, as an IP address or CIDR range (`172.18.0.1`, `172.18.0.0/16`). Unset, no forwarded header is believed from anyone. Set, it is believed only from a TCP peer inside the range, only as a single `https` value, and only for that one hop. A hostname, a malformed range and a range containing every address (`0.0.0.0/0`, `::/0`) refuse startup. |
 
 ### Stores
 
@@ -310,10 +311,10 @@ supplier. Only what it takes to REACH the service: which work runs there is a
 | Variable | Default | Required | Purpose |
 |---|---|---|---|
 | `PLATOS_SECURITY_SESSION_SECRET` | — | anchor | Signs operator session cookies. Minimum 32 characters. |
-| `PLATOS_SECURITY_SESSION_COOKIE_NAME` | `platos_session` | No | Must satisfy the cookie-name grammar; a space here produces a `Set-Cookie` the client silently discards. |
+| `PLATOS_SECURITY_SESSION_COOKIE_NAME` | `platos_operator_session` | No | The base name of the operator session cookie. A Secure install uses its `__Host-` form, so the default is `__Host-platos_operator_session` there, the name the legacy dashboard already issues. Must satisfy the cookie-name grammar (a space here produces a `Set-Cookie` the client silently discards) and must not start with `__`: the prefix is decided from the Secure setting. |
 | `PLATOS_SECURITY_SESSION_TTL_S` | `43200` | No | How long an operator session stays valid. |
-| `PLATOS_SECURITY_SESSION_SAME_SITE` | `lax` | No | `strict` · `lax` · `none`. |
-| `PLATOS_SECURITY_SESSION_COOKIE_SECURE` | `true` | No | Defaults to `true` deliberately: an install serving the operator surface over plain HTTP must say so out loud. |
+| `PLATOS_SECURITY_SESSION_SAME_SITE` | `lax` | No | `strict` · `lax`. `none` refuses startup: the session contract refuses it on every cookie, because it would send the credential on cross-site requests. |
+| `PLATOS_SECURITY_SESSION_COOKIE_SECURE` | `true` | No | Defaults to `true` deliberately: an install serving the operator surface over plain HTTP must say so out loud. `true`: the cookie is `Secure` and `__Host-` prefixed, and core-api sets or clears it only on a request TLS reached, directly or through `PLATOS_CORE_API_TRUSTED_PROXY`; any other request is refused with `TRANSPORT_SESSION_COOKIE_REQUIRES_TLS`. `false`: the unprefixed name without `Secure`, whatever a header claims. |
 | `PLATOS_SECURITY_ENCRYPTION_KEY` | — | anchor | The active credential root, exactly 64 hexadecimal characters. |
 | `PLATOS_SECURITY_ENCRYPTION_KEY_VERSION` | — | with anchor | Stamped on every credential sealed under the active root. Rotation without a version is a change you cannot roll back. |
 

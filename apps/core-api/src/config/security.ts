@@ -67,15 +67,26 @@ export const SECURITY_SECTION: ConfigSectionSpec = Object.freeze({
           name: "PLATOS_SECURITY_SESSION_COOKIE_NAME",
           kind: "string",
           required: false,
-          defaultValue: "platos_session",
+          // THE NAME THE LEGACY TREE MINTS, AND THE DEFAULT IS WHY D19 HOLDS.
+          // This default used to be `platos_session`, a name nothing issued and
+          // nothing read. Consumed, it would have made every cookie the Remix
+          // tree already put in a browser invisible to core-api, which is the
+          // forced re-login D19 refuses. It is the BASE name: on a secure install
+          // the transport asks for the `__Host-` form of it, so the default is
+          // `__Host-platos_operator_session` there, exactly what the legacy tree
+          // sets in production.
+          defaultValue: "platos_operator_session",
           secret: false,
-          describe: "the cookie the operator session is carried in",
+          describe: "the base name of the operator session cookie; a secure install adds the __Host- prefix itself",
           // The cookie-name grammar, not a general string. A space or a
           // semicolon here produces a Set-Cookie header the client silently
           // discards, and a silently discarded session cookie presents as
-          // "sign-in does nothing", which is a long afternoon.
-          pattern: "[A-Za-z0-9!#$%&'*+._|~-]+",
-          patternDescribe: "a valid cookie name: letters, digits and !#$%&'*+._|~-",
+          // "sign-in does nothing", which is a long afternoon. A leading `__` is
+          // refused too: the `__Host-` and `__Secure-` prefixes are the
+          // TRANSPORT's decision, and a configured prefix would either double
+          // one or claim a guarantee the Secure setting does not give.
+          pattern: "(?!__)[A-Za-z0-9!#$%&'*+._|~-]+",
+          patternDescribe: "a valid cookie name without a leading __ prefix: letters, digits and !#$%&'*+._|~-",
           minimumLength: 1,
         }),
         Object.freeze({
@@ -97,7 +108,12 @@ export const SECURITY_SECTION: ConfigSectionSpec = Object.freeze({
           defaultValue: "lax",
           secret: false,
           describe: "the SameSite attribute on the session cookie",
-          allowed: Object.freeze(["strict", "lax", "none"]),
+          // `none` WAS ACCEPTED HERE AND IS REFUSED NOW, AT STARTUP. The session
+          // contract refuses it on every mint (`identity-access`
+          // `checkSessionCookieShape`: it would send the credential on
+          // cross-site requests, which is the CSRF the attribute exists to stop),
+          // so a process that booted with it would refuse every sign-in instead.
+          allowed: Object.freeze(["strict", "lax"]),
         }),
         Object.freeze({
           name: "PLATOS_SECURITY_SESSION_COOKIE_SECURE",
@@ -107,9 +123,17 @@ export const SECURITY_SECTION: ConfigSectionSpec = Object.freeze({
           // install that has to serve the operator surface over plain HTTP must
           // say so out loud; the alternative default sends a session cookie in
           // clear over any link that was not deliberately secured.
+          //
+          // WHAT TRUE MEANS, NOW THAT SOMETHING READS IT (D-COOKIE). The cookie
+          // is `Secure` and `__Host-` prefixed, and core-api issues or clears it
+          // only on a request that reached it over TLS — directly, or through
+          // the ONE proxy `PLATOS_CORE_API_TRUSTED_PROXY` names. Any other
+          // request is refused rather than handed a credential in a cookie a
+          // browser would drop. FALSE is the plain-HTTP install: the unprefixed
+          // name and no `Secure`, whatever any header claims.
           defaultValue: "true",
           secret: false,
-          describe: "whether the session cookie carries the Secure attribute",
+          describe: "whether the session cookie is Secure and __Host- prefixed, and so issued only over TLS",
         }),
       ]),
     }),
@@ -134,7 +158,7 @@ export const SECURITY_SECTION: ConfigSectionSpec = Object.freeze({
   ]),
 });
 
-export type SameSiteMode = "strict" | "lax" | "none";
+export type SameSiteMode = "strict" | "lax";
 
 export interface SessionConfiguration {
   readonly secret: string;
@@ -171,5 +195,46 @@ export function assembleSecurity(read: SectionReader, declared: GroupPresence): 
           rootKey: read("PLATOS_SECURITY_ENCRYPTION_KEY") ?? "",
           rootKeyVersion: Number(read("PLATOS_SECURITY_ENCRYPTION_KEY_VERSION")),
         }),
+  });
+}
+
+/**
+ * How the operator session cookie is shaped on this install, as the transport
+ * asks for it.
+ *
+ * NEVER NULL, EVEN WHEN THE SESSION GROUP IS UNDECLARED. `identity-access`
+ * composes from the encryption root and the stores; the session secret is not one
+ * of its inputs, so an install can serve operator routes with this group absent.
+ * Such an install still gets a cookie policy, and it is the one the field table
+ * promises by default — read from the field specs above rather than written
+ * again here, so a changed default cannot leave a second copy behind.
+ */
+export interface SessionCookiePolicy {
+  /** `PLATOS_SECURITY_SESSION_COOKIE_SECURE`. */
+  readonly secure: boolean;
+  /** `PLATOS_SECURITY_SESSION_COOKIE_NAME`, the base name without any prefix. */
+  readonly cookieName: string;
+  /** `PLATOS_SECURITY_SESSION_SAME_SITE`. */
+  readonly sameSite: SameSiteMode;
+}
+
+function sessionFieldDefault(name: string): string {
+  const group = SECURITY_SECTION.groups.find((candidate) => candidate.id === "session");
+  const field = group?.optional.find((candidate) => candidate.name === name);
+  if (field?.defaultValue === null || field?.defaultValue === undefined) {
+    throw new Error(`the security.session group declares no default for ${name}`);
+  }
+  return field.defaultValue;
+}
+
+export function sessionCookiePolicy(security: SecurityConfiguration): SessionCookiePolicy {
+  const session = security.session;
+  if (session !== null) {
+    return Object.freeze({ secure: session.cookieSecure, cookieName: session.cookieName, sameSite: session.sameSite });
+  }
+  return Object.freeze({
+    secure: sessionFieldDefault("PLATOS_SECURITY_SESSION_COOKIE_SECURE") === "true",
+    cookieName: sessionFieldDefault("PLATOS_SECURITY_SESSION_COOKIE_NAME"),
+    sameSite: sessionFieldDefault("PLATOS_SECURITY_SESSION_SAME_SITE") as SameSiteMode,
   });
 }

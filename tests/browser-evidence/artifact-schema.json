@@ -23,12 +23,13 @@
     "commitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
     "candidateImages": {
       "type": "object",
-      "required": ["commitSha", "agent", "webapp", "migrations"],
+      "required": ["commitSha", "agent", "webapp", "migrations", "coreApi"],
       "properties": {
         "commitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
         "agent": { "type": "string", "pattern": "^ghcr\\.io/.+@sha256:[a-f0-9]{64}$" },
         "webapp": { "type": "string", "pattern": "^ghcr\\.io/.+@sha256:[a-f0-9]{64}$" },
-        "migrations": { "type": "string", "pattern": "^ghcr\\.io/.+@sha256:[a-f0-9]{64}$" }
+        "migrations": { "type": "string", "pattern": "^ghcr\\.io/.+@sha256:[a-f0-9]{64}$" },
+        "coreApi": { "type": "string", "pattern": "^ghcr\\.io/.+@sha256:[a-f0-9]{64}$" }
       },
       "additionalProperties": false
     },

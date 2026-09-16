@@ -842,8 +842,20 @@ export const VIOLATION_CODES = Object.freeze({
  * LANE REPORTS: each lane measured its own delta against 1701, and only the merge
  * can say what the four together produce. 1701 + 18 + 2 + 21 + 18 = 1760, and the
  * audit run on this merge is the authority for it.
+ *
+ * CORE-API DEPLOYABILITY RESIDUE, integrated fifth: 1760 + 7 = 1767, and NO DOOR
+ * OPENED. D-COOKIE's trusted-proxy range (`config/trusted-proxy.ts`, its suite,
+ * and the per-request decision `runtime/trusted-proxy.ts`), the cookie-transport
+ * suite, the store-unavailable classifier and its suite (`http/store-faults.ts`),
+ * and the compose readiness suite. The proxy address and the three session cookie
+ * settings arrive through `config/`'s typed sections like every other variable;
+ * none of the seven reads the environment, and the compose suite reads the
+ * committed compose file and `.env.example` as FILES, not the ambient environment.
+ * The lane's eighth new file, `apps/core-api/scripts/dev.mjs`, is NOT in this
+ * census — this one reads `.ts` only — which is why this pin lands on 1767 while
+ * `arch-boundaries.test.mjs` lands on 1768.
  */
-export const EXPECTED_FILE_COUNT = 1760;
+export const EXPECTED_FILE_COUNT = 1767;
 
 function listSourceFiles(root) {
   const found = [];

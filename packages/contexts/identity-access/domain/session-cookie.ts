@@ -80,21 +80,44 @@ export function invalidSessionCookie(reason: string): DomainError {
 }
 
 /**
+ * What a deployable may say about the cookie besides whether TLS reached it.
+ *
+ * D-COOKIE. The deployable that fronts this contract owns two facts about how it
+ * is fronted: the BASE name its operators chose and the SameSite mode. Both are
+ * optional, and absent both the shape is exactly the extraction source's. The
+ * prefix is never supplied: it follows from `secure`, and a caller that could
+ * pass `__Host-` would be a caller that could pass it without `Secure`.
+ */
+export interface SessionCookieTransport {
+  readonly secure: boolean;
+  /** The unprefixed name. Defaults to `platos_operator_session`. */
+  readonly cookieName?: string;
+  /** Defaults to `lax`. `none` is not in the type; see `describeSessionCookie`. */
+  readonly sameSite?: "lax" | "strict";
+}
+
+/**
  * The shape for an install, decided by ONE fact: whether the browser reaches
- * it over TLS.
+ * it over TLS — plus, when the deployable configures them, the base name and
+ * the SameSite mode.
  *
  * Everything else follows, and follows the same way the extraction source
  * decided it. `sameSite: "lax"` is what the source uses and what a session
  * cookie needs: `strict` would break every inbound link into an authenticated
  * page, and `none` would send the credential on cross-site requests, which is
  * the CSRF the attribute exists to stop. `none` is not in the type.
+ *
+ * A configured base name that already carries a `__` prefix is not repaired
+ * here: the prefixed result fails `checkSessionCookieShape` or reads as a
+ * doubled prefix, and the deployable's own configuration refuses it at startup.
  */
-export function describeSessionCookie(transport: { readonly secure: boolean }): SessionCookieShape {
+export function describeSessionCookie(transport: SessionCookieTransport): SessionCookieShape {
+  const base = transport.cookieName ?? OPERATOR_SESSION_COOKIE_NAME;
   return Object.freeze({
-    name: transport.secure ? HOST_OPERATOR_SESSION_COOKIE_NAME : OPERATOR_SESSION_COOKIE_NAME,
+    name: transport.secure ? `${HOST_COOKIE_PREFIX}${base}` : base,
     httpOnly: true,
     path: "/",
-    sameSite: "lax",
+    sameSite: transport.sameSite ?? "lax",
     secure: transport.secure,
     domain: null,
   } as const);

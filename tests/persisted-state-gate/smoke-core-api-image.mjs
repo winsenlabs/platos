@@ -178,8 +178,15 @@ export function coreApiEnvironment({ postgresUrl, redisUrl, defaultModel, secret
     PLATOS_STORE_REDIS_URL: redisUrl,
     PLATOS_PROVIDERS_DEFAULT_MODEL: defaultModel,
     PLATOS_SECURITY_SESSION_SECRET: secrets.sessionSecret,
+    // Blank, exactly as compose passes the three cookie settings and the trusted
+    // proxy when .env leaves them unset: the defaults (a Secure __Host- cookie set
+    // only over TLS, no proxy believed) are what the candidate is smoked with.
+    PLATOS_SECURITY_SESSION_COOKIE_SECURE: "",
+    PLATOS_SECURITY_SESSION_COOKIE_NAME: "",
+    PLATOS_SECURITY_SESSION_SAME_SITE: "",
     PLATOS_SECURITY_ENCRYPTION_KEY: secrets.encryptionKey,
     PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "1",
+    PLATOS_CORE_API_TRUSTED_PROXY: "",
     PLATOS_CHANNELS_SLACK_SIGNING_SECRET: secrets.slackSigningSecret,
     // EVERY CHANNEL GROUP IS DECLARED, and not because the smoke exercises them.
     // `readinessViolations` refuses an adapter unwired for a reason CONFIGURATION

@@ -921,7 +921,22 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // where they live: `EXPECTED_FILE_COUNT` in `scripts/arch/env-access.mjs`
     // (1701 -> 1742 integrated), `arch-boundaries.test.mjs` (1742) and
     // `max-file-lines.test.mjs` (1653 -> 1675).
-    "apps-core-api": 126,
+    //
+    // THE CORE-API DEPLOYABILITY RESIDUE (core-residue lane), integrated fourth,
+    // 126 -> 134. EIGHT files. Seven under `src/`: `config/trusted-proxy.ts` and
+    // `runtime/trusted-proxy.ts` (D-COOKIE's one trusted hop) and
+    // `http/store-faults.ts` (the store-unavailable classification) on
+    // `apps-core-api.source.process`, and four suites --
+    // `config/trusted-proxy.test.ts`, `http/store-faults.test.ts`,
+    // `transports/rest/session-cookie-transport.test.ts` and
+    // `composition/compose-readiness.test.ts` -- on `apps-core-api.test.suites`.
+    // And `scripts/dev.mjs`, the runner the `dev` script now invokes, on the ONE
+    // NEW RULE `apps-core-api.tooling.scripts`, declared because no core-api rule
+    // matched a file outside `src/` that is not config, prose or the Dockerfile.
+    // The lane pinned 105 against a tree without the factory entries, the gates or
+    // the REST remainder; 126 + 8 = 134 is what THIS merge produces and the
+    // regenerated `docs/v1-ledger-rules.json` is the authority for it.
+    "apps-core-api": 134,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -2208,7 +2223,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // applies (the driver itself is edited in place to take a plan path), and
     // `scripts/mutations-win271-discord.json`, the ledger that sweep wrote.
     // NO LEDGER RULE CHANGED. 95 + 7 + 2 = 104 on the merged tree.
-    "root-infra": 104,
+    //
+    // THE CORE-API DEPLOYABILITY RESIDUE — 104 -> 105. ONE file,
+    // `scripts/lib/core-api-config-schema.mjs`, which loads the core-api config
+    // field tables so `audit-platos-build.mjs` refuses every schema-secret field in
+    // an image layer. On `root-infra.tooling.scripts`; NO ROOT-INFRA RULE CHANGED.
+    "root-infra": 105,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2534,7 +2554,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // +21 and `root-infra` +2. Re-measured on the integrated tree, not summed from
   // the lane report (which read 1827 against a tree with none of the four earlier
   // lanes in it): 18 + 1 + 126 + 4 + 10 + 1599 + 26 + 104 = 1888.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1888);
+  //
+  // AND THE CORE-API DEPLOYABILITY RESIDUE — 1888 -> 1897. NINE files, itemised
+  // on their areas' deltas above: eight in `apps-core-api` and one in
+  // `root-infra`. Re-measured on the integrated tree, not summed from the lane
+  // report (which read 1813 against a tree with none of the five earlier lanes in
+  // it): 18 + 1 + 134 + 4 + 10 + 1599 + 26 + 105 = 1897.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1897);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2855,7 +2881,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // area deltas: nine packages files and seven root-infra files.
     // AND THE SECOND CHANNEL RUNTIME — 1865 -> 1888, moved in the same edit as the
     // total and both area deltas: twenty-one packages files and two root-infra files.
-    rulesDocument.baseline.totalFiles + 1888
+    // AND THE CORE-API DEPLOYABILITY RESIDUE — 1888 -> 1897, moved in the same edit
+    // as the total and both area deltas: eight core-api files and one root-infra
+    // script, summed per area here.
+    rulesDocument.baseline.totalFiles + 1897
   );
 });
 

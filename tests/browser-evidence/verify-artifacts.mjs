@@ -204,7 +204,7 @@ export async function verifyBrowserEvidenceDirectory(directory, options = {}) {
     persistedImages,
     "browser run image identity differs from persisted-state candidate identity"
   );
-  for (const name of ["agent", "webapp", "migrations"]) {
+  for (const name of ["agent", "webapp", "migrations", "coreApi"]) {
     assert.match(
       run.candidateImages[name],
       /^ghcr\.io\/.+@sha256:[a-f0-9]{64}$/,

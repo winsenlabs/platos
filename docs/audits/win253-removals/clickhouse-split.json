@@ -1859,7 +1859,13 @@
       {
         "path": "docker-compose.deploy.yml",
         "ownerAuthorizationSha256": "12e925b5f500bda056e4018daa42f9e5bd789d11222b9e25db14db26e81e4c8c",
-        "currentSha256": "12e925b5f500bda056e4018daa42f9e5bd789d11222b9e25db14db26e81e4c8c"
+        "currentSha256": "a5e044ac4d8dbae956f2eb0bbb303fb01cbb8f4ad4aafe04468759a5c5c53057",
+        "rebaseline": {
+          "sha256": "a5e044ac4d8dbae956f2eb0bbb303fb01cbb8f4ad4aafe04468759a5c5c53057",
+          "authorizedBy": "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
+          "decision": "D-DEPLOY-HEADER",
+          "reason": "The header claimed the override removes every application build block and that Compose ignores build: when build is not passed. docs-mcp-bridge and core-api keep their build blocks, and compose up builds without build; the header was corrected to say so, and only the header changed."
+        }
       },
       {
         "path": "internal-packages/tenancy-database/Dockerfile.migrations",
@@ -1874,7 +1880,7 @@
       {
         "path": "apps/webapp/Dockerfile.platos",
         "ownerAuthorizationSha256": "f7303cf644d5ea04b07e19d408e32146ba04aaec98fbc7b7669bdaa1d801c085",
-        "currentSha256": "9a4f8f0a784474ec29ffe3b450c61de3fa6649ab3864cef1a4772b7d0e47a3a5",
+        "currentSha256": "503120a85c46cc9bd282e48dabdebb7db2c9dd841fab76447d46e357461fec6c",
         "requiredReferences": [
           "COPY --chown=node:node internal-packages/clickhouse/schema /platos/internal-packages/clickhouse/schema",
           "COPY --from=builder --chown=node:node /platos/internal-packages/clickhouse/schema /platos/internal-packages/clickhouse/schema"
@@ -1883,7 +1889,7 @@
       {
         "path": "docker-compose.platos.yml",
         "ownerAuthorizationSha256": "186f4a921d9d51adc8ce23e7de729e65ac9bf5879987246be74962dfd0aef882",
-        "currentSha256": "af2fc947f51b519ec45ee14b8de56863d521a73df49293410de32530a3aab0af",
+        "currentSha256": "041eeb91522bb9fd5c63c6c11e21ff530e10fcabd6d26426e18c4e437f94ef70",
         "requiredReferences": [
           "dockerfile: internal-packages/tenancy-database/Dockerfile.migrations",
           "PLATOS_CLICKHOUSE_TIMEOUT_MS"

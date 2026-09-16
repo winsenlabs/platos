@@ -259,9 +259,18 @@ export interface SessionCookieDirectiveView {
   readonly maxAgeSeconds: number;
 }
 
-/** ONE fact decides the shape: whether the browser reaches this over TLS. */
+/**
+ * ONE fact decides the shape: whether the browser reaches this over TLS.
+ *
+ * D-COOKIE adds two OPTIONAL facts the fronting deployable owns: the base cookie
+ * name and the SameSite mode. Absent, the shape is the extraction source's
+ * (`__Host-platos_operator_session` / `platos_operator_session`, `lax`). The
+ * `__Host-` prefix is still decided here from `secure` and never supplied.
+ */
 export interface SessionTransport {
   readonly secure: boolean;
+  readonly cookieName?: string;
+  readonly sameSite?: "lax" | "strict";
 }
 
 export interface IssueSessionCookieRequest extends SessionTransport {

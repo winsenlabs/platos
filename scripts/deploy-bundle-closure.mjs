@@ -1,42 +1,56 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 //
-// deploy-bundle-closure.mjs — keep a `pnpm deploy --legacy` bundle to the
-// production closure of the ONE importer it deploys, and prove the result
-// against pnpm-lock.yaml.
+// deploy-bundle-closure.mjs — deploy ONE importer's production bundle from the
+// shared lockfile, keep a `pnpm deploy --legacy` bundle to that importer's
+// production closure, and prove either against pnpm-lock.yaml.
 //
-// WHY A BUNDLE NEEDS THIS. `pnpm deploy --legacy` runs a recursive install over
-// the workspace, and pnpm's recursive install ALWAYS adds the workspace root as
-// an `install` mutation when the root is not among the selected projects
-// (pnpm 10.23.0, plugin-commands-installation `recursive`). The deploy also
-// points the install's modules directory at the deploy target for every
-// importer, so the root manifest's `dependencies` land in the bundle beside the
-// deployed package's. Measured on this lockfile before this script existed: the
-// core-api bundle held 619 packages where its lockfile production closure has
-// 326, and 262 of the extra packages are the closure of the root manifest's
-// three dependencies (the changesets CLI with prettier 2, agentcrumbs,
-// node-fetch). Nothing in the deployed process imports any of them.
+// THREE SUBCOMMANDS, AND THEY ARE DELIBERATELY NOT ONE.
 //
-// Removing the root's dependencies from the manifest is not the fix: the
-// webapp image ships them on purpose (docs/audits/M0.5-dependency-sbom.md), and
-// the non-legacy deploy needs `inject-workspace-packages=true`, a lockfile
-// setting that changes how every workspace package installs.
+//   deploy --importer <dir> --bundle <dir> [--root <dir>]
+//     D-ZOD: SHIPPED MUST EQUAL TESTED. Runs pnpm's NON-legacy deploy, which
+//     builds the bundle's own lockfile out of the workspace lockfile's resolved
+//     snapshots (pnpm 10.23.0 plugin-commands-deploy `createDeployFiles`) and
+//     installs it frozen. Every package therefore resolves exactly as
+//     pnpm-lock.yaml resolves it for the workspace tests — including the peers.
+//     The legacy deploy it replaces re-resolved the peers of injected workspace
+//     packages with peer-dependent deduplication off, and shipped the Slack
+//     channel adapter's `chat`, `ai` and `@ai-sdk/*` against zod@3.25.76 while
+//     the lockfile and every workspace test used zod@4.4.3.
 //
-// TWO SUBCOMMANDS, AND THEY ARE DELIBERATELY NOT ONE.
+//     pnpm allows the non-legacy path only when `inject-workspace-packages` is
+//     true, and its frozen install refuses a lockfile whose `settings` say
+//     otherwise. That setting changes how EVERY workspace package installs, so
+//     it is not turned on for the workspace. Instead this subcommand adds the one
+//     `settings.injectWorkspacePackages: true` line to the lockfile for the
+//     duration of the deploy only, passes the same setting on the command line,
+//     and restores the committed bytes afterwards — refusing to start if the
+//     lockfile already carries the line, and failing if the restored bytes do not
+//     hash to what was read. No resolution in the lockfile is touched: the
+//     setting only gates pnpm's consistency check, and `check` below then proves
+//     the bundle against the committed, unpatched file.
 //
 //   prune --bundle <dir>
-//     Deletes every virtual-store entry that is not reachable from the bundle's
+//     For a LEGACY deploy (apps/agent's). `pnpm deploy --legacy` runs a recursive
+//     install over the workspace, and pnpm's recursive install ALWAYS adds the
+//     workspace root as an `install` mutation when the root is not among the
+//     selected projects (pnpm 10.23.0, plugin-commands-installation
+//     `recursive`), so the root manifest's `dependencies` land in the bundle
+//     beside the deployed package's. Measured on the core-api bundle before the
+//     non-legacy deploy: 619 packages where its lockfile closure has 326. Prune
+//     deletes every virtual-store entry that is not reachable from the bundle's
 //     own package.json production dependencies by following the store's links,
 //     then the links, bin shims and install metadata that described the deleted
 //     entries. It only deletes. It never re-resolves or re-points anything, so
-//     every package that stays is byte-for-byte what pnpm installed.
+//     every package that stays is byte-for-byte what pnpm installed. A non-legacy
+//     bundle needs none of this: measured on core-api, prune removes 0 entries.
 //
 //   check --bundle <dir> --importer <dir> [--lockfile <path>] [--root <dir>]
 //     Compares what the bundle holds with the importer's production closure as
 //     pnpm-lock.yaml states it (scripts/lib/pnpm-closure.mjs, the walker the SBOM
-//     audit already uses). The prune decides nothing the check trusts: a prune
-//     that kept too much or removed too little fails here against the lockfile,
-//     which neither this script nor the Dockerfile controls.
+//     audit already uses). Neither `deploy` nor `prune` decides anything the check
+//     trusts: a bundle that holds too much or too little fails here against the
+//     lockfile, which neither this script nor the Dockerfile controls.
 //
 // The check fails on ANY package in the bundle that the closure does not name,
 // on any workspace package set that differs from the importer graph, on a
@@ -46,25 +60,26 @@
 // fact present, or that the closure no longer names, also fails, so the list
 // cannot go stale silently.
 
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { computeClosure, componentsFromSnapshots, loadLockfile } from "./lib/pnpm-closure.mjs";
 
-// Closure packages a legacy deploy does not install, per deployed importer.
+// Closure packages a bundle does not hold, per deployed importer.
 //
-// apps/core-api. The lockfile resolves the peers of the Slack channel adapter's
-// `@chat-adapter/slack` (and through it `chat`, `ai`, `@ai-sdk/*`) against
-// `zod@4.4.3`, and lists `bufferutil` as the optional peer of `ws`. A legacy
-// deploy re-resolves the peers of injected workspace packages with
-// peer-dependent deduplication disabled, so the bundle carries those packages
-// resolved against `zod@3.25.76` and without the optional `bufferutil` (and its
-// only dependency `node-gyp-build`). The divergence is real and is reported
-// rather than hidden: the image runs that adapter against zod 3.25.76 while the
-// workspace tests run it against zod 4.4.3.
+// apps/core-api: NONE, and the empty entry is the finding. Under the legacy
+// deploy this listed `zod@4.4.3`, `bufferutil@4.0.9` and `node-gyp-build@4.8.4`:
+// the legacy install resolved the Slack adapter's peers against zod@3.25.76 and
+// left out `ws`'s optional peer, so the image ran that adapter against a zod the
+// workspace tests never used. The non-legacy `deploy` above installs the
+// lockfile's own snapshots, the three are in the bundle, and `check` fails if any
+// of them goes missing again. The key stays so that the SBOM audit's join
+// ("an image runs the closure check exactly when it has an entry here") holds.
 export const REVIEWED_ABSENT = Object.freeze({
-  "apps/core-api": Object.freeze(["bufferutil@4.0.9", "node-gyp-build@4.8.4", "zod@4.4.3"]),
+  "apps/core-api": Object.freeze([]),
 });
 
 const STORE = path.join("node_modules", ".pnpm");
@@ -329,6 +344,50 @@ export function check({ bundle, importer, lockfile, root, reviewedAbsent = REVIE
   };
 }
 
+const INJECT_SETTING = "  injectWorkspacePackages: true";
+
+/**
+ * The lockfile text with `settings.injectWorkspacePackages: true` added, or a
+ * refusal. Pure over the text so the refusals are testable without pnpm.
+ */
+export function withInjectedWorkspaceSetting(lockfileText) {
+  const lines = lockfileText.split("\n");
+  const settings = lines.indexOf("settings:");
+  if (settings === -1) fail("pnpm-lock.yaml has no top-level settings block to carry injectWorkspacePackages");
+  let end = settings + 1;
+  while (end < lines.length && lines[end].startsWith("  ")) end += 1;
+  const block = lines.slice(settings + 1, end);
+  if (block.some((line) => line.trimStart().startsWith("injectWorkspacePackages:"))) {
+    fail("pnpm-lock.yaml already records injectWorkspacePackages; this deploy expects the committed workspace setting (off)");
+  }
+  return [...lines.slice(0, end), INJECT_SETTING, ...lines.slice(end)].join("\n");
+}
+
+export function deploy({ importer, bundle, root, run = spawnSync }) {
+  const manifest = readJson(path.join(root, importer, "package.json"));
+  if (typeof manifest.name !== "string") fail(`${importer}/package.json has no name`);
+  const lockfile = path.join(root, "pnpm-lock.yaml");
+  const committed = fs.readFileSync(lockfile);
+  const committedSha256 = createHash("sha256").update(committed).digest("hex");
+  const patched = withInjectedWorkspaceSetting(committed.toString("utf8"));
+  let status;
+  fs.writeFileSync(lockfile, patched);
+  try {
+    const result = run(
+      "pnpm",
+      ["--config.inject-workspace-packages=true", "--filter", manifest.name, "deploy", "--prod", bundle],
+      { cwd: root, stdio: "inherit" },
+    );
+    status = result.status ?? 1;
+  } finally {
+    fs.writeFileSync(lockfile, committed);
+  }
+  const restoredSha256 = createHash("sha256").update(fs.readFileSync(lockfile)).digest("hex");
+  if (restoredSha256 !== committedSha256) fail(`pnpm-lock.yaml was not restored: ${restoredSha256} != ${committedSha256}`);
+  if (status !== 0) fail(`pnpm deploy of ${manifest.name} exited ${String(status)}`);
+  return { name: manifest.name, lockfileSha256: committedSha256 };
+}
+
 function parseArgs(argv) {
   const [command, ...rest] = argv;
   const options = {};
@@ -345,6 +404,14 @@ function main(argv) {
   const { command, options } = parseArgs(argv);
   if (!options.bundle) fail("--bundle is required");
   const bundle = path.resolve(options.bundle);
+  if (command === "deploy") {
+    if (!options.importer) fail("--importer is required");
+    const result = deploy({ importer: options.importer, bundle, root: path.resolve(options.root ?? process.cwd()) });
+    console.log(
+      `deploy-bundle-closure deploy: ${result.name} deployed from the shared lockfile (sha256 ${result.lockfileSha256}, restored) to ${bundle}`,
+    );
+    return 0;
+  }
   if (command === "prune") {
     const result = prune(bundle);
     console.log(
@@ -376,7 +443,7 @@ function main(argv) {
     );
     return 0;
   }
-  fail(`unknown command ${String(command)}; expected prune or check`);
+  fail(`unknown command ${String(command)}; expected deploy, prune or check`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

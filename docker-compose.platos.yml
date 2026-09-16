@@ -740,11 +740,21 @@ services:
       PLATOS_STORE_REDIS_URL: "redis://redis:6379"
       # providers — one install-wide default model, the same knob the agent reads.
       PLATOS_PROVIDERS_DEFAULT_MODEL: "${PLATOS_DEFAULT_MODEL:-anthropic:claude-haiku-4-5-20251001}"
-      # security — operator session signing and the credential root. Optional to
-      # the config module, so blank here; see docs/env-vars.md for their forms.
+      # security — the credential root composes identityAccess, secrets,
+      # providers and tools; the session secret declares the cookie group the
+      # three cookie settings below belong to. Optional to the config module, so
+      # blank here; see docs/env-vars.md for their forms.
       PLATOS_SECURITY_SESSION_SECRET: "${PLATOS_SECURITY_SESSION_SECRET:-}"
+      PLATOS_SECURITY_SESSION_COOKIE_SECURE: "${PLATOS_SECURITY_SESSION_COOKIE_SECURE:-}"
+      PLATOS_SECURITY_SESSION_COOKIE_NAME: "${PLATOS_SECURITY_SESSION_COOKIE_NAME:-}"
+      PLATOS_SECURITY_SESSION_SAME_SITE: "${PLATOS_SECURITY_SESSION_SAME_SITE:-}"
       PLATOS_SECURITY_ENCRYPTION_KEY: "${PLATOS_SECURITY_ENCRYPTION_KEY:-}"
       PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "${PLATOS_SECURITY_ENCRYPTION_KEY_VERSION:-}"
+      # The one TLS-terminating proxy whose X-Forwarded-Proto is believed, as an
+      # address or CIDR range. Blank trusts no proxy. Caddy on the host reaches
+      # the published port through this network's gateway, so that is the peer
+      # the container sees (docs/env-vars.md).
+      PLATOS_CORE_API_TRUSTED_PROXY: "${PLATOS_CORE_API_TRUSTED_PROXY:-}"
       # channels.slack — the inbound signing secret; blank leaves it unwired.
       PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "${PLATOS_CHANNELS_SLACK_SIGNING_SECRET:-}"
       # channels.discord — the application public key; blank leaves it unwired.

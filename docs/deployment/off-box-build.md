@@ -21,17 +21,21 @@ on the box you are trying to keep up is the definition of brittle.
 
 ## The fix: build on CI, pull on the box
 
-`.github/workflows/build-images.yml` builds the Agent, webapp, and migration
-candidates once as OCI archives on GitHub's runners. Pull requests, including
-forks, upload those archives as workflow artifacts without GHCR authentication
-or `packages: write`. The persisted-state job verifies each archive digest and
-commit label, loads it locally, and tests the exact Agent/webapp pair.
+`.github/workflows/build-images.yml` builds four candidates once as OCI archives
+on GitHub's runners: Agent, webapp, migrations and core-api. Pull requests,
+including forks, upload those archives as workflow artifacts without GHCR
+authentication or `packages: write`. The `smoke-candidate-core-api` job verifies
+and loads the core-api and migrations archives and serves the exact core-api
+candidate against migrated stores. The persisted-state job verifies each of the
+four archive digests and commit labels, loads them locally, tests the exact
+Agent/webapp pair, and records all four tested identities in
+`candidate-images.json`, core-api's from the smoke job that served it.
 
 Only a trusted `main` or manual `main` run publishes after the gate. It imports
 the verified OCI manifests unchanged, validates the full staging set, and then
 creates immutable `sha-<commit>` tags. The workflow intentionally publishes no
 mutable `latest` tags, avoiding a partially advanced release pointer across the
-three repositories.
+four repositories.
 
 The VPS never compiles. It only ever **pulls** digest references from the trusted
 `published-images.json` artifact after they are matched to the passing

@@ -283,7 +283,7 @@
     {
       "path": "content/docs/self-hosting.md",
       "mode": "100644",
-      "sha256": "8877b24a4747fcc6db55f34459b86ac8329d393ffb56b09a326c31a82d7a96b2"
+      "sha256": "7f63dc2af7f9101820a6644dc69669ab4b6ac409bbf980f15a6b6b7f9b447e15"
     },
     {
       "path": "content/docs/skills.md",
@@ -958,7 +958,7 @@
     {
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "mode": "100644",
-      "sha256": "99d2f4733d7ff518db2efdd5842b3f878fc581c2f05cc185c307060728a926aa"
+      "sha256": "45aa4d51690f0ec266b880b26892809ea208add7e7c0cbb6e57328723ad750c1"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
@@ -968,12 +968,12 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "9763642cd9d05399e6fc5907e906a8129a700f0cf41560a7fc09f0e5130bdc5c"
+      "sha256": "dd1ddac88f3438cc4662738b12ef841828e025cdb8bda6f130a442f4d4616034"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
       "mode": "100644",
-      "sha256": "78a04c768d68961f7e0c3795e47c36b4250397a8d0cfd2bbbef5d0a84bfd29f6"
+      "sha256": "97ceea6b33df6279bc08b363db637792aa42e8952bcc1d2a3cbc3a12c7a60da3"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.md",
@@ -998,17 +998,17 @@
     {
       "path": "docs/audits/sbom/platos-agent.cdx.json",
       "mode": "100644",
-      "sha256": "828a09b58d9fcfd4c9c1cbf231ca4f942797fea051e4f799e9d5ca28d89d552e"
+      "sha256": "0d8dfddaab11cc4f3bbca893baa2fa1a9407adaf305aaa75e2548c7d04ff876e"
     },
     {
       "path": "docs/audits/sbom/platos-core-api.cdx.json",
       "mode": "100644",
-      "sha256": "0940f2ec87d60f8a0fc5122615feb7dbd13f174ef2c28fb90a4c365502fe9c38"
+      "sha256": "a178d363b5651af932583aa5359c344cd3793432e48ce857eb10bbfc4bc90c9c"
     },
     {
       "path": "docs/audits/sbom/platos-webapp.cdx.json",
       "mode": "100644",
-      "sha256": "45eb8756ccebf614ab7ae12681583c4d5a62e68e3784479c9421efaf4863c15f"
+      "sha256": "4c00515664dc823f6eac34b98d044cc4470a61cc0bcd7f53706913e174251225"
     },
     {
       "path": "docs/audits/sbom/platos-webapp.image-inventory.json",
@@ -1053,12 +1053,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "75c7b30d7cf23a2b653c3ccbfcf032e4625a42803bc107caaca416f1c0377dc7"
+      "sha256": "a4c0cd1c27241001879d521b44a6624f14122bbe3fed571b4d4a3b6fba4d1116"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "e1e958569ba370e20b1b0aa442e3a46b5fccd191eb5f9b6085f1bc1a7bffc713"
+      "sha256": "b21ac5d933d011786b5250ea188f6c4363ca8a3dc3169b9797d538e6be2b960e"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1098,7 +1098,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "1f0829c445060b4340ef1d6b0a78c10925e64c4609602e7201768a9351698e4c"
+      "sha256": "50d4ccf247b9aa20fd6a9de2d36edff85c9d1662abdcad81b4b021e010791f1e"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1108,7 +1108,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "f3db7a9cef899b6419d994e23be6ebe046f46fe17668e7d378df43d58d049ee2"
+      "sha256": "a82bb3cc2304f4a273b2b5e8202c5aee9bd90bbdd77c6b0dd2e633c61ed56fb4"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -1363,7 +1363,7 @@
     {
       "path": "docs/deployment/off-box-build.md",
       "mode": "100644",
-      "sha256": "65a8f2a8aa32904a5f47acc88b3887f894536ef7a20664c5a56f1f15772f66f0"
+      "sha256": "25348219f9fd57a8d5f6285386a4e9901da8f0842abf51e2333107c9ce5c3749"
     },
     {
       "path": "docs/deployment/overview.mdx",
@@ -1373,7 +1373,7 @@
     {
       "path": "docs/deployment/persisted-state-release-gate.md",
       "mode": "100644",
-      "sha256": "dcbffb0d00993d44dc6ae7342eca5986041a4b21ac56410f02a8090a36f4e53b"
+      "sha256": "4e12a4005a24ba5521cf4b4e62eda95a2df49da91ee50c27507ae43f2f3faf36"
     },
     {
       "path": "docs/deployment/preview-branches-archive.png",
@@ -1443,12 +1443,12 @@
     {
       "path": "docs/env-vars.md",
       "mode": "100644",
-      "sha256": "550a7a35b8c9d18e25821ccbc69a81d7229e805a15f05af30bd93f4ca4b19f15"
+      "sha256": "7aa234c8e04adc003ce3306110da2de6d90463bada0eee4ddc587f42f4ea4987"
     },
     {
       "path": "docs/error-taxonomy.json",
       "mode": "100644",
-      "sha256": "adca1a42c4b4f49b619afe49f23f728fed2f29dba3f8e4ef4a2a3cce2ae93c13"
+      "sha256": "b5a2c9a88fce962093608d988f5b2562bc5716b7dfdf3aae1fe85f5e9412fd58"
     },
     {
       "path": "docs/errors-retrying.mdx",
@@ -2918,7 +2918,7 @@
     {
       "path": "docs/openapi-v1-baseline.json",
       "mode": "100644",
-      "sha256": "b77ec640c1988d300fe4606f8df43bffc9775901591ef87a1ce7a4b8f444face"
+      "sha256": "c1a3bd69ae5710511b6692a8b83c8f353460c8c4af7ec64dd9dc66a4d50dd7c1"
     },
     {
       "path": "docs/openapi.yml",
@@ -3528,7 +3528,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "5d6554e82700fc5dddde679c46041b2cedd72bf1edf0fcbc385b87c564fe791b"
+      "sha256": "025b68750b720b05664aa2654c2b5dbde6a01939dfcba8d1998d8cf54d952ac7"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3968,7 +3968,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "c09fb801104863fc008000cb7c9bda199872cf45f664ee5e65b18d7dd53cc158"
+      "sha256": "f9a8a714af16a780133ba3bc2b3e7d2f659f2269c1afc4386bd1db0062189c97"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",

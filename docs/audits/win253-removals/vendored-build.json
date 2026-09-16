@@ -1382,7 +1382,7 @@
         },
         {
           "path": "scripts/audit-platos-build.mjs",
-          "line": 59,
+          "line": 61,
           "kind": "scripts",
           "token": "@platos/sdk"
         }
@@ -1402,7 +1402,7 @@
       {
         "channel": "scripts",
         "path": "scripts/audit-platos-build.mjs",
-        "line": 59,
+        "line": 61,
         "kind": "scripts",
         "token": "@platos/sdk"
       }
@@ -4905,8 +4905,8 @@
   "integration": {
     "lockfileSha256": "6dafadf93e0f5264a2ba5571dffcca335f879a565ffd5a14065c6ebb4402b34c",
     "vocabularySha256": "c99b506c2381cde58387bbd532338c3f666e469c415b9dc14e214d3d05cd75b1",
-    "ledgerRulesSha256": "5d6554e82700fc5dddde679c46041b2cedd72bf1edf0fcbc385b87c564fe791b",
-    "reachabilitySha256": "75c7b30d7cf23a2b653c3ccbfcf032e4625a42803bc107caaca416f1c0377dc7",
+    "ledgerRulesSha256": "025b68750b720b05664aa2654c2b5dbde6a01939dfcba8d1998d8cf54d952ac7",
+    "reachabilitySha256": "a4c0cd1c27241001879d521b44a6624f14122bbe3fed571b4d4a3b6fba4d1116",
     "staleVocabularyRows": 0,
     "obsoleteLedgerPins": 0,
     "staleReachabilityWorkspaces": 0

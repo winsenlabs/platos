@@ -61,12 +61,14 @@ import { composeApplication, type AppModule, type SuppliedContextPorts } from ".
 import type { SuppliedAdapters, UnwiredAdapter } from "../composition/adapter-bindings.js";
 import { describeAdapterSupply } from "../composition/registry.js";
 import type { CoreApiConfiguration } from "../config/schema.js";
+import type { SessionCookiePolicy } from "../config/security.js";
 import type { LifecycleState } from "../health/readiness.js";
 import { applyApiSurface } from "../http/api-surface.js";
 import { CoreApiHttpModule } from "../http/http.module.js";
 import { installMcpBodyLimits } from "../http/mcp-body-cap.js";
 import { createEdgeMiddleware } from "./edge-middleware.js";
 import { createInFlightRegister, type InFlightRegister } from "./in-flight.js";
+import { createTransportMiddleware } from "./trusted-proxy.js";
 import { createProcessLogger, systemClock, ulidGenerator } from "./process-ports.js";
 import { drainAll, type Drainable, type ShutdownDrainReport } from "./shutdown-drain.js";
 
@@ -89,6 +91,13 @@ export interface StartOptions {
   readonly ids?: IdGenerator;
   readonly logger?: Logger;
   readonly inFlight?: InFlightRegister;
+  /**
+   * D-COOKIE. How the operator session cookie is shaped, from the typed security
+   * section (`config/security.ts` `sessionCookiePolicy`). `main.ts` always passes
+   * it. Absent, the connection alone decides the shape, which is what a suite
+   * that composes without the process configuration has always had.
+   */
+  readonly sessionCookie?: SessionCookiePolicy;
   /**
    * Subsystems holding work that outlives a request — the outbox first among
    * them. Drained in the order given, AFTER in-flight requests, out of what is
@@ -213,6 +222,16 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
   // have run — and says so where it is registered.
   nest.use(
     createEdgeMiddleware({ requestIdHeader: configuration.requestIdHeader, inFlight }),
+  );
+  // D-COOKIE. Whether TLS reached this request — from the connection, or from
+  // the ONE proxy `PLATOS_CORE_API_TRUSTED_PROXY` names — stamped beside the
+  // cookie policy before anything routes. `runtime/trusted-proxy.ts` has the
+  // rules; the framework's own `trust proxy` is left at trust-nobody.
+  nest.use(
+    createTransportMiddleware({
+      trustedProxy: configuration.trustedProxy,
+      sessionCookie: options.sessionCookie ?? null,
+    }),
   );
 
   // D21 (founder decision, 2026-09-15). The MCP body cap, mirroring `apps/agent`:

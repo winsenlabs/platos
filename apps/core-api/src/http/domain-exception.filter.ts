@@ -38,7 +38,12 @@
 //     by throwing an `HttpException`.
 //  4. Anything else -> `TRANSPORT_UNHANDLED_FAULT`, 500, with the thrown value's
 //     own text going to the LOG and never to the wire. A defect is not a domain
-//     outcome and must not be dressed as one.
+//     outcome and must not be dressed as one. ONE family of throws is carved out
+//     of this arm, and only one: the database client reporting that the store
+//     did not answer (`store-faults.ts`) becomes `TRANSPORT_STORE_UNAVAILABLE`
+//     at 503. That is an outage somewhere else, not a defect here, and a caller
+//     told 500 is told retrying cannot help. Its text is logged exactly as a
+//     defect's is.
 //
 // IT RENDERS THE `HttpException` ITSELF RATHER THAN EXTENDING `BaseExceptionFilter`.
 // Two reasons, and neither is taste. Extending it requires an `HttpAdapterHost`
@@ -55,9 +60,10 @@ import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from "
 import type { DomainError, Logger } from "@platos/kernel";
 
 import { domainErrorOf } from "../transports/rest/fault.js";
-import { unhandledFault } from "../transports/rest/transport-errors.js";
+import { storeUnavailable, unhandledFault } from "../transports/rest/transport-errors.js";
 import { currentCorrelation } from "../runtime/correlation.js";
 import { mintErrorId, writeFailure, type FailureResponse } from "./failure.js";
+import { isStoreUnavailableFault } from "./store-faults.js";
 
 /** Only what this filter touches. Structural, like every other edge type here. */
 interface FilterResponse extends FailureResponse {
@@ -98,7 +104,11 @@ export class DomainExceptionFilter implements ExceptionFilter {
       return;
     }
 
-    this.renderDomainError(domain ?? unhandledFault(), domain === null ? exception : null, response);
+    // A THROW IS A DEFECT UNLESS IT IS THE STORE NOT ANSWERING. That one family is
+    // an outage elsewhere, not a fault here, and it gets its own code and a 503.
+    // The thrown value is still logged against the error id either way.
+    const classified = domain ?? (isStoreUnavailableFault(exception) ? storeUnavailable() : unhandledFault());
+    this.renderDomainError(classified, domain === null ? exception : null, response);
   }
 
   /**

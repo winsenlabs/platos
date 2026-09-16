@@ -16,7 +16,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { check, prune, REVIEWED_ABSENT } from "./deploy-bundle-closure.mjs";
+import { check, deploy, prune, REVIEWED_ABSENT, withInjectedWorkspaceSetting } from "./deploy-bundle-closure.mjs";
 
 const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), "deploy-bundle-closure.mjs");
 
@@ -239,6 +239,76 @@ test("the CLI exits non-zero on a contaminated bundle and zero once pruned", () 
   assert.match(after.out, /holds 3 external packages = lockfile closure 3 - 0 reviewed absent, and 1 workspace packages/);
 });
 
-test("the core-api review names exactly the three packages a legacy deploy does not install", () => {
-  assert.deepEqual([...REVIEWED_ABSENT["apps/core-api"]], ["bufferutil@4.0.9", "node-gyp-build@4.8.4", "zod@4.4.3"]);
+test("the core-api bundle is allowed no reviewed absence: shipped equals tested (D-ZOD)", () => {
+  // It named zod@4.4.3, bufferutil@4.0.9 and node-gyp-build@4.8.4 while the image
+  // used a legacy deploy. The non-legacy deploy installs the lockfile's own
+  // snapshots, so an absence would now be a regression, and `check` refuses it.
+  assert.ok(Object.hasOwn(REVIEWED_ABSENT, "apps/core-api"));
+  assert.deepEqual([...REVIEWED_ABSENT["apps/core-api"]], []);
+});
+
+test("the deploy adds exactly one injectWorkspacePackages line to the settings block, and nothing else", () => {
+  const patched = withInjectedWorkspaceSetting(LOCKFILE);
+  const before = LOCKFILE.split("\n");
+  const after = patched.split("\n");
+  assert.equal(after.length, before.length + 1);
+  const added = after.findIndex((line, index) => line !== before[index]);
+  assert.equal(after[added], "  injectWorkspacePackages: true");
+  assert.equal(after[added - 1], "  excludeLinksFromLockfile: false");
+  assert.deepEqual([...after.slice(0, added), ...after.slice(added + 1)], before);
+});
+
+test("NEGATIVE CONTROL: the deploy refuses a lockfile that already injects, or that has no settings block", () => {
+  assert.throws(
+    () => withInjectedWorkspaceSetting(withInjectedWorkspaceSetting(LOCKFILE)),
+    /already records injectWorkspacePackages/,
+  );
+  assert.throws(() => withInjectedWorkspaceSetting("lockfileVersion: '9.0'\n\nimporters: {}\n"), /no top-level settings block/);
+});
+
+test("the deploy runs pnpm's non-legacy deploy against the patched lockfile and restores the committed bytes", () => {
+  const { root } = fixture();
+  const lockfile = path.join(root, "pnpm-lock.yaml");
+  const committed = fs.readFileSync(lockfile, "utf8");
+  const calls = [];
+  const result = deploy({
+    importer: "apps/x",
+    bundle: "/deploy",
+    root,
+    run: (command, args, options) => {
+      calls.push({ command, args, lockfileDuringRun: fs.readFileSync(lockfile, "utf8"), cwd: options.cwd });
+      return { status: 0 };
+    },
+  });
+  assert.equal(result.name, JSON.parse(fs.readFileSync(path.join(root, "apps/x/package.json"), "utf8")).name);
+  assert.deepEqual(calls.map(({ command, args }) => [command, ...args]), [
+    ["pnpm", "--config.inject-workspace-packages=true", "--filter", result.name, "deploy", "--prod", "/deploy"],
+  ]);
+  assert.ok(!calls[0].args.includes("--legacy"));
+  assert.equal(calls[0].lockfileDuringRun, withInjectedWorkspaceSetting(committed));
+  assert.equal(fs.readFileSync(lockfile, "utf8"), committed);
+});
+
+test("NEGATIVE CONTROL: a failed pnpm deploy still restores the lockfile, and fails", () => {
+  const { root } = fixture();
+  const lockfile = path.join(root, "pnpm-lock.yaml");
+  const committed = fs.readFileSync(lockfile, "utf8");
+  assert.throws(
+    () => deploy({ importer: "apps/x", bundle: "/deploy", root, run: () => ({ status: 1 }) }),
+    /exited 1/,
+  );
+  assert.equal(fs.readFileSync(lockfile, "utf8"), committed);
+  assert.throws(
+    () =>
+      deploy({
+        importer: "apps/x",
+        bundle: "/deploy",
+        root,
+        run: () => {
+          throw new Error("spawn failed");
+        },
+      }),
+    /spawn failed/,
+  );
+  assert.equal(fs.readFileSync(lockfile, "utf8"), committed);
 });

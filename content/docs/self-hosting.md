@@ -132,14 +132,14 @@ What composes depends on the security variables, which `.env.example` leaves uns
 | plus `PLATOS_CHANNELS_EMAIL_SMTP_URL`, `PLATOS_CHANNELS_EMAIL_FROM`, `PLATOS_CHANNELS_EMAIL_LOGIN_URL` | 59 of 63 | the same five |
 
 Every row was read back off the built composition root rather than derived: each is a
-`/readyz` body from `node apps/core-api/dist/main.js` started with exactly the variables
-its row names, plus the two store URLs the Compose profile always passes. The four that
-remain unsatisfied at the last row are the bindings on directories that are still
-generated interfaces, which no `.env` can reach.
+`/readyz` body from the same construction path `main.ts` runs, started with exactly the
+variables its row names, plus the two store URLs the Compose profile always passes. The
+four that remain unsatisfied at the last row are the bindings on directories that are
+still generated interfaces, which no `.env` can reach.
 
-Operator authentication, secrets, providers and tools are therefore not running until the three security variables are set. Generate the session secret and the encryption key with `openssl rand -hex 32`, independently of every other key in `.env`.
+Operator authentication, secrets, providers and tools are therefore not running until the credential root and its version are set; those two settings, and nothing else, compose the five contexts. `PLATOS_SECURITY_SESSION_SECRET` composes no context: it declares the operator session cookie group, which the three cookie settings (`PLATOS_SECURITY_SESSION_COOKIE_SECURE`, `_NAME`, `_SAME_SITE`) require. `apps/core-api/src/composition/compose-readiness.test.ts` reads this table and checks each row against the Compose service's own environment. Generate the session secret and the encryption key with `openssl rand -hex 32`, independently of every other key in `.env`.
 
-`core-api` is reachable at the edge only through its own host block in `deploy/Caddyfile`, and that block removes `Set-Cookie` from every response: the process does not yet trust the proxy for the Secure-cookie decision, so it would otherwise issue the operator session cookie without `Secure` behind TLS. Bearer-token calls work through it; browser sessions do not.
+`core-api` is reachable at the edge only through its own host block in `deploy/Caddyfile`, which terminates TLS and proxies plain HTTP. With `PLATOS_SECURITY_SESSION_COOKIE_SECURE` at its default, core-api sets the operator session cookie only as a `Secure` `__Host-` cookie on a request TLS reached, and it believes the proxy's `X-Forwarded-Proto` only from the one peer `PLATOS_CORE_API_TRUSTED_PROXY` names. Set that to the address Caddy reaches the container from (the compose network's gateway) to allow browser sessions through the edge; until then a sign-in through it is refused with `TRANSPORT_SESSION_COOKIE_REQUIRES_TLS`, and bearer-token calls work either way. The header is never believed from any other peer.
 
 ## Network boundary
 

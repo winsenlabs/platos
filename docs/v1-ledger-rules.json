@@ -391,6 +391,19 @@
         "evidence": "Package, compiler, and framework configuration read by the workspace scripts, plus static manifest data loaded by the module beside it. Declared ahead of the source rules because a *.config.ts is also a *.ts."
       },
       {
+        "id": "apps-core-api.tooling.scripts",
+        "match": [
+          "apps/core-api/scripts/**"
+        ],
+        "kind": "source",
+        "owner_capability": "Core API",
+        "disposition": "retain",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Invoked from apps/core-api/package.json scripts: scripts/dev.mjs is the dev script, which watches the package's build script and restarts its start script. Not part of the image, which copies only dist, the deployed node_modules and the manifest."
+      },
+      {
         "id": "apps-core-api.entry.composition-root",
         "match": [
           "apps/core-api/src/main.ts",
@@ -2122,16 +2135,16 @@
     ]
   },
   "expected": {
-    "totalFiles": 5357,
+    "totalFiles": 5366,
     "areaCounts": {
       "apps-agent": 532,
-      "apps-core-api": 137,
+      "apps-core-api": 145,
       "apps-mcp-stdio": 8,
       "apps-webapp": 184,
       "docs-content": 746,
       "internal-packages": 1174,
       "packages": 2236,
-      "root-infra": 340
+      "root-infra": 341
     },
     "kindCounts": {
       "asset": 155,
@@ -2142,14 +2155,14 @@
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2195,
-      "test": 1100
+      "source": 2200,
+      "test": 1104
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1708,
+      "move-refactor": 1709,
       "regenerate": 43,
-      "retain": 3597,
+      "retain": 3605,
       "unresolved": 2
     },
     "protectedCount": 1642,
@@ -2168,9 +2181,10 @@
       "apps-core-api.doc.package": 1,
       "apps-core-api.entry.composition-root": 2,
       "apps-core-api.infra.container": 1,
-      "apps-core-api.source.process": 51,
+      "apps-core-api.source.process": 54,
       "apps-core-api.source.transports": 36,
-      "apps-core-api.test.suites": 38,
+      "apps-core-api.test.suites": 42,
+      "apps-core-api.tooling.scripts": 1,
       "apps-mcp-stdio.config.package": 2,
       "apps-mcp-stdio.doc.package": 1,
       "apps-mcp-stdio.entry.bin": 1,
@@ -2291,9 +2305,9 @@
       "root-infra.test.harness": 74,
       "root-infra.test.script-suites": 35,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 125,
+      "root-infra.tooling.scripts": 126,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "99923274ef62899dba83d0b7659b6d8298830afc9c8d4b36739f8889d0267c83"
+    "classificationSha256": "25c03463781610aca9cadcebf03f3261c74030b2983f370bcbed3eba76da1a69"
   }
 }

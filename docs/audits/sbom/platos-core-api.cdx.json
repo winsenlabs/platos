@@ -29,7 +29,7 @@
       },
       {
         "name": "platos:componentCount",
-        "value": "323"
+        "value": "326"
       },
       {
         "name": "platos:derivation",
@@ -2068,6 +2068,36 @@
         {
           "alg": "SHA-512",
           "content": "13e5d0091c126da6a20a1b6fea4e83c2073e6f1f81b3abee2891c7979928c7f05a29b8625f3a903b02b870edb6c84946a763829a3c15853dc79b18323c69c97d"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/bufferutil@4.0.9",
+      "name": "bufferutil",
+      "version": "4.0.9",
+      "purl": "pkg:npm/bufferutil@4.0.9",
+      "properties": [
+        {
+          "name": "platos:image",
+          "value": "agent,webapp,core-api"
+        },
+        {
+          "name": "platos:licenseSource",
+          "value": "registry:version"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "583b5d2e626f02e34d3f3072018a51a36ac5d4c9ab69dc3a82f5ac40a7fadf8efa0c35e6a264fdcd4886ca92dc1b889b20cebbbe1023f2325175b984c2cd80ab"
         }
       ],
       "licenses": [
@@ -7034,6 +7064,36 @@
     },
     {
       "type": "library",
+      "bom-ref": "pkg:npm/node-gyp-build@4.8.4",
+      "name": "node-gyp-build",
+      "version": "4.8.4",
+      "purl": "pkg:npm/node-gyp-build@4.8.4",
+      "properties": [
+        {
+          "name": "platos:image",
+          "value": "agent,webapp,core-api"
+        },
+        {
+          "name": "platos:licenseSource",
+          "value": "registry:version"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "2c0e198f096751b947560ab4a01177265ffa87f36fb397f304bc1d105e27bb19c576c7da8dd7b859fc6d26bdc26a21fe17a7b070807fab88d0e14ccfca277e09"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
       "bom-ref": "pkg:npm/nypm@0.6.1",
       "name": "nypm",
       "version": "0.6.1",
@@ -9662,6 +9722,36 @@
         {
           "alg": "SHA-512",
           "content": "83352dfeab7cd675ec14628815c0b76277c4031e4d92e9c27e70e5bee0524854b4d9b717bb82e679ad001485306cb5b158fc7777da7c4b94286ae8ca70d43171"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/zod@4.4.3",
+      "name": "zod",
+      "version": "4.4.3",
+      "purl": "pkg:npm/zod@4.4.3",
+      "properties": [
+        {
+          "name": "platos:image",
+          "value": "agent,core-api"
+        },
+        {
+          "name": "platos:licenseSource",
+          "value": "registry:version"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "cad10d163209165d94c1882575eda37215b61f09b818914b0e249759d4eb25004837d15cca9ee7e0387124489634024c575fc1a967d6fe4920ef55037072724d"
         }
       ],
       "licenses": [

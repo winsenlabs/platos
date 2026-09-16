@@ -60,6 +60,26 @@ const integrationConsumers = new Map([
     ],
   ],
 ]);
+/**
+ * Immutable consumers whose bytes moved off the owner authorization baseline
+ * under a RECORDED authorization, each pinned to the exact re-baselined bytes.
+ *
+ * An entry is not an exemption. The consumer is still byte-pinned — to the
+ * sha256 below instead of the baseline blob — and the entry must name the
+ * decision record that authorized the move and the decision's identifier, and
+ * that record must still exist and still carry that identifier. A further edit to
+ * the file, or a record that stops naming the decision, fails the audit.
+ */
+export const REBASELINED_CONSUMERS = Object.freeze({
+  "docker-compose.deploy.yml": Object.freeze({
+    sha256: "a5e044ac4d8dbae956f2eb0bbb303fb01cbb8f4ad4aafe04468759a5c5c53057",
+    authorizedBy: "docs/adr/M2-M4-delegated-decisions-2026-09-15.md",
+    decision: "D-DEPLOY-HEADER",
+    reason:
+      "The header claimed the override removes every application build block and that Compose ignores build: when build is not passed. docs-mcp-bridge and core-api keep their build blocks, and compose up builds without build; the header was corrected to say so, and only the header changed.",
+  }),
+});
+
 const sourceConsumer = "apps/agent/src/observability/clickhouse-observability-sink.ts";
 const sourceConsumerNeedle = "internal-packages/clickhouse/schema/033_create_platos_observability_v1.sql";
 const observabilityMigration =
@@ -463,10 +483,33 @@ function validateConsumers(root, ownerAuthorizationByPath, ownerAuthorizationBlo
   for (const path of immutableConsumers) {
     const entry = ownerAuthorizationByPath.get(path);
     const current = readFileSync(resolve(root, path));
-    if (sha256(current) !== sha256(ownerAuthorizationBlobs.get(path))) {
-      violations.push(`shipping schema consumer changed from owner authorization baseline: ${path}`);
+    const rebaseline = REBASELINED_CONSUMERS[path];
+    if (rebaseline === undefined) {
+      if (sha256(current) !== sha256(ownerAuthorizationBlobs.get(path))) {
+        violations.push(`shipping schema consumer changed from owner authorization baseline: ${path}`);
+      }
+      records.push({ path, ownerAuthorizationSha256: sha256(ownerAuthorizationBlobs.get(path)), currentSha256: sha256(current) });
+      continue;
     }
-    records.push({ path, ownerAuthorizationSha256: sha256(ownerAuthorizationBlobs.get(path)), currentSha256: sha256(current) });
+    const record = resolve(root, rebaseline.authorizedBy);
+    const decisionPattern = new RegExp(`\\*\\*${rebaseline.decision.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}\\.\\*\\*`, "u");
+    if (!existsSync(record) || !decisionPattern.test(readFileSync(record, "utf8"))) {
+      violations.push(`re-baselined consumer ${path} names an authorization that is not recorded: ${rebaseline.authorizedBy} ${rebaseline.decision}`);
+    }
+    if (sha256(current) !== rebaseline.sha256) {
+      violations.push(`shipping schema consumer changed from its re-baselined bytes: ${path}`);
+    }
+    records.push({
+      path,
+      ownerAuthorizationSha256: sha256(ownerAuthorizationBlobs.get(path)),
+      currentSha256: sha256(current),
+      rebaseline: {
+        sha256: rebaseline.sha256,
+        authorizedBy: rebaseline.authorizedBy,
+        decision: rebaseline.decision,
+        reason: rebaseline.reason,
+      },
+    });
   }
   for (const [path, requiredReferences] of integrationConsumers) {
     const entry = ownerAuthorizationByPath.get(path);
