@@ -2218,7 +2218,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // applies (the driver itself is edited in place to take a plan path), and
     // `scripts/mutations-win271-discord.json`, the ledger that sweep wrote.
     // NO LEDGER RULE CHANGED. 95 + 7 + 2 = 104 on the merged tree.
-    "root-infra": 104,
+    //
+    // WIN-271 (M4.5), D10, THE REMAINING TWO PROVIDERS — 104 -> 106. TWO more on
+    // the same rule, and the same pair of shapes:
+    // `scripts/win271-channels-rest-mutation-plan.json` (the 52 rows) and
+    // `scripts/mutations-win271-channels-rest.json` (the ledger that sweep wrote,
+    // including the two recorded equivalent mutants and the vacuous first run).
+    // The driver is edited in place again — two new command groups — and adds no
+    // file. NO LEDGER RULE CHANGED. 104 + 2 = 106.
+    "root-infra": 106,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2545,14 +2553,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // the lane report (which read 1827 against a tree with none of the four earlier
   // lanes in it): 18 + 1 + 126 + 4 + 10 + 1599 + 26 + 104 = 1888.
   //
-  // AND THE REMAINING TWO (WIN-271 (M4.5), D10) — 1888 -> 1929. FORTY-ONE files in
-  // ONE area, itemised on its delta above: `packages` +41 and nothing anywhere
-  // else. `root-infra` does NOT move this time, which is the difference from the
-  // second runtime: that one brought a `discord-interactions` devDependency and so
-  // a lockfile edit counted there, and these two bring no vendor dependency at all
-  // — `node:crypto` and `fetch` are the whole of both.
-  // 18 + 1 + 126 + 4 + 10 + 1640 + 26 + 104 = 1929.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1929);
+  // AND THE REMAINING TWO (WIN-271 (M4.5), D10) — 1888 -> 1931. FORTY-THREE files
+  // in TWO areas, each itemised on its delta above: `packages` +41 (the two
+  // adapter directories) and `root-infra` +2 (the sweep's plan and its ledger).
+  // 18 + 1 + 126 + 4 + 10 + 1640 + 26 + 106 = 1931.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1931);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2873,9 +2878,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // area deltas: nine packages files and seven root-infra files.
     // AND THE SECOND CHANNEL RUNTIME — 1865 -> 1888, moved in the same edit as the
     // total and both area deltas: twenty-one packages files and two root-infra files.
-    // AND THE REMAINING TWO — 1888 -> 1929, moved in the same edit as the total and
-    // the ONE area delta: forty-one packages files and nothing in root-infra.
-    rulesDocument.baseline.totalFiles + 1929
+    // AND THE REMAINING TWO — 1888 -> 1931, moved in the same edit as the total and
+    // both area deltas: forty-one packages files and two root-infra files.
+    rulesDocument.baseline.totalFiles + 1931
   );
 });
 
