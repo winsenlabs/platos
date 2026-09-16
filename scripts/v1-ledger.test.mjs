@@ -897,21 +897,31 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   shows each of those three can go red.
     //
     // The six manifests that gained the subpath, `context-ports.ts`,
-    // `gen-v1-skeleton.mjs` and every corrected comment are EDITS. Two other pins
-    // moved with the eighteen source files and are recorded where they live:
-    // `EXPECTED_FILE_COUNT` in `scripts/arch/env-access.mjs` and the re-derivation
-    // in `scripts/arch/arch-boundaries.test.mjs`, both 1701 -> 1719.
+    // `gen-v1-skeleton.mjs` and every corrected comment are EDITS.
     //
     // M4 GATES (founder decision D21), integrated after the factory entries, 116 -> 118.
     // TWO files under `apps/core-api/src/http/`:
     // `mcp-body-cap.ts` on `apps-core-api.source.process` (50 -> 51) and its real-socket
     // suite on `apps-core-api.test.suites` (35 -> 36). NO LEDGER RULE CHANGED.
-    // `runtime/lifecycle.ts`, which installs the cap, is an EDIT. The three V1 source
-    // censuses that count these files moved with them and say so where they live:
-    // `EXPECTED_FILE_COUNT` in `scripts/arch/env-access.mjs` (1719 -> 1721 on the
-    // integrated tree), `arch-boundaries.test.mjs` (1719 -> 1721) and `max-file-lines.test.mjs`
-    // (1653 -> 1655).
-    "apps-core-api": 118,
+    // `runtime/lifecycle.ts`, which installs the cap, is an EDIT.
+    //
+    // THE IDENTITY/TENANCY REST REMAINDER (2026-09-15), integrated third, 118 -> 126.
+    // EIGHT files: five controllers and `session-cookie-value.ts` under
+    // `src/transports/rest` and `src/transports/bff` (the `transports` source rule,
+    // 30 -> 36), and two suites (`identity-tenancy-rest.test.ts` and the
+    // real-servers `composition/identity-tenancy-rest.integration.test.ts`, the
+    // `suites` rule 36 -> 38). NO LEDGER RULE CHANGED.
+    //
+    // 126 IS RE-MEASURED ON THE MERGED TREE. The lane branch pinned 105 because it
+    // measured 97 + 8 without the nineteen factory-entry files or the two gate
+    // files in the tree; 97 + 19 + 2 + 8 = 126 is the arithmetic and the regenerated
+    // `docs/v1-ledger-rules.json` is the authority.
+    //
+    // The three V1 source censuses that count these files moved with them and say so
+    // where they live: `EXPECTED_FILE_COUNT` in `scripts/arch/env-access.mjs`
+    // (1701 -> 1742 integrated), `arch-boundaries.test.mjs` (1742) and
+    // `max-file-lines.test.mjs` (1653 -> 1675).
+    "apps-core-api": 126,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1611,7 +1621,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // two planners and its new refusals, the service, the double, the bearer store and
     // `harness.ts`'s one opt-in variable add no file. 1550 + 6 = 1556, and NO LEDGER
     // RULE CHANGED.
-    packages: 1556,
+    // IDENTITY/TENANCY REST REMAINDER 1556 -> 1569 (2026-09-15). THIRTEEN files:
+    // `notifier-email`'s four source modules and two suites (the adapter source and
+    // test rules, 280 -> 284 and 194 -> 196), and seven in the two contexts — the
+    // `MagicLinkDelivery` port, the administration gate and two tenancy read models
+    // (context source 730 -> 734) and three suites (context test 363 -> 366). NO
+    // LEDGER RULE CHANGED.
+    packages: 1569,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2458,7 +2474,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // external-MCP isolation suite) and two in `apps-core-api` (the D21 MCP body cap and
   // its suite). Re-measured on the integrated tree:
   // 18 + 1 + 118 + 4 + 10 + 1556 + 26 + 95 = 1828.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1828);
+  //
+  // AND THE IDENTITY/TENANCY REST REMAINDER — 1828 -> 1849. TWENTY-ONE files,
+  // itemised on their areas' deltas above: eight in `apps-core-api` and thirteen in
+  // `packages`. Re-measured on the integrated tree, not summed from the lane
+  // report (which read 1824 against a tree without the factory entries or the
+  // gates): 18 + 1 + 126 + 4 + 10 + 1569 + 26 + 95 = 1849.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1849);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2773,7 +2795,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // total and as `expectedDeltas["apps-core-api"]`: nineteen core-api files.
     // AND THE M4 GATES LANE — 1823 -> 1828, moved in the same edit as the total and as
     // both area deltas: apps-agent +3 and apps-core-api +2, summed per area here.
-    rulesDocument.baseline.totalFiles + 1828
+    // AND THE IDENTITY/TENANCY REST REMAINDER — 1828 -> 1849, moved in the same edit
+    // as the total and both area deltas: eight apps-core-api files, thirteen packages.
+    rulesDocument.baseline.totalFiles + 1849
   );
 });
 

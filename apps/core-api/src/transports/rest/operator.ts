@@ -57,6 +57,12 @@
 import type { DomainError } from "@platos/kernel";
 import type { IdentityAccessContract, OperatorAuthorizationView } from "@platos/context-identity-access";
 import type { ProvidersContract } from "@platos/context-providers";
+import {
+  authorizeEnvironmentOperator as mintVaultOperatorGrant,
+  type ActorId,
+  type EnvironmentOperatorAuthorization as VaultOperatorGrant,
+  type SecretsContract,
+} from "@platos/context-secrets";
 import type {
   EnvironmentAccess,
   EnvironmentOperatorAuthorization,
@@ -67,6 +73,7 @@ import { asIdentifier, type EnvironmentId } from "@platos/kernel";
 
 import type { AppModule } from "../../app.module.js";
 import { raise } from "./fault.js";
+import { sessionTokenFromCookieValue } from "./session-cookie-value.js";
 import { contextUnavailable } from "./transport-errors.js";
 
 /** Only what this module reads off an inbound request. Structural, so the seam
@@ -156,7 +163,13 @@ export function presentedOperatorToken(
   // contract's own `INVALID_SESSION_COOKIE` rather than swallowed into a 401,
   // because a 401 would send an operator looking at their session.
   if (!shape.ok) raise(shape.error);
-  return readCookie(request, shape.value.name) ?? bearerToken(request);
+  // D19 (2026-09-15). A COOKIE's value may be in Remix's encoding — every session
+  // the legacy webapp minted is — and is read in either dialect; see
+  // `session-cookie-value.ts`. The `Authorization` header is never decoded: a
+  // bearer header was never written by Remix, and giving it a second reading would
+  // be a second opinion nobody asked for.
+  const cookie = readCookie(request, shape.value.name);
+  return cookie === null ? bearerToken(request) : sessionTokenFromCookieValue(cookie);
 }
 
 /**
@@ -264,4 +277,44 @@ export function requireProviders(app: AppModule): ProvidersContract {
   const providers = app.contexts.providers;
   if (providers === undefined) raise(contextUnavailable("providers"));
   return providers;
+}
+
+/** The composed `secrets`, or a 503 that says which context is missing. */
+export function requireSecrets(app: AppModule): SecretsContract {
+  const secrets = app.contexts.secrets;
+  if (secrets === undefined) raise(contextUnavailable("secrets"));
+  return secrets;
+}
+
+/**
+ * The vault's grant for one environment, DERIVED from tenancy's four-gate
+ * decision and from nothing a caller sent.
+ *
+ * `secrets` may not import tenancy or identity-access (ADR M0.3 §1 row 3), so its
+ * contract says "the composition root authenticates first and mints the grant
+ * here" — and this is that mint, in the one seam every V1 route authenticates
+ * through. It is the SAME derivation `providers/application/authorization.ts`
+ * (`vaultGrantFor`) makes: the ancestry is tenancy's re-derived `scope`, the
+ * access level maps one-to-one, and both user ids travel. A route that built the
+ * ancestry from its own path parameter would hold a genuine vault grant for
+ * whatever environment the URL named, which is the cross-tenant write this seam
+ * exists to make unrepresentable.
+ */
+export async function authorizeVault(
+  app: AppModule,
+  operator: OperatorAuthorizationView,
+  environmentId: string,
+  access: EnvironmentAccess,
+): Promise<VaultOperatorGrant> {
+  const authorization = await authorizeEnvironment(app, operator, environmentId, access);
+  return mintVaultOperatorGrant({
+    ancestry: {
+      organizationId: authorization.scope.organizationId,
+      projectId: authorization.scope.projectId,
+      environmentId: authorization.scope.environmentId,
+    },
+    access: authorization.access,
+    actorUserId: asIdentifier<ActorId>(authorization.actorUserId),
+    effectiveUserId: asIdentifier<ActorId>(authorization.effectiveUserId),
+  });
 }

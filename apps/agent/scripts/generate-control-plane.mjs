@@ -134,6 +134,15 @@ const CORE_API_MOUNTED_CONTROLLERS = {
   // by name rather than quietly leaving the census — which is exactly how it
   // failed when the class landed without this line.
   ProviderKeysController: "http/http.module.ts",
+  // WIN-257 T6 (2026-09-15) — the identity/tenancy REST remainder: magic-link
+  // sign-in (D20), the team listing and role change, invitations (D1), the
+  // slug-addressed scope resolver and the environment-variable routes (D9).
+  // Listed for the reason every sibling is: this root is STRICT.
+  BffMagicLinkController: "http/http.module.ts",
+  OrganizationMembersController: "http/http.module.ts",
+  InvitationsController: "http/http.module.ts",
+  EnvironmentScopeController: "http/http.module.ts",
+  EnvironmentVariablesController: "http/http.module.ts",
 };
 
 /**

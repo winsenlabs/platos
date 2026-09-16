@@ -249,7 +249,8 @@ export const EXPECTED_PROJECT_COUNT = 35;
 //
 // 121 + 1 = 122, the merged figure, which no single branch stated: A1+A2 pinned
 // 121 for themselves and A3 pinned 117 for itself, both over the same 116 base.
-export const EXPECTED_EDGE_COUNT = 122;
+// D20 (2026-09-15): 122 + 1 = 123 -- `notifier-email` -> `identity-access`.
+export const EXPECTED_EDGE_COUNT = 123;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -508,7 +509,11 @@ export const EXPECTED_ADAPTER_OWNERS = {
   "redis-streams": ["kernel"],
   "model-router-providers": ["providers"],
   "channel-slack": ["channels"],
-  "notifier-email": ["cost-monitoring"],
+  // D20 (2026-09-15) adds `identity-access`, a SECOND owner: `MagicLinkDelivery`
+  // is published by identity-access's own ports entry and satisfied by the same
+  // object that speaks to the relay for `Notifier`. One more owner is one more
+  // edge, and a row in `EXPECTED_MULTI_OWNER_ADAPTERS` below.
+  "notifier-email": ["cost-monitoring", "identity-access"],
   "notifier-webhook": ["cost-monitoring"],
   // WIN-259 (M2.4). ONE owner and THREE bindings: `secrets` publishes
   // `KeyRing`, `AeadCipher` and `Hasher` separately, and this map is keyed by
@@ -559,7 +564,8 @@ export const EXPECTED_ADAPTER_OWNERS = {
 // owner edge into `packages/contexts/providers` alongside `memory`, `jobs` and
 // `kernel`. `tokenmint-totp` earns NO row: two ports, ONE owner, so it is
 // multi-PORT without being multi-OWNER.
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17, "redis-cache": 4, "keyring-envelope": 2 };
+// D20 (2026-09-15): `notifier-email` joins at 2 — `cost-monitoring` and `identity-access`.
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17, "redis-cache": 4, "keyring-envelope": 2, "notifier-email": 2 };
 
 /**
  * Edges an adapter has that are NOT owner edges, declared separately.

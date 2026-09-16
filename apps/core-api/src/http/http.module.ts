@@ -25,12 +25,17 @@ import { APP_FILTER } from "@nestjs/core";
 
 import type { AppModule } from "../app.module.js";
 import type { LifecycleState } from "../health/readiness.js";
+import { BffMagicLinkController } from "../transports/bff/magic-link.controller.js";
 import { BffSessionController } from "../transports/bff/session.controller.js";
 import { McpEntityTokensController } from "../transports/mcp/entity-tokens.controller.js";
 import { McpPlatformTokensController } from "../transports/mcp/platform-tokens.controller.js";
 import { McpOrganizationPoliciesController } from "../transports/mcp/organization-policies.controller.js";
 import { REST_APPLICATION, type RestApplication } from "../transports/rest/dependencies.js";
 import { EnvironmentEndUsersController } from "../transports/rest/environment-end-users.controller.js";
+import { EnvironmentScopeController } from "../transports/rest/environment-scope.controller.js";
+import { EnvironmentVariablesController } from "../transports/rest/environment-variables.controller.js";
+import { InvitationsController } from "../transports/rest/invitations.controller.js";
+import { OrganizationMembersController } from "../transports/rest/organization-members.controller.js";
 import { IdentitySessionController } from "../transports/rest/identity-session.controller.js";
 import { OrganizationsController } from "../transports/rest/organizations.controller.js";
 import { ProjectsController } from "../transports/rest/projects.controller.js";
@@ -78,6 +83,17 @@ import { NotFoundController } from "./not-found.controller.js";
     // the idempotency gate reserving keys on its behalf and replaying the 404.
     ProviderKeysController,
     BffSessionController,
+    // WIN-257 T6 (2026-09-15) — the identity/tenancy REST remainder, in this SAME
+    // array for the reason the banner gives: only a statically declared
+    // controller is registered ahead of `NotFoundController`'s `@All("{*path}")`.
+    // Magic-link sign-in (D20), the team listing and role change, invitations
+    // (D1), the slug-addressed scope resolver, and the environment-variable
+    // listing and write over `secrets` (D9).
+    BffMagicLinkController,
+    OrganizationMembersController,
+    InvitationsController,
+    EnvironmentScopeController,
+    EnvironmentVariablesController,
     // WIN-268 (M4.2) P1 — the two MCP token mints. They sit in this SAME array
     // and not in `forApplication`'s for the reason the banner above gives: only
     // a statically declared controller is registered ahead of

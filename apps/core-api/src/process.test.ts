@@ -203,6 +203,7 @@ describe("the built binary refuses to start on a bad section", () => {
       PLATOS_PROVIDERS_DEFAULT_MODEL: "claude-haiku-4-5",
       PLATOS_CHANNELS_EMAIL_SMTP_URL: "https://relay.internal",
       PLATOS_CHANNELS_EMAIL_FROM: "alerts@platos.example",
+      PLATOS_CHANNELS_EMAIL_LOGIN_URL: "https://app.platos.example/magic",
     });
     const { code } = await spawned.exited;
     expect(code).toBe(EXIT_CONFIGURATION);
@@ -309,6 +310,11 @@ describe("the built binary starts, serves and stops", () => {
       // real socket on a real spawned binary, and an install that declared
       // everything BUT the channel would be reporting a different fact.
       PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(64),
+      // D20 (2026-09-15). The relay group, for the same reason: a fully declared
+      // install declares the relay operators sign in through.
+      PLATOS_CHANNELS_EMAIL_SMTP_URL: "smtp://relay.internal:25",
+      PLATOS_CHANNELS_EMAIL_FROM: "login@platos.example",
+      PLATOS_CHANNELS_EMAIL_LOGIN_URL: "https://app.platos.example/magic",
     });
     const port = await awaitListening(spawned);
 
@@ -335,8 +341,12 @@ describe("the built binary starts, serves and stops", () => {
         unwiredAdapters: { adapter: string; cause: string }[];
       };
     };
-    expect(body.detail.declaredBindings).toBe(60);
-    expect(body.detail.satisfiedBindings).toHaveLength(55);
+    // D20 (2026-09-15): 55/60 -> 57/61, the shape a FOURTH time. `notifier-email`
+    // DECLARES one new binding (`MagicLinkDelivery`) and IMPLEMENTS the directory,
+    // so declared moves by one and satisfied by two, and the unsatisfied remainder
+    // falls from five to FOUR.
+    expect(body.detail.declaredBindings).toBe(61);
+    expect(body.detail.satisfiedBindings).toHaveLength(57);
     // WIN-267 A1 + A2: 41 -> 45 of 49 -> 53. Both new directories need no
     // configuration, so all four of their bindings are satisfied in every
     // install and the EIGHT that remain are the same eight generated interfaces.
@@ -365,7 +375,7 @@ describe("the built binary starts, serves and stops", () => {
     // skeleton was generated. Declared moves by one and satisfied by two, and the
     // unsatisfied remainder falls from six to FIVE: `redis-streams` is the THIRD
     // directory ever to leave `UNIMPLEMENTED_ADAPTERS`.
-    expect(body.reason).toBe("55 of 60 adapter bindings are satisfied; 5 are not");
+    expect(body.reason).toBe("57 of 61 adapter bindings are satisfied; 4 are not");
     // THE CONTEXTS THIS PROCESS ACTUALLY BUILT, read back OFF THE RUNNING
     // BINARY rather than computed. `tenancy` was the first composed over a REAL
     // PostgreSQL adapter rather than over a bundle an install had to hand in;
@@ -414,12 +424,13 @@ describe("the built binary starts, serves and stops", () => {
     ]);
     expect(body.detail.composedContexts).not.toContain("governance");
     // And every remaining directory says which kind of gap it is.
-    expect(body.detail.unwiredAdapters).toHaveLength(5);
+    // 5 -> 4 (D20, 2026-09-15): `notifier-email` is built from the relay group.
+    expect(body.detail.unwiredAdapters).toHaveLength(4);
     expect(new Set(body.detail.unwiredAdapters.map((row) => row.cause))).toEqual(new Set(["implementation"]));
 
     // The startup log carries the same figure, so an operator with no token can
     // still read it off stdout.
-    expect(spawned.stdout()).toContain("55/60 adapter bindings satisfied");
+    expect(spawned.stdout()).toContain("57/61 adapter bindings satisfied");
 
     spawned.child.kill("SIGTERM");
     const { code, signal } = await spawned.exited;

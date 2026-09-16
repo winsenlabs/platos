@@ -18,6 +18,9 @@
   "references": [
     {
       "path": "../../contexts/cost-monitoring"
+    },
+    {
+      "path": "../../contexts/identity-access"
     }
   ]
 }

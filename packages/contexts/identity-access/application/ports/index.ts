@@ -46,6 +46,8 @@ export type { SecretHasher } from "./secret-hasher.js";
 export type { TokenMinter } from "./token-minter.js";
 export type { TotpCodeVerifier } from "./totp-code-verifier.js";
 export type { MfaSecretCipher } from "./mfa-secret-cipher.js";
+// D20 — the seventh port, and the only OPTIONAL one: see `dependencies.ts`.
+export type { MagicLinkDelivery, MagicLinkMessage } from "./magic-link-delivery.js";
 
 // --- what an implementation of the ports above needs in order to build a record
 //
@@ -69,7 +71,13 @@ export type { MfaSecretCipher } from "./mfa-secret-cipher.js";
 // could refuse and could not succeed. Found the same way the other five were:
 // by the first implementation of a port failing to compile.
 export { asIdentifier, domainError, err, ok, runResult } from "@platos/kernel";
-export type { Branded, EnvironmentId, NotResult, OrganizationId, PrincipalId, ProjectId, Result, TenantScope } from "@platos/kernel";
+// D20 (2026-09-15): `DomainError` joins them, for the reason every name in this
+// block is here. `packages/adapters/notifier-email` implements `MagicLinkDelivery`,
+// whose failures are `DomainError` values, and its only edges are to the contexts
+// that own its ports — without this it could construct a refusal and not NAME its
+// type. Found, as the six before it were, by the first implementation failing to
+// compile.
+export type { Branded, DomainError, EnvironmentId, NotResult, OrganizationId, PrincipalId, ProjectId, Result, TenantScope } from "@platos/kernel";
 // WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
 // `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
 // callback RESOLVES, and a resolved callback COMMITS, which is the defect

@@ -560,10 +560,12 @@ test("the live owner map passes its own check", () => {
   // Two adjacent lines that move by different amounts is exactly what asserting
   // them separately is for, and neither branch's figure survives alone: A1+A2
   // pinned {17,3,2}/15 and A3 pinned {17,4}/13 over the same base.
+  // D20 (2026-09-15) adds `notifier-email` at 2: `cost-monitoring` and `identity-access`.
   assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, {
     "postgres-tenancy": 17,
     "redis-cache": 4,
     "keyring-envelope": 2,
+    "notifier-email": 2,
   });
   assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 15);
 });

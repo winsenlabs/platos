@@ -91,3 +91,14 @@ export {
   decodeBudgetTarget,
   encodeBudgetTarget,
 } from "../../domain/index.js";
+
+// D20 (2026-09-15) — WHAT A `Notifier` CANNOT BE IMPLEMENTED WITHOUT, published for
+// the first implementation. `packages/adapters/notifier-email` stopped being a
+// generated interface in this tranche, and `Notifier.deliver` hands it a
+// `BudgetAlert` it must render and asks for a `DeliveryOutcome` it must build.
+// Neither type, nor the ONE renderer `notifier.ts` says every transport must use
+// ("so the plain-text body and the structured document cannot state different
+// numbers"), was reachable from this entry point — the seventh instance of the
+// omission the block above records, found the same way.
+export type { BudgetAlert, DeliveryOutcome } from "../../domain/index.js";
+export { delivered, notDelivered, renderAlertSubject, renderAlertText } from "../../domain/index.js";

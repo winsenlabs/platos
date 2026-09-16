@@ -11,20 +11,42 @@ const start = {
   scope: ENVIRONMENT,
 } as const;
 
+/**
+ * The token, read from the ONLY place it goes: the delivery port. D20 — the use
+ * case returns no token, so a test that needs one has to read the outbox the way
+ * the recipient would.
+ */
 async function startedToken(ports: TestPorts): Promise<string> {
   const started = await startMagicLinkLogin(ports, start);
   if (!started.ok) throw new Error("expected the link to be issued");
-  return started.value.token;
+  const message = ports.magicLinks.delivered.at(-1);
+  if (message === undefined) throw new Error("expected the link to be delivered");
+  return message.token;
 }
 
 describe("issuing a magic link", () => {
-  it("mints a prefixed single-use token that lives fifteen minutes", async () => {
+  it("mints a prefixed single-use token that lives fifteen minutes, and delivers it", async () => {
     const ports = testPorts();
     const started = await startMagicLinkLogin(ports, start);
     expect(started.ok).toBe(true);
     if (!started.ok) return;
-    expect(started.value.token.startsWith("plt_ml_")).toBe(true);
     expect(started.value.expiresAt).toEqual(at(MAGIC_LINK_TTL_MS));
+    expect(ports.magicLinks.delivered).toHaveLength(1);
+    const [message] = ports.magicLinks.delivered;
+    expect(message?.token.startsWith("plt_ml_")).toBe(true);
+    expect(message?.email).toBe(email());
+    expect(message?.expiresAt).toEqual(at(MAGIC_LINK_TTL_MS));
+  });
+
+  it("D20: RETURNS NO TOKEN — the result carries the address and the expiry and nothing else", async () => {
+    const ports = testPorts();
+    const started = await startMagicLinkLogin(ports, start);
+    expect(started.ok).toBe(true);
+    if (!started.ok) return;
+    expect(Object.keys(started.value).sort()).toEqual(["email", "expiresAt"]);
+    const token = ports.magicLinks.delivered[0]?.token ?? "";
+    expect(token).not.toBe("");
+    expect(JSON.stringify(started.value)).not.toContain(token);
   });
 
   it("normalizes the address before storing it", async () => {
@@ -52,6 +74,44 @@ describe("issuing a magic link", () => {
     expect(limited.ok).toBe(false);
     if (limited.ok) return;
     expect(limited.error.code).toBe("RATE_LIMITED");
+    expect(ports.magicLinks.delivered).toHaveLength(DEFAULT_LOGIN_POLICY.requests);
+  });
+
+  it("refuses an address that cannot be mailed, before anything is spent", async () => {
+    const ports = testPorts();
+    for (const bad of ["", "no-at-sign", "a@b", "evil@example.com\r\nBcc: x@example.com"]) {
+      const refused = await startMagicLinkLogin(ports, { ...start, email: bad });
+      expect(refused.ok, bad).toBe(false);
+      if (refused.ok) continue;
+      expect(refused.error.code).toBe("INVALID_EMAIL_ADDRESS");
+    }
+    expect(ports.rateLimiter.buckets.size).toBe(0);
+    expect(ports.repository.state.magicLinks.size).toBe(0);
+    expect(ports.magicLinks.delivered).toHaveLength(0);
+  });
+});
+
+describe("D20 — delivery is the only way out, and its absence is refused early", () => {
+  it("REFUSES WITH ITS OWN CODE when no delivery port is composed, minting nothing and spending nothing", async () => {
+    const { magicLinks: _unused, ...rest } = testPorts();
+    const ports = rest as Omit<TestPorts, "magicLinks">;
+    const refused = await startMagicLinkLogin(ports, start);
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.error.code).toBe("MAGIC_LINK_DELIVERY_UNAVAILABLE");
+    expect(ports.repository.state.magicLinks.size).toBe(0);
+    expect(ports.rateLimiter.buckets.size).toBe(0);
+  });
+
+  it("reports a relay that did not accept the message as a DIFFERENT code, carrying the port's code", async () => {
+    const ports = testPorts();
+    ports.magicLinks.refuse();
+    const refused = await startMagicLinkLogin(ports, start);
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.error.code).toBe("MAGIC_LINK_DELIVERY_FAILED");
+    expect(refused.error.details["cause"]).toBe("MAGIC_LINK_DELIVERY_UNAVAILABLE");
+    expect(ports.magicLinks.delivered).toHaveLength(0);
   });
 });
 

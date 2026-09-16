@@ -16,18 +16,18 @@
   ],
   "reconciledAgainst": {
     "source": "docs/audits/M0.9-rest-census-independent.json",
-    "enumeratedRestCells": 313,
-    "enumeratedOperatorCells": 131,
-    "independentUniqueRoutes": 301,
+    "enumeratedRestCells": 322,
+    "enumeratedOperatorCells": 138,
+    "independentUniqueRoutes": 310,
     "dualMountAliasOps": 19,
-    "independentManifestOps": 320,
+    "independentManifestOps": 329,
     "independentCrossRootBindings": 7,
-    "independentUniqueOperations": 313,
+    "independentUniqueOperations": 322,
     "independentCrossRootOperatorBindings": 7,
-    "independentUniqueOperatorOperations": 131,
+    "independentUniqueOperatorOperations": 138,
     "independentOperatorFloor": 103,
-    "independentManifestOperator": 138,
-    "controllers": 38,
+    "independentManifestOperator": 145,
+    "controllers": 43,
     "agrees": true
   },
   "restScanRoots": {
@@ -44,21 +44,21 @@
       {
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
-        "enumeratedOperations": 19,
-        "independentOperations": 19,
-        "independentSourceControllers": 10,
-        "independentSourceDecorators": 19,
+        "enumeratedOperations": 28,
+        "independentOperations": 28,
+        "independentSourceControllers": 15,
+        "independentSourceDecorators": 28,
         "agrees": true
       }
     ],
-    "total": 320
+    "total": 329
   },
   "generatedBy": "scripts/differential-coverage.mjs",
   "coverageComputedFrom": "tests/differential-harness/scenarios.mjs",
   "summary": {
-    "cells": 787,
+    "cells": 796,
     "covered": 2,
-    "uncovered": 785,
+    "uncovered": 794,
     "bySurface": {
       "bff": {
         "total": 117,
@@ -71,9 +71,9 @@
         "uncovered": 202
       },
       "rest": {
-        "total": 313,
+        "total": 322,
         "covered": 0,
-        "uncovered": 313
+        "uncovered": 322
       },
       "screen": {
         "total": 47,
@@ -97,7 +97,7 @@
       }
     }
   },
-  "digest": "a19f54ddd007b992d9482c2cb633cbd69bf3034200f73f1fea3a100cb4062206",
+  "digest": "6fd84c3be9e1b735bee6fffec397ac99c97da82d7e0d3c1bf0470db05fb3c949",
   "rows": [
     {
       "id": "DELETE /api/v1/agent/access-key",
@@ -1519,6 +1519,28 @@
       "reason": "no V1 REST transport exists at this baseline"
     },
     {
+      "id": "GET /api/v1/environments/:environmentId/variables",
+      "surface": "rest",
+      "owner": "secrets",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "GET /api/v1/environments/by-slugs",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
       "id": "GET /api/v1/identity/session",
       "surface": "rest",
       "owner": "identity-access",
@@ -1597,6 +1619,17 @@
     },
     {
       "id": "GET /api/v1/organizations",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "GET /api/v1/organizations/:organizationId/members",
       "surface": "rest",
       "owner": "tenancy",
       "requiresOperator": true,
@@ -2105,6 +2138,17 @@
       "id": "PATCH /api/v1/agent/tools/:entityId/:toolName/enabled",
       "surface": "rest",
       "owner": "tools",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "PATCH /api/v1/organizations/:organizationId/members/:membershipId",
+      "surface": "rest",
+      "owner": "tenancy",
       "requiresOperator": true,
       "status": "uncovered",
       "scenarios": [],
@@ -2993,6 +3037,28 @@
       "reason": "no V1 REST transport exists at this baseline"
     },
     {
+      "id": "POST /api/v1/bff/magic-link",
+      "surface": "rest",
+      "owner": "identity-access",
+      "requiresOperator": false,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "POST /api/v1/bff/magic-link/complete",
+      "surface": "rest",
+      "owner": "identity-access",
+      "requiresOperator": false,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
       "id": "POST /api/v1/bff/session",
       "surface": "rest",
       "owner": "identity-access",
@@ -3030,6 +3096,17 @@
       "surface": "rest",
       "owner": "identity-access",
       "requiresOperator": false,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "POST /api/v1/invitations/accept",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-267",
@@ -3126,6 +3203,17 @@
     },
     {
       "id": "POST /api/v1/organizations",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "POST /api/v1/organizations/:organizationId/invitations",
       "surface": "rest",
       "owner": "tenancy",
       "requiresOperator": true,
@@ -3525,6 +3613,17 @@
       "surface": "rest",
       "owner": "agents",
       "requiresOperator": false,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "PUT /api/v1/environments/:environmentId/variables/:key",
+      "surface": "rest",
+      "owner": "secrets",
+      "requiresOperator": true,
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-267",

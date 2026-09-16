@@ -950,10 +950,19 @@ test("the live selectors scan an exact nonzero source census", () => {
   // lives in `composition/`, which no selector here names. A reader who assumed
   // "two new files" would expect 1654.
   //
-  // M4 GATES (founder decision D21) — 1653 -> 1655. TWO files, and here BOTH count:
-  // `apps/core-api/src/http/mcp-body-cap.ts` and `mcp-body-cap.test.ts` sit under the
-  // `APPS-HTTP` selector, which covers the whole directory.
-  assert.equal(result.fileCount, 1655);
+  // M4 GATES (founder decision D21) — 1653 -> 1655 alone. TWO files, and here BOTH
+  // count: `apps/core-api/src/http/mcp-body-cap.ts` and `mcp-body-cap.test.ts` sit
+  // under the `APPS-HTTP` selector, which covers the whole directory.
+  //
+  // THE IDENTITY/TENANCY REST REMAINDER (2026-09-15) — 1653 -> 1673 alone: +7
+  // CONTEXTS, +6 ADAPTERS (`notifier-email`), +7 APPS-TRANSPORTS (five controllers,
+  // the cookie codec and its unit suite). The integration suite lives in
+  // `composition/`, which no selector names, so twenty files and not twenty-one.
+  //
+  // INTEGRATED, RE-MEASURED ON THE MERGED TREE: 1653 + 2 + 20 = 1675. Neither lane
+  // could see the other, so neither number below 1675 is wrong at its own head and
+  // neither is right here.
+  assert.equal(result.fileCount, 1675);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -1057,7 +1066,11 @@ test("the live selectors scan an exact nonzero source census", () => {
       // M4 GATES (founder decision D21): TWO, under `apps/core-api/src/http/` --
       // `mcp-body-cap.ts` and its real-socket suite. `runtime/lifecycle.ts`, which
       // installs the cap, is an edit.
-      2
+      2 +
+      // THE IDENTITY/TENANCY REST REMAINDER (2026-09-15): adapters 6, contexts 7,
+      // transports 7. Its integration suite is under `src/composition/`, which no
+      // selector names, so 20 and not 21.
+      6 + 7 + 7
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1286,7 +1299,13 @@ test("the live selectors scan an exact nonzero source census", () => {
   // selector here.
   //
   // 30 + 1093 + 474 + 20 + 38 = 1655.
-  assert.equal(result.fileCount, 30 + 1093 + 474 + 20 + 38);
+  //
+  // THE IDENTITY/TENANCY REST REMAINDER (2026-09-15), +20 across three terms:
+  // CONTEXTS 1093 -> 1100, ADAPTERS 474 -> 480, APPS-TRANSPORTS 38 -> 45.
+  //
+  // THE TWO TOGETHER, RE-MEASURED ON THE MERGED TREE:
+  // 30 + 1100 + 480 + 20 + 45 = 1675.
+  assert.equal(result.fileCount, 30 + 1100 + 480 + 20 + 45);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

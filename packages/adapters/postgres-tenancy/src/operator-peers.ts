@@ -26,8 +26,8 @@
 //
 // WHAT DOES NOT CROSS. `UserStore.findById` returns `OperatorUserRecord`, which
 // carries `platformOperator` — the flag that permits impersonation. Tenancy's
-// `OperatorAccount` has three fields and that is not one of them, so the
-// projection below DROPS it. An adapter that spread the record through would
+// `OperatorAccount` has four fields (the fourth, `displayName`, is what the team
+// page renders) and that is not one of them, so the projection below DROPS it. An adapter that spread the record through would
 // have published identity-access's impersonation rule into a context that has
 // no business with it, and nothing would have failed.
 
@@ -67,6 +67,7 @@ export function createOperatorDirectory(users: OperatorAccountReader): OperatorD
       return {
         userId: account.userId,
         email: account.email,
+        displayName: account.displayName,
         disabledAt: account.disabledAt,
       };
     },

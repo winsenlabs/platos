@@ -15,6 +15,8 @@ import type { OrganizationId, Result, TransactionScope } from "@platos/kernel";
 import { err, ok, runResult } from "@platos/kernel";
 
 import {
+  invalidOrganizationRole,
+  isOrganizationRole,
   decideMembershipDeactivation,
   decideMembershipRoleChange,
   membershipMutationForbidden,
@@ -90,8 +92,11 @@ async function applyChange(
 }
 
 export function createChangeMembershipRole(dependencies: Dependencies): ChangeMembershipRole {
-  return async (command) =>
-    runResult(dependencies.unitOfWork, async (transaction) => {
+  return async (command) => {
+    // The role arrives from a wire since the V1 route (2026-09-15); refused before
+    // any lock is taken rather than at the enum column.
+    if (!isOrganizationRole(command.role)) return err(invalidOrganizationRole());
+    return runResult(dependencies.unitOfWork, async (transaction) => {
       const state = await readUnderLock(dependencies, command, transaction);
       const decision = decideMembershipRoleChange({
         ...state,
@@ -101,6 +106,7 @@ export function createChangeMembershipRole(dependencies: Dependencies): ChangeMe
       if (!decision.ok) return err(decision.error);
       return ok(await applyChange(dependencies, decision.value, transaction));
     });
+  };
 }
 
 export function createDeactivateMembership(dependencies: Dependencies): DeactivateMembership {

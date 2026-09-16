@@ -1619,6 +1619,13 @@
         "identity-access"
       ]
     },
+    "INVALID_EMAIL_ADDRESS": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "identity-access"
+      ]
+    },
     "INVALID_END_USER_FILTER": {
       "category": "invalid_input",
       "status": 400,
@@ -1864,6 +1871,20 @@
         "secrets"
       ]
     },
+    "MAGIC_LINK_DELIVERY_FAILED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "MAGIC_LINK_DELIVERY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "identity-access"
+      ]
+    },
     "MCP_ENTITY_ENVIRONMENT_MISMATCH": {
       "category": "invalid_input",
       "status": 400,
@@ -2079,6 +2100,48 @@
       "status": 403,
       "contexts": [
         "identity-access"
+      ]
+    },
+    "NOTIFIER_EMAIL_CONFIGURATION_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "adapters"
+      ]
+    },
+    "NOTIFIER_EMAIL_INSECURE_AUTH_REFUSED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "adapters"
+      ]
+    },
+    "NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "adapters"
+      ]
+    },
+    "NOTIFIER_EMAIL_MESSAGE_REFUSED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "adapters"
+      ]
+    },
+    "NOTIFIER_EMAIL_RELAY_REFUSED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "adapters"
+      ]
+    },
+    "NOTIFIER_EMAIL_RELAY_UNREACHABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "adapters"
       ]
     },
     "OBSERVABILITY_AUDIT_ACTION_INVALID": {
@@ -2599,6 +2662,13 @@
         "identity-access"
       ]
     },
+    "RATE_LIMIT_FAILED_CLOSED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "identity-access"
+      ]
+    },
     "RETRY_POLICY_BASE_DELAY_INVALID": {
       "category": "invalid_input",
       "status": 400,
@@ -2909,7 +2979,21 @@
         "tenancy"
       ]
     },
+    "TENANCY_INVALID_EMAIL": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "tenancy"
+      ]
+    },
     "TENANCY_INVALID_NAME": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_INVALID_ROLE": {
       "category": "invalid_input",
       "status": 400,
       "contexts": [
@@ -2944,6 +3028,13 @@
         "tenancy"
       ]
     },
+    "TENANCY_INVITATION_FORBIDDEN": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "tenancy"
+      ]
+    },
     "TENANCY_INVITATION_INVALID": {
       "category": "unauthenticated",
       "status": 401,
@@ -2959,6 +3050,13 @@
       ]
     },
     "TENANCY_MEMBERSHIP_FORBIDDEN": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_MEMBER_LIST_FORBIDDEN": {
       "category": "forbidden",
       "status": 403,
       "contexts": [

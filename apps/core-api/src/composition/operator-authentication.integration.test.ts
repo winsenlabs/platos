@@ -433,10 +433,13 @@ describe("an operator authenticating through the composed identity-access", () =
     for (let call = 0; call < 20 && refusal === null; call += 1) {
       const decision = await identityAccess.consumeRateLimit(request);
       if (decision.ok) {
-        // `degraded` would mean the limiter was UNREACHABLE and the fail-open
-        // policy applied. That is a different path with a different rule
-        // (`identity.rate_limit.degraded`), and a case that accepted it would be
-        // asserting the sink works when Redis is DOWN -- the opposite of this.
+        // `degraded` would mean the limiter was UNREACHABLE and a fail-open
+        // policy applied. No install produces it since D3 (2026-09-15) set the
+        // policy to `deny` -- an outage is now `RATE_LIMIT_FAILED_CLOSED` -- but
+        // it stays in the outcome type, and it is a different path with a
+        // different rule (`identity.rate_limit.degraded`): a case that accepted
+        // it would be asserting the sink works when Redis is DOWN -- the
+        // opposite of this.
         expect(decision.value.outcome, "the limiter must be reachable").toBe("allowed");
         allowed += 1;
         continue;

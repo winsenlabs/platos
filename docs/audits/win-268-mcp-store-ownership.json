@@ -116,6 +116,7 @@
         "authenticateBearer",
         "authenticateOperator",
         "clearSessionCookie",
+        "completeMagicLinkLogin",
         "consumeRateLimit",
         "describeSessionCookie",
         "issueSessionCookie",
@@ -125,6 +126,7 @@
         "revokeBearerCredential",
         "revokeOperatorSession",
         "rotateSessionCookie",
+        "startMagicLinkLogin",
         "verifySessionCookie"
       ],
       "movable": 0,
@@ -142,6 +144,7 @@
       ],
       "composed": true,
       "contractMethods": [
+        "acceptInvitation",
         "addProjectMember",
         "authorizeEnvironmentOperator",
         "changeMembershipRole",
@@ -151,10 +154,13 @@
         "describeTenant",
         "findEntity",
         "findOrganizationMembership",
+        "issueInvitation",
         "listOperatorOrganizations",
+        "listOrganizationMembers",
         "listProjectEntities",
         "listVisibleProjects",
         "resolveEnvironmentScope",
+        "resolveOperatorEnvironment",
         "revokeAccessKeyGeneration",
         "scopeContains",
         "verifyAuthorization"

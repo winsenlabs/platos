@@ -16,16 +16,26 @@
 // THE START PATH NEVER REVEALS WHETHER THE ADDRESS EXISTS. It returns the same
 // shape for a known and an unknown address. Anything else turns the login form
 // into a membership oracle for the whole installation.
+//
+// AND IT NEVER RETURNS THE TOKEN (D20, 2026-09-15). The token is handed to the
+// `MagicLinkDelivery` port and to nothing else; `StartedMagicLinkLogin` carries
+// the address and the expiry. That is what lets `IdentityAccessContract` publish
+// this use case at all: a caller of the contract method cannot obtain a
+// login-capable secret from it, so "who can create a credential" still has one
+// answer — the inbox that owns the address.
 
 import {
   consumed,
+  invalidEmailAddress,
+  isDeliverableEmail,
   issuedMagicLink,
+  magicLinkDeliveryFailed,
+  magicLinkDeliveryUnavailable,
   normalizeEmail,
   unauthenticated,
   type EmailAddress,
   type MagicLinkTokenRecord,
   type OperatorIdentityRecord,
-  type RawToken,
   type UserId,
 } from "../domain/index.js";
 import { consumeRateLimit, type ConsumeRateLimitPorts } from "./consume-rate-limit.js";
@@ -38,18 +48,22 @@ import {
 import { asIdentifier, err, ok, type Result, type TenantScope } from "@platos/kernel";
 
 export type StartMagicLinkLoginPorts = ConsumeRateLimitPorts &
-  PortsOf<"repository" | "minter" | "hasher" | "clock">;
+  PortsOf<"repository" | "minter" | "hasher" | "clock" | "magicLinks">;
 
 export interface StartMagicLinkLoginInput {
   readonly email: string;
   /** The bucket key for the LOGIN budget — typically the client address. */
   readonly rateLimitIdentifier: string;
-  readonly scope: TenantScope;
+  /**
+   * The tenant a LOGIN refusal is recorded against, or null — and for a sign-in
+   * it is null, because no tenant is known before an operator is.
+   */
+  readonly scope: TenantScope | null;
   readonly expiresAt?: Date;
 }
 
+/** What a caller learns. NOT the token: see the banner. */
 export interface StartedMagicLinkLogin {
-  readonly token: RawToken;
   readonly email: EmailAddress;
   readonly expiresAt: Date;
 }
@@ -58,6 +72,14 @@ export async function startMagicLinkLogin(
   ports: StartMagicLinkLoginPorts,
   input: StartMagicLinkLoginInput,
 ): Promise<Result<StartedMagicLinkLogin>> {
+  const email = normalizeEmail(input.email);
+  if (!isDeliverableEmail(email)) return err(invalidEmailAddress());
+  // BEFORE ANY BUDGET IS SPENT OR ANY SECRET EXISTS. An install that cannot
+  // deliver must not mint a link it will then drop, nor charge a caller's budget
+  // for a request that could never succeed.
+  const delivery = ports.magicLinks;
+  if (delivery === undefined) return err(magicLinkDeliveryUnavailable());
+
   const limited = await consumeRateLimit(ports, {
     action: "LOGIN",
     identifier: input.rateLimitIdentifier,
@@ -67,7 +89,6 @@ export async function startMagicLinkLogin(
   if (!limited.ok) return err(limited.error);
 
   const now = ports.clock.now();
-  const email = normalizeEmail(input.email);
   const token = ports.minter.mint("magicLink");
   const link: MagicLinkTokenRecord = issuedMagicLink({
     tokenHash: ports.hasher.hash(token),
@@ -77,7 +98,13 @@ export async function startMagicLinkLogin(
   });
 
   await ports.repository.magicLinks.save(link);
-  return ok({ token, email, expiresAt: link.expiresAt });
+  // SAVED BEFORE IT IS SENT. The other order could deliver a link whose row a
+  // store failure then never wrote, and the recipient would hold a dead link.
+  // This order's failure mode is a saved row whose token exists nowhere — inert,
+  // and gone in fifteen minutes.
+  const delivered = await delivery.deliverMagicLink({ email, token, expiresAt: link.expiresAt });
+  if (!delivered.ok) return err(magicLinkDeliveryFailed(delivered.error.code));
+  return ok({ email, expiresAt: link.expiresAt });
 }
 
 export type CompleteMagicLinkLoginPorts = IssueOperatorSessionPorts;

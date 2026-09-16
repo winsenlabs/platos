@@ -92,6 +92,25 @@
 //       supplier question with an EXTERNAL service. Two blockers, either sufficient.
 //
 // 3 + 2 + 3 = 8. Nothing here is rounded up.
+//
+// -----------------------------------------------------------------------------
+// THE MAGIC-LINK PAIR (D20, 2026-09-15), CLASSIFIED RATHER THAN DEFAULTED
+//
+// Both mint a single-use login secret, so both were asked the question this table
+// exists for, and they get different answers for a reason each can state.
+//
+//   POST /api/v1/bff/magic-link            ACCEPTED — the unlisted default, on
+//     purpose and not by omission, so it has no row (a row can only say
+//     `required` or `exempt`). The one-time secret is DELIVERED BY THE RELAY and
+//     is in no response, so neither half of M0.4 §2's reason for `required`
+//     applies: a lost response loses nothing (the email still arrives), and there
+//     is no secret a replay would have to hand back. A key a caller sends is still
+//     honoured, which is what stops a retried form submission mailing a second
+//     link. `idempotency-policy.test.ts` pins the class by name.
+//
+//   POST /api/v1/bff/magic-link/complete   EXEMPT — see its row below.
+//
+// Neither is one of the eight, so the count above is unchanged.
 
 /** What the contract asks of one operation. */
 export type IdempotencyClass = "required" | "accepted" | "exempt" | "not-applicable";
@@ -295,6 +314,19 @@ export const OPERATION_POLICIES: readonly OperationPolicy[] = Object.freeze([
     template: "/api/v1/agent/providers/keys/:id",
     class: "exempt",
     reason: "Deletes a stored provider key. Idempotent by identity and returns no secret.",
+  },
+  {
+    method: "POST",
+    template: "/api/v1/bff/magic-link/complete",
+    class: "exempt",
+    // D20 (2026-09-15). The magic-link token in the body IS the idempotency key:
+    // the completion spends it with a conditional write, so a second execution is
+    // refused rather than repeated. And a replay from the reservation store could
+    // not do what the first response did — the gate records status, content type
+    // and body, never `Set-Cookie`, so a replayed 200 would tell a browser a
+    // session was put in it when none was.
+    reason:
+      "The single-use magic-link token in the body IS the idempotency key: completion consumes it with a conditional write, so a re-execution is refused UNAUTHENTICATED rather than minting a second session. A replayed response could not carry the Set-Cookie the reservation store never records, so honouring a key would answer 200 for a session the browser never received.",
   },
 ]);
 

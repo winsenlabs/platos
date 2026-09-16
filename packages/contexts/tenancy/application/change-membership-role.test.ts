@@ -47,6 +47,26 @@ function scenario(options: { readonly twoOwners?: boolean } = {}) {
   return { fixture, organization, tree };
 }
 
+describe("changeMembershipRole — a role from the wire", () => {
+  it("refuses a role that is not OWNER, ADMIN or MEMBER before any lock or write", async () => {
+    const { fixture, organization } = scenario();
+    const change = createChangeMembershipRole(fixture.dependencies);
+    const refused = await change({
+      organizationId: organization,
+      membershipId: membershipId("m-member"),
+      actorUserId: OWNER,
+      role: "SUPERUSER" as OrganizationRole,
+    });
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.error.code).toBe("TENANCY_INVALID_ROLE");
+    expect(fixture.unitOfWork.transactionCount()).toBe(0);
+    expect(fixture.store.organizationMemberships.find((row) => row.id === membershipId("m-member"))?.role).toBe(
+      OrganizationRole.MEMBER,
+    );
+  });
+});
+
 describe("changeMembershipRole", () => {
   it("promotes a MEMBER, revokes their sessions, and does both under the lock", async () => {
     const { fixture, organization } = scenario();

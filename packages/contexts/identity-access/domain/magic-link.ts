@@ -67,6 +67,19 @@ export function consumed(
   return ok({ ...link, consumedAt: now });
 }
 
+/**
+ * The LOGIN budget a sign-in request spends: one bucket per ADDRESS.
+ *
+ * The oracle's form passed `dashboard:<normalized email>`, and the key is kept
+ * byte for byte so a budget spent through the Remix route and one spent through
+ * V1 during the cutover are the same budget. Derived HERE rather than accepted
+ * from a caller, so no transport can choose whose budget a request spends.
+ * (A per-client-address bucket needs a trusted proxy hop, which is D-COOKIE's.)
+ */
+export function magicLinkLoginBucket(email: EmailAddress): string {
+  return `dashboard:${email}`;
+}
+
 export function isConsumable(link: MagicLinkTokenRecord, now: Date): boolean {
   return consumed(link, now).ok;
 }

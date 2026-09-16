@@ -35,6 +35,7 @@ import type {
 
 import type {
   IdentityAccessRepository,
+  MagicLinkDelivery,
   MfaSecretCipher,
   RateLimiter,
   SecretHasher,
@@ -155,6 +156,10 @@ import { createModelRouterProvidersAdapter } from "@platos/adapter-model-router-
 import type { ChannelSlackAdapter } from "@platos/adapter-channel-slack";
 import { createChannelSlackAdapter } from "@platos/adapter-channel-slack";
 import type { NotifierEmailAdapter } from "@platos/adapter-notifier-email";
+// D20 (2026-09-15) — a value import, and the directory it names left
+// `UNIMPLEMENTED_ADAPTERS` in the same commit, which rule (C7) checks against the
+// directory's own source in both directions.
+import { createNotifierEmailAdapter } from "@platos/adapter-notifier-email";
 import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
 import type { KeyringEnvelopeAdapter } from "@platos/adapter-keyring-envelope";
 import { buildKeyringEnvelope } from "@platos/adapter-keyring-envelope";
@@ -579,6 +584,10 @@ interface PortSatisfaction {
   // and `verifyInbound` are four names with no collision.
   readonly "channel-slack:ChannelRuntime": Satisfies<ChannelSlackAdapter, ChannelRuntime>;
   readonly "notifier-email:Notifier": Satisfies<NotifierEmailAdapter, Notifier>;
+  // D20 (2026-09-15). The SECOND port on this directory, owned by identity-access.
+  // Proven against the ADAPTER: `deliverMagicLink` collides with neither
+  // `deliver` nor `probe`, which is why the port's method is not called `deliver`.
+  readonly "notifier-email:MagicLinkDelivery": Satisfies<NotifierEmailAdapter, MagicLinkDelivery>;
   readonly "notifier-webhook:Notifier": Satisfies<NotifierWebhookAdapter, Notifier>;
   // WIN-259 M2.4. `secrets`' THREE cryptography ports, every one proven against
   // the ADAPTER rather than through a property: `state`/`handle`, `seal`/`open`
@@ -676,6 +685,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "channel-slack:ChannelAdapter": true,
   "channel-slack:ChannelRuntime": true,
   "notifier-email:Notifier": true,
+  "notifier-email:MagicLinkDelivery": true,
   "notifier-webhook:Notifier": true,
   "keyring-envelope:KeyRing": true,
   "keyring-envelope:AeadCipher": true,
@@ -1171,6 +1181,14 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // holds. Its owner is `kernel`, which this directory already had, so
   // `EXPECTED_EDGE_COUNT` does not move.
   Object.freeze({ adapter: "redis-streams", port: "StreamJournal", owner: "kernel" }),
+  // D20 (2026-09-15). The SECOND binding on `notifier-email`, appended at the END
+  // for the reason every row above it was. The directory stops being a generated
+  // interface in the same tranche: "core-api sends [the magic-link email] through
+  // the notifier-email adapter". It is a row here and not a new directory because
+  // §15's amendment is exactly this case — one relay, one client, one directory —
+  // and its owner, identity-access, is a context this directory did not have, so
+  // it moves the project graph's edge count by one.
+  Object.freeze({ adapter: "notifier-email", port: "MagicLinkDelivery", owner: "identity-access" }),
 ] as const satisfies readonly AdapterBinding[]);
 
 /**
@@ -1264,7 +1282,8 @@ export const UNIMPLEMENTED_ADAPTERS: readonly AdapterName[] = Object.freeze([
   // back and joins it to `packages/adapters/channel-slack/src/index.ts`, so a
   // directory dropped from here without gaining a `create*Adapter` fails, and
   // one that gained a factory and stayed here fails too.
-  "notifier-email",
+  // D20 (2026-09-15) — `notifier-email` LEFT THIS LIST: it gained
+  // `createNotifierEmailAdapter`, an SMTP submission client for both of its owners.
   "notifier-webhook",
 ]);
 
@@ -1563,6 +1582,29 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
     adapters["channel-slack"] = createChannelSlackAdapter({
       requestMaxAgeSeconds: input.channels.slack.requestMaxAgeSeconds,
     });
+  }
+
+  // D20 (2026-09-15). Anchored on the relay URL, and built only when the whole
+  // group — relay, sender and sign-in page — was declared, which `config/channels.ts`
+  // enforces before this runs. A group that is present and still cannot make a
+  // client (a URL the adapter refuses) is a FAULT, not a decline: the operator set
+  // it, and no amount of serving fixes it.
+  if (input.channels.emailNotifier === null) {
+    decline(
+      "notifier-email",
+      "configuration",
+      "PLATOS_CHANNELS_EMAIL_SMTP_URL is not set, so the channels.emailNotifier group is undeclared",
+    );
+  } else {
+    const notifier = createNotifierEmailAdapter({
+      smtpUrl: input.channels.emailNotifier.smtpUrl,
+      from: input.channels.emailNotifier.from,
+      loginUrl: input.channels.emailNotifier.loginUrl,
+      requireTls: input.channels.emailNotifier.requireTls,
+      clock: input.clock,
+    });
+    if (notifier.ok) adapters["notifier-email"] = notifier.value;
+    else faults.push(`notifier-email could not be constructed: ${notifier.error.code}`);
   }
 
   for (const adapter of UNIMPLEMENTED_ADAPTERS) {

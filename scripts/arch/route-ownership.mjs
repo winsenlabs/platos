@@ -457,14 +457,24 @@ export const ORACLE_DERIVED_ROW_COUNT = 42;
  * handler.
  */
 export const PATH_CONTEXT_RULES = Object.freeze([
-  [/\/access-key|\/oauth|\/session|\/guest|\/auth/, "identity-access"],
+  // 2026-09-15 — the identity/tenancy REST remainder. `/variables` is FIRST, and
+  // the order is the rule: `/environments/:environmentId/variables` would
+  // otherwise resolve to `tenancy` by its `/environments` prefix, while the handler
+  // reaches `SecretsContract.setEnvironmentVariable` and `secrets` is sole writer
+  // of `EnvironmentVariable` (the Remix route it replaces ran
+  // `environmentVariable.upsert`). No earlier route carried the segment.
+  [/\/variables/, "secrets"],
+  // `/magic-link` is the V1 sign-in pair (`MagicLinkToken`, `User`,
+  // `OperatorSession` — identity-access's rows), and `/invitations` the accept
+  // route, whose row `OrganizationInvitation` is tenancy's.
+  [/\/access-key|\/oauth|\/session|\/guest|\/auth|\/magic-link/, "identity-access"],
   // `organizations` is the V1 spelling of `orgs` (WIN-267 R1). The V0 surface
   // abbreviates it in every route; `apps/core-api`'s does not, and `/orgs` is not
   // a substring of `/organizations`, so the unabbreviated form has to be named.
   // It is the same family and the same owner: `tenancy` is sole writer of
   // `Organization`, and `POST /api/v1/organizations` reaches
   // `TenancyContract.createOrganization`.
-  [/\/orgs|\/organizations|\/projects|\/environments|\/entities|\/entity/, "tenancy"],
+  [/\/orgs|\/organizations|\/projects|\/environments|\/entities|\/entity|\/invitations/, "tenancy"],
   [/\/providers|\/models|\/keys/, "providers"],
   [/\/agents|\/agent-versions|\/clusters|\/canary/, "agents"],
   [/\/skills/, "skills"],

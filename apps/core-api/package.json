@@ -62,6 +62,7 @@
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^10.28.0",
-    "@testcontainers/redis": "^10.28.0"
+    "@testcontainers/redis": "^10.28.0",
+    "testcontainers": "^10.28.0"
   }
 }

@@ -75,6 +75,17 @@ export function createMembershipRepository(transactions: TenancyTransactions) {
       return rows.map(toOrganizationMembership);
     },
 
+    async listOrganizationMemberships(
+      organizationId: OrganizationId,
+    ): Promise<readonly OrganizationMembershipRecord[]> {
+      // Deactivated rows INCLUDED, for the reason the method above gives. Keyed by
+      // the organization column itself, so no other tenant's row is ever loaded.
+      const rows = await transactions
+        .reader()
+        .organizationMembership.findMany({ where: { organizationId }, orderBy: [...LIST_ORDER] });
+      return rows.map(toOrganizationMembership);
+    },
+
     async listProjectMembershipsForMembership(
       organizationMembershipId: OrganizationMembershipId,
     ): Promise<readonly ProjectMembershipRecord[]> {

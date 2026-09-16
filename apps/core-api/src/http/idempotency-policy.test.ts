@@ -94,7 +94,17 @@ describe("the policy table against the frozen operation manifest", () => {
     // while a replayed mint would leave a second live credential behind. Demanding
     // a key here would refuse three hundred operations' worth of callers for a
     // property the operation already has by construction.
-    expect(OPERATIONS.length).toBe(313);
+    //
+    // 313 -> 322 (WIN-257 T6, 2026-09-15): the identity/tenancy REST remainder's
+    // NINE routes — `POST /api/v1/bff/magic-link` and `.../complete` (D20),
+    // `GET` and `PATCH /api/v1/organizations/:organizationId/members[/:membershipId]`,
+    // `POST /api/v1/organizations/:organizationId/invitations` and
+    // `POST /api/v1/invitations/accept` (D1), `GET /api/v1/environments/by-slugs`,
+    // and `GET` + `PUT /api/v1/environments/:environmentId/variables[/:key]` (D9).
+    // ONE takes a row (the magic-link completion, `exempt`); the other eight take
+    // the default, and the case below pins the magic-link START's class by name
+    // because it mints a secret and the default is therefore a decision.
+    expect(OPERATIONS.length).toBe(322);
   });
 
   it("classifies only operations the frozen surface actually serves", () => {
@@ -130,6 +140,22 @@ describe("the policy table against the frozen operation manifest", () => {
       expect(required.some((policy) => policy.reason.startsWith(`${family} —`))).toBe(true);
     }
     expect(required.length).toBe(8);
+  });
+});
+
+describe("the magic-link pair (D20)", () => {
+  it("leaves the START accepted — the secret goes to an inbox, not into a response a replay must reproduce", () => {
+    expect(classifyRequest("POST", "/api/v1/bff/magic-link")).toBe("accepted");
+  });
+
+  it("exempts the COMPLETION — its token is the key, and a replay could not carry Set-Cookie", () => {
+    expect(classifyRequest("POST", "/api/v1/bff/magic-link/complete")).toBe("exempt");
+  });
+
+  it("does not let the completion's row reach the start, nor the start's default reach the completion", () => {
+    expect(operationScope("POST", "/api/v1/bff/magic-link")).not.toBe(
+      operationScope("POST", "/api/v1/bff/magic-link/complete"),
+    );
   });
 });
 

@@ -59,6 +59,13 @@ export interface OperatorSessionRecord {
 export interface OperatorUserRecord {
   readonly userId: UserId;
   readonly email: EmailAddress;
+  /**
+   * `User.displayName`, or null when the account never set one. Carried because
+   * the team page renders `displayName ?? email` (`settings.team`), and tenancy's
+   * member listing reaches it only through this record. Nothing in identity-access
+   * decides anything on it.
+   */
+  readonly displayName: string | null;
   /** The platform-operator flag; the only thing that permits impersonation. */
   readonly platformOperator: boolean;
   readonly disabledAt: Date | null;

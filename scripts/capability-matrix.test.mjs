@@ -129,15 +129,22 @@ test("committed matrix: row counts are pinned exactly", () => {
   // DO THE THREE THEY REPLACED — `permission-gateway.service.ts`'s `listOrgPolicies`,
   // `upsertOrgPolicy` and `deleteOrgPolicy` answered no route in the oracle either,
   // which is exactly what made them safe to delete.
-  assert.equal(REST.length, 313);
+  //
+  // 313 -> 322 and 271 -> 280 (2026-09-15): the identity/tenancy REST remainder's NINE routes (2026-09-15): the magic-link pair, the member listing and role change, the invitation issue and accept, the scope by slugs, and the variable listing and write. All nine
+  // resolve by URL PREFIX — `/magic-link` joined identity-access's prefix, and
+  // `/invitations` tenancy's, and `/variables` is a NEW FIRST rule for `secrets`,
+  // because `/environments/:environmentId/variables` would otherwise have resolved to
+  // tenancy while its handler writes `EnvironmentVariable`. Oracle-derived stays 42:
+  // none of these handlers exists in the frozen oracle.
+  assert.equal(REST.length, 322);
   assert.equal(REST.filter((r) => r.ownerSource === "oracle-derived").length, 42);
-  assert.equal(REST.filter((r) => r.ownerSource === "path-prefix").length, 271);
-  assert.equal(42 + 271, REST.length);
+  assert.equal(REST.filter((r) => r.ownerSource === "path-prefix").length, 280);
+  assert.equal(42 + 280, REST.length);
   assert.equal(MCP.length, 202);
-  assert.equal(MATRIX.totals.restOperations, 313);
-  assert.equal(MATRIX.ownership.restRows, 313);
+  assert.equal(MATRIX.totals.restOperations, 322);
+  assert.equal(MATRIX.ownership.restRows, 322);
   assert.equal(MATRIX.ownership.oracleDerivedRestRows, 42);
-  assert.equal(MATRIX.ownership.pathPrefixRestRows, 271);
+  assert.equal(MATRIX.ownership.pathPrefixRestRows, 280);
 });
 
 test("committed matrix: exactly 5 rows carry the non-context value, and they are the pinned 5", () => {
@@ -511,7 +518,12 @@ test("committed matrix: the REST total is split across the declared scan roots a
   //
   // It is one more IMPLEMENTATION of an operation `apps/agent` already served, which
   // is why it widens the surplus instead of the surface: 301 + 19 - 7 = 313.
-  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 301, "core-api-transports": 19 });
+  //
+  // 2026-09-15: 19 -> 28 and the SHARED COUNT UNMOVED AT 7 — the policy-surface shape.
+  // the identity/tenancy REST remainder's NINE routes (2026-09-15): the magic-link pair, the member listing and role change, the invitation issue and accept, the scope by slugs, and the variable listing and write are served by this deployable ALONE (the Remix routes they
+  // replace are not in either scan root), so both the surface and the root grow and
+  // the surplus does not: 301 + 28 - 7 = 322.
+  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 301, "core-api-transports": 28 });
   assert.equal(MATRIX.totals.restOperationsSharedAcrossScanRoots, 7);
   assert.deepEqual(MATRIX.scanRoots.unattributed, []);
 });

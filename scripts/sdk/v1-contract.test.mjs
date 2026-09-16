@@ -113,8 +113,17 @@ test("the idempotency policy is READ, not restated: reclassifying a mint moves a
 });
 
 test("a response field deleted from the document disappears from both emitted clients", () => {
-  assert.match(baseline[TYPESCRIPT_OUTPUT], /readonly "email": string;/u);
-  assert.match(baseline[PYTHON_OUTPUT], /^ {4}email: str$/mu);
+  // SCOPED TO THE ONE TYPE THE MUTATION EDITS (2026-09-15). This read the whole
+  // emitted file for `email`, which held while `OperatorSessionResource` was the
+  // only V1 type carrying one. The identity/tenancy remainder added four more
+  // (`MagicLinkRequestResource`, `StartMagicLinkBody`, `IssueInvitationBody` and the
+  // nullable one on `OrganizationMemberResource`), so a whole-file match kept
+  // passing after the deletion — a probe that could no longer fail. Reading the one
+  // declaration restores it.
+  const tsBlock = (text) => /export interface OperatorSessionResource \{[^}]*\}/u.exec(text)?.[0] ?? "";
+  const pyBlock = (text) => /class OperatorSessionResource\(TypedDict\):\n(?: {4}.*\n)+/u.exec(text)?.[0] ?? "";
+  assert.match(tsBlock(baseline[TYPESCRIPT_OUTPUT]), /readonly "email": string;/u);
+  assert.match(pyBlock(baseline[PYTHON_OUTPUT]), /^ {4}email: str$/mu);
 
   const document = JSON.parse(sourceText(KEYS.openapi));
   delete document.components.schemas.OperatorSessionResource.properties.email;
@@ -122,8 +131,10 @@ test("a response field deleted from the document disappears from both emitted cl
     document.components.schemas.OperatorSessionResource.required.filter((name) => name !== "email");
 
   const artifacts = emit(new Map([[KEYS.openapi, JSON.stringify(document)]]));
-  assert.doesNotMatch(artifacts[TYPESCRIPT_OUTPUT], /readonly "email": string;/u);
-  assert.doesNotMatch(artifacts[PYTHON_OUTPUT], /^ {4}email: str$/mu);
+  assert.notEqual(tsBlock(artifacts[TYPESCRIPT_OUTPUT]), "");
+  assert.notEqual(pyBlock(artifacts[PYTHON_OUTPUT]), "");
+  assert.doesNotMatch(tsBlock(artifacts[TYPESCRIPT_OUTPUT]), /readonly "email": string;/u);
+  assert.doesNotMatch(pyBlock(artifacts[PYTHON_OUTPUT]), /^ {4}email: str$/mu);
 });
 
 test("the idempotency header name is READ from core-api, not written here", () => {

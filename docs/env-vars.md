@@ -283,8 +283,10 @@ INSTALLATION tokens, which are rows in the `channels` context's store.
 |---|---|---|---|
 | `PLATOS_CHANNELS_SLACK_SIGNING_SECRET` | — | anchor | Verifies every inbound channel request. Minimum 32 characters. Anchoring the group on the signing secret rather than on an outbound token means "the channel is wired" and "the channel can tell a real caller from a forged one" are the same statement. |
 | `PLATOS_CHANNELS_SLACK_REQUEST_MAX_AGE_S` | `300` | No | How old a signed request may be before it is refused as a replay. |
-| `PLATOS_CHANNELS_EMAIL_SMTP_URL` | — | anchor | Relay for budget notifications. Scheme `smtp:` or `smtps:`. |
+| `PLATOS_CHANNELS_EMAIL_SMTP_URL` | — | anchor | Relay for budget notifications and operator sign-in links. Scheme `smtps:` (implicit TLS) or `smtp:` (upgraded with STARTTLS, which is required unless `PLATOS_CHANNELS_EMAIL_REQUIRE_TLS` is `false`; credentials are only ever sent over TLS). |
 | `PLATOS_CHANNELS_EMAIL_FROM` | — | with anchor | Envelope sender. |
+| `PLATOS_CHANNELS_EMAIL_LOGIN_URL` | — | with anchor | The page a sign-in email links to, e.g. `https://app.example.com/magic`; the single-use token is appended as `?token=`. Configuration only — never taken from a request. |
+| `PLATOS_CHANNELS_EMAIL_REQUIRE_TLS` | `true` | No | Exactly `true` or `false`. When `true`, a message (a sign-in link is a login-capable secret) is sent only over `smtps:` or a STARTTLS-upgraded connection; a relay that offers no STARTTLS, or a path that strips the offer, is refused before the envelope. `false` is for a local sink with no TLS. |
 | `PLATOS_CHANNELS_WEBHOOK_SIGNING_KEY` | — | anchor | Signs outbound notification bodies. Minimum 32 characters. |
 | `PLATOS_CHANNELS_WEBHOOK_TIMEOUT_MS` | `10000` | No | How long one delivery may take. |
 

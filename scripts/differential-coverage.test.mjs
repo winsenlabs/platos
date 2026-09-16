@@ -61,7 +61,10 @@ test("the denominator matches the M0 censuses exactly", () => {
   // against the oracle, and these three routes have no oracle counterpart to twin
   // against: the code they replace answered no route at all. A denominator that grew
   // and a numerator that did not is the honest record of that.
-  assert.equal(summary.bySurface.rest.total, 313, "WIN-247 counted 300 REST operations; WIN-267 R1 adds 8, WIN-272 one more, M4 finish one more, WIN-268 M4.2 three more");
+  // 2026-09-15 313 -> 322: the identity/tenancy REST remainder's NINE routes (2026-09-15): the magic-link pair, the member listing and role change, the invitation issue and accept, the scope by slugs, and the variable listing and write. UNCOVERED by the harness for the
+  // reason the thirteen before them are: it twin-runs STORES against the oracle, and
+  // the oracle for these is Remix route code rather than a REST operation to twin.
+  assert.equal(summary.bySurface.rest.total, 322, "WIN-247 counted 300 REST operations; WIN-267 R1 adds 8, WIN-272 one more, M4 finish one more, WIN-268 M4.2 three more, the identity/tenancy remainder nine more");
   assert.equal(summary.bySurface.mcp.total, 202, "WIN-247 counted 202 MCP tools");
   // WIN-267 G1: 93 -> 94. `EvalRun` is the canonical row `governance`'s
   // `EvalRunQueue` port enqueues into — ADR M0.3 §1 row 14's "eval runs enqueue
@@ -465,8 +468,10 @@ test("BASELINE: the committed matrix agrees root by root, and BOTH roots now car
   // moved this figure does not touch it. Both enumerators moved to 19 on their own
   // again, the generator's AST walk and the independent census's glob, and
   // `row.agrees` above is what says so.
-  assert.equal(core.enumeratedOperations, 19);
-  assert.equal(core.independentOperations, 19);
+  // 2026-09-15 19 -> 28: the identity/tenancy REST remainder's NINE routes (2026-09-15): the magic-link pair, the member listing and role change, the invitation issue and accept, the scope by slugs, and the variable listing and write. Both enumerators moved to 28 on their
+  // own, and `row.agrees` above is what says so.
+  assert.equal(core.enumeratedOperations, 28);
+  assert.equal(core.independentOperations, 28);
   // AND THE PER-ROOT SUM CARRIES THE SURPLUS TERM. A root sum counts an
   // operation once per root that serves it, and the two mints are served by
   // both, so the sum exceeds the unique denominator by exactly the surplus the
