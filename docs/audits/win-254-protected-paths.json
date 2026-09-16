@@ -3973,7 +3973,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "d4513f7bd7c647470f00c0a58b247844367bd6f67b339e2e02c412ee8b724464"
+      "sha256": "a3ac147617a52dbdebdccd505320354eed0a53596965d7b4d9f0fa2fc45a6da2"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
