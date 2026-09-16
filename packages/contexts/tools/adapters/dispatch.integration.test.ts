@@ -25,23 +25,25 @@
 
 import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { createRequire } from "node:module";
 import { AddressInfo } from "node:net";
 import { randomUUID } from "node:crypto";
-import { fileURLToPath } from "node:url";
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { McpServer as CandidateMcpServer } from "@modelcontextprotocol/sdk-candidate/server/mcp.js";
-import { SSEServerTransport as CandidateSSEServerTransport } from "@modelcontextprotocol/sdk-candidate/server/sse.js";
-import { StreamableHTTPServerTransport as CandidateStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk-candidate/server/streamableHttp.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import type { DispatchRequest, DispatchTarget } from "../application/ports/index.js";
 import type { McpTransport, ToolName } from "../domain/index.js";
 import { createToolDispatchAdapter, type ToolDispatchAdapter } from "./dispatch.js";
+import {
+  ADOPTED,
+  CANDIDATE,
+  installedSdk,
+  PACKAGE_ROOT,
+  resolvedStoreVersion,
+  SERVER_ENTRY_POINTS,
+  SSEServerTransport,
+  type SdkServerBuild,
+} from "./sdk-builds.test-fixture.js";
 
 // ---------------------------------------------------------------------------
 // FIXTURES
@@ -303,80 +305,13 @@ describe("the wire transport, against a real HTTP listener", () => {
 // ---------------------------------------------------------------------------
 // THE TWO SDK SERVER BUILDS
 //
-// WIN-268 (M4.2). The adopted client in `mcp-dispatch.ts` is put against the
-// server of the ADOPTED SDK and of the 1.30.x CANDIDATE, aliased as
-// `@modelcontextprotocol/sdk-candidate`, before any version bump. Every case
-// below that has an SDK server on the far side runs once per build through
-// `it.each` over an ARRAY LITERAL, which is the one table shape
-// `scripts/arch/test-case-census.mjs` can count statically. The builds are
-// required to be two different installed versions, joined to `pnpm-lock.yaml`.
-//
-// THAT JOIN READS THE TREE, NOT THIS FILE, and on its own it does not stop the
-// table collapsing into one build asked twice: repointing the three
-// `sdk-candidate` imports at `@modelcontextprotocol/sdk` leaves both manifests
-// and the lockfile untouched. So the case below also requires the three loaded
-// classes to be DIFFERENT objects, each to be the export of the specifier it
-// claims (fetched by a dynamic import of that literal), and each specifier to
-// resolve inside the pnpm store directory of its own version.
-
-interface SdkServerBuild {
-  readonly label: "adopted" | "candidate";
-  readonly directory: string;
-  /** Every module specifier the imports above take from this build. */
-  readonly specifiers: readonly string[];
-  readonly McpServer: typeof McpServer;
-  readonly StreamableHTTPServerTransport: typeof StreamableHTTPServerTransport;
-  readonly SSEServerTransport: typeof SSEServerTransport;
-}
-
-const ADOPTED: SdkServerBuild = {
-  label: "adopted",
-  directory: "@modelcontextprotocol/sdk",
-  specifiers: [
-    "@modelcontextprotocol/sdk/server/mcp.js",
-    "@modelcontextprotocol/sdk/server/sse.js",
-    "@modelcontextprotocol/sdk/server/streamableHttp.js",
-  ],
-  McpServer,
-  StreamableHTTPServerTransport,
-  SSEServerTransport,
-};
-
-const CANDIDATE: SdkServerBuild = {
-  label: "candidate",
-  directory: "@modelcontextprotocol/sdk-candidate",
-  specifiers: [
-    "@modelcontextprotocol/sdk-candidate/server/mcp.js",
-    "@modelcontextprotocol/sdk-candidate/server/sse.js",
-    "@modelcontextprotocol/sdk-candidate/server/streamableHttp.js",
-  ],
-  McpServer: CandidateMcpServer as unknown as typeof McpServer,
-  StreamableHTTPServerTransport: CandidateStreamableHTTPServerTransport as unknown as typeof StreamableHTTPServerTransport,
-  SSEServerTransport: CandidateSSEServerTransport as unknown as typeof SSEServerTransport,
-};
-
-const requireFromHere = createRequire(import.meta.url);
-
-/**
- * The version whose pnpm store directory a specifier actually resolves into.
- * The alias and the adopted name are two `node_modules` entries, but both are
- * links into `.pnpm/@modelcontextprotocol+sdk@<version>_…`, so the store path is
- * the resolver's own answer to "which build is this specifier".
- */
-function resolvedStoreVersion(specifier: string): string {
-  const resolved = requireFromHere.resolve(specifier);
-  const match = /@modelcontextprotocol\+sdk@(\d+\.\d+\.\d+)/u.exec(resolved);
-  if (!match) {
-    throw new Error(`${specifier} did not resolve inside an @modelcontextprotocol/sdk store directory: ${resolved}`);
-  }
-  return match[1]!;
-}
-
-const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
-
-function installedSdk(build: SdkServerBuild): { name: string; version: string } {
-  return JSON.parse(readFileSync(`${PACKAGE_ROOT}node_modules/${build.directory}/package.json`, "utf8")) as { name: string; version: string };
-}
+// WIN-268 (M4.2). The two builds, the entry points each one is imported from,
+// the manifest reader and the store-path resolver all live in
+// `sdk-builds.test-fixture.ts` beside this file, which says why they are not
+// here: both files are under the 500-effective-line budget
+// `scripts/arch/max-file-lines.mjs` holds `packages/contexts/**` to, and this
+// suite was over it. The two cases below are the joins themselves, and they stay
+// where the table they protect is used.
 
 describe("the SDK builds this suite runs against", () => {
   it("are two DIFFERENT installed versions: the adopted pin and a 1.30.x candidate, as the lockfile resolves them", () => {
@@ -400,7 +335,8 @@ describe("the SDK builds this suite runs against", () => {
     // exactly the collapse the table must not survive. These three joins fail.
     for (const build of [ADOPTED, CANDIDATE]) {
       const expected = installedSdk(build).version;
-      for (const specifier of build.specifiers) {
+      for (const entry of SERVER_ENTRY_POINTS) {
+        const specifier = `${build.directory}/${entry}`;
         expect({ specifier, store: resolvedStoreVersion(specifier) }).toEqual({ specifier, store: expected });
       }
     }

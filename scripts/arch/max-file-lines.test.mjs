@@ -1596,13 +1596,21 @@ test("the live selectors scan an exact nonzero source census", () => {
       severity: "warning",
     },
     {
-      // WIN-268 (M4.2), the MCP SDK 1.30.x candidate: 26 -> 40 cases asked of the
+      // WIN-268 (M4.2), the MCP SDK 1.30.x candidate: 26 -> 41 cases asked of the
       // adopted SDK's server AND the candidate's, over http and sse. Measured at 502
       // on the first write, which this gate FAILED, and brought inside the budget by
       // joining lines rather than by splitting the suite — a second file would have
       // moved the test-case census's file pin for no change in what is asserted.
+      //
+      // 487 -> 535 -> 493. The module-identity joins the verifier's collapse finding
+      // forced are 48 more lines and put the file OVER the error threshold, which is
+      // this budget working: the joins are the last thing that should be shortened.
+      // The two builds, their entry points, the manifest reader and the store-path
+      // resolver moved to `adapters/sdk-builds.test-fixture.ts`, which declares no
+      // case and does not end in `.test.ts`, so the census's file pin for this
+      // package is unmoved and the fixture is far below the warning threshold.
       path: "packages/contexts/tools/adapters/dispatch.integration.test.ts",
-      effectiveLines: 487,
+      effectiveLines: 493,
       severity: "warning",
     },
     {
