@@ -612,9 +612,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   `shared/url-validator.test.ts` — the IPv4-mapped and IPv4-compatible IPv6
     //   spellings the SSRF screen must refuse, lifted out of the service-gated
     //   integration suite so the security fix is gated with no database, no Redis
-    //   and no network. Everything else that round changed is an EDIT: the two
-    //   controllers, the harness, the three suites, `ci.yml`, the census and the
-    //   ci-policy suite. NO LEDGER RULE CHANGED.
+    //   and no network. Everything else that round changed in THIS area is an EDIT:
+    //   the two controllers, the harness, the three suites, `ci.yml`, the census and
+    //   the ci-policy suite. The round's other new file is in `packages` and is
+    //   itemised on that row. NO LEDGER RULE CHANGED.
     "apps-agent": 22,
     // WIN-272 (M4.6) 0 -> 1. `test/publicGuestBoundary.test.ts`: the public-guest
     // and embed boundary over two real `node:http` listeners with `fetch`
@@ -1585,7 +1586,18 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // two planners and its new refusals, the service, the double, the bearer store and
     // `harness.ts`'s one opt-in variable add no file. 1550 + 6 = 1556, and NO LEDGER
     // RULE CHANGED.
-    packages: 1556,
+    //
+    // THE MCP CONFORMANCE LANE'S ROUND-2 FIXES 1556 -> 1557. ONE file, on
+    // `packages.contexts.source`, a rule that already existed:
+    // `packages/contexts/tools/adapters/sdk-builds.test-fixture.ts`. It exists
+    // because of a BUDGET, not because of new behaviour — the module-identity joins
+    // that round added to `dispatch.integration.test.ts` took it from 487 to 535
+    // effective lines and past the 500 the ADR M0.3 §6 gate enforces, so the two SDK
+    // server builds, the entry points, the manifest reader and the store-path
+    // resolver moved out and the joins stayed. It declares no case and does not end
+    // in `.test.ts`, so the test-case census's file count for this package is
+    // unmoved. 1556 + 1 = 1557, and NO LEDGER RULE CHANGED.
+    packages: 1557,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2443,8 +2455,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // listener ordering, the harness header and its join case, and the named-suite
   // constant in `ci-policy.test.mjs` — so no other area moves. The eight-key
   // re-derivation from the merged `expectedDeltas` is
-  // 22 + 1 + 97 + 4 + 10 + 1556 + 27 + 97 = 1814.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1814);
+  // 22 + 1 + 97 + 4 + 10 + 1557 + 27 + 97 = 1815 — TWO files, not one: the SSRF
+  // suite in `apps-agent` and, in `packages`, the SDK-builds fixture the 500-line
+  // budget forced out of the dispatch suite when the module-identity joins landed.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1815);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2757,10 +2771,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // the total and `expectedDeltas["docs-content"]`: one ADR, summed per area here.
     // AND THE MCP CONFORMANCE LANE — 1804 -> 1813, moved in the same edit as the
     // total and the three area deltas: six agent files, one receipt, two scripts.
-    // AND THAT LANE'S ROUND-2 FIXES — 1813 -> 1814, moved in the same edit as the
-    // total and `expectedDeltas["apps-agent"]`: the one service-free SSRF suite,
-    // summed per area here.
-    rulesDocument.baseline.totalFiles + 1814
+    // AND THAT LANE'S ROUND-2 FIXES — 1813 -> 1815, moved in the same edit as the
+    // total, `expectedDeltas["apps-agent"]` and `expectedDeltas["packages"]`: the one
+    // service-free SSRF suite and the one SDK-builds fixture, summed per area here.
+    rulesDocument.baseline.totalFiles + 1815
   );
 });
 
