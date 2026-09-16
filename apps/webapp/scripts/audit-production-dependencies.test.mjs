@@ -55,7 +55,18 @@ function withFixture(options, callback) {
 
 test("derives the audited production manifest from retained reachability", () => {
   const result = auditProductionDependencies({ root: webappRoot, manifest });
-  assert.equal(result.productionDependencies.length, 16);
+  // 16 -> 15 WITH WIN-257 T8. The one that left is `@platos/tenancy-database`,
+  // the generated Prisma client: the dashboard reaches its data through core-api
+  // over HTTP now, so no file under `app/` imports it and it is a devDependency
+  // the persisted-state gate's read-back still needs. This audit DERIVES the
+  // list from reachability rather than reading the manifest, so the figure moves
+  // only when an import does — which is why it is the count that records the
+  // cutover rather than a line in a package.json.
+  assert.equal(result.productionDependencies.length, 15);
+  assert.ok(
+    !result.productionDependencies.includes("@platos/tenancy-database"),
+    "the webapp's production closure must not reach the generated Prisma client",
+  );
   assert.deepEqual(result.productionDependencies, result.runtimeReachable);
   assert.ok(result.evidence.react.some((entry) => entry.kind === "static import"));
   assert.ok(result.evidence["react-grid-layout"].some((entry) => entry.kind === "CSS import"));
