@@ -900,8 +900,14 @@ export const VIOLATION_CODES = Object.freeze({
  * 1767 + 1 + 7 = 1775, three short of `arch-boundaries.test.mjs`'s 1776 for the
  * standing reason: this scan reads `.ts` only, and `apps/core-api/scripts/dev.mjs`
  * is in that census and not in this one.
+ *
+ * AND ONE FILE THIS ROUND'S OWN FIX ADDED, 1775 -> 1776:
+ * `packages/contexts/tools/adapters/mcp-session-failure.integration.test.ts`, the
+ * sibling-call cases for the pool-eviction defect. NO DOOR OPENED: it starts a
+ * loopback HTTP server and reads no variable, and the declared read count is
+ * unmoved at 34.
  */
-export const EXPECTED_FILE_COUNT = 1775;
+export const EXPECTED_FILE_COUNT = 1776;
 
 function listSourceFiles(root) {
   const found = [];

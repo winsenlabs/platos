@@ -1739,7 +1739,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `contexts/tenancy/application/record-entity-connection.ts` and
     // `contexts/tools/application/record-tool-health.ts`. Their contracts, domains
     // and the postgres-tenancy row narrowing are EDITS.
-    packages: 1602,
+    //
+    // AND THE POOL-EVICTION FIX THIS INTEGRATION ROUND CARRIED IN, 1602 -> 1603.
+    // ONE file on the existing `packages.contexts.source` rule:
+    // `contexts/tools/adapters/mcp-session-failure.integration.test.ts`. It is a
+    // FILE and not four more cases in `dispatch.integration.test.ts` because the
+    // 500-line budget refused them there -- the same reason
+    // `sdk-builds.test-fixture.ts` exists beside it. `mcp-dispatch.ts` and the
+    // agent pool's corrected cross-reference are EDITS. NO LEDGER RULE CHANGED.
+    packages: 1603,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2659,7 +2667,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // characterization). Re-measured on the integrated tree, not summed from the lane
   // report (which read 1837 against a tree with none of the seven earlier lanes in
   // it): 26 + 1 + 139 + 4 + 11 + 1602 + 27 + 107 = 1917.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1917);
+  //
+  // AND THE POOL-EVICTION FIX THIS ROUND CARRIED IN -- 1917 -> 1918. ONE file, in
+  // `packages` and itemised on that area's delta above:
+  // 26 + 1 + 139 + 4 + 11 + 1603 + 27 + 107 = 1918.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1918);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2991,7 +3003,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // internal-packages +1 and apps-agent +1, summed per area here. THE POINT OF THE
     // SECOND SUM is that it is derived differently from the first, so the two can
     // disagree and be caught -- which is why both halves move together or not at all.
-    rulesDocument.baseline.totalFiles + 1917
+    // AND THE POOL-EVICTION FIX -- 1917 -> 1918, moved in the same edit as the
+    // total and as `expectedDeltas.packages`: one suite file.
+    rulesDocument.baseline.totalFiles + 1918
   );
 });
 

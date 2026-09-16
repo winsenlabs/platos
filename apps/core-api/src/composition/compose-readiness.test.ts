@@ -150,8 +150,62 @@ function readinessOf(env: Readonly<Record<string, string>>) {
   return evaluateReadiness(app, { phase: "serving" });
 }
 
+/**
+ * The `<satisfied> of <declared>` pairs `.env.example` states in prose, in order.
+ *
+ * THE SECOND COPY OF THE SAME TABLE, AND IT WAS WRONG. This file's header says
+ * "`.env.example` repeats it", and the suite read only the page — so when the
+ * email notifier's two bindings landed, the page moved to 63 and the example file
+ * kept saying "of 62" and "the remaining five" with nothing to catch it. Prose
+ * nobody re-reads drifts exactly like that, which is the sentence this whole
+ * suite was written under. The pairs are read out of the file rather than
+ * restated here, and joined to the page's own rows below.
+ */
+function exampleReadinessPairs(): readonly { readonly satisfied: number; readonly declared: number }[] {
+  return [...repositoryFile(ENV_EXAMPLE).matchAll(/(\d+) of (\d+)\b/gu)].map((match) => ({
+    satisfied: Number(match[1]),
+    declared: Number(match[2]),
+  }));
+}
+
 describe("the self-hosting readiness table, against the compose service it describes", () => {
   const rows = readinessTable();
+
+  it("finds the same satisfied/declared pairs in .env.example that the page's table states", () => {
+    const pairs = exampleReadinessPairs();
+    // NON-VACUITY: the file really does state them, so an empty match set is a
+    // failure rather than a silent pass.
+    expect(pairs.length).toBeGreaterThanOrEqual(rows.length);
+    for (const pair of pairs) {
+      expect(pair.declared, `.env.example says "of ${String(pair.declared)}"`).toBe(DECLARED_BINDING_COUNT);
+    }
+    // Every count the page states must appear in the file, and every count the
+    // file states must be one the page states: neither may invent a row.
+    const fromPage = new Set(rows.map((row) => row.satisfied));
+    const fromFile = new Set(pairs.map((pair) => pair.satisfied));
+    expect([...fromFile].sort((a, b) => a - b)).toEqual([...fromPage].sort((a, b) => a - b));
+  });
+
+  it("states the right number of bindings no `.env` can reach, in both documents", () => {
+    // THE OTHER HALF OF THE SAME DRIFT. `.env.example` said "the remaining five"
+    // while the page said four, and the true number is whatever the fullest row
+    // leaves unsatisfied. It is a WORD in both files, so it is read as a word.
+    const fullest = Math.max(...rows.map((row) => row.satisfied));
+    const remaining = DECLARED_BINDING_COUNT - fullest;
+    const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+    const word = NUMBER_WORDS[remaining];
+    expect(word, `no word for ${String(remaining)} unreachable bindings`).toBeDefined();
+    for (const file of [ENV_EXAMPLE, SELF_HOSTING]) {
+      const text = repositoryFile(file);
+      const stated = [...text.matchAll(/remaining (\w+) are|(\w+) that\s+remain unsatisfied|The (\w+) that/gu)]
+        .map((match) => match[1] ?? match[2] ?? match[3])
+        .filter((candidate): candidate is string => candidate !== undefined && NUMBER_WORDS.includes(candidate));
+      expect(stated.length, `${file} states no count of unreachable bindings`).toBeGreaterThan(0);
+      for (const candidate of stated) {
+        expect(candidate, `${file} says "${candidate}" where the readback leaves ${String(remaining)}`).toBe(word);
+      }
+    }
+  });
 
   it("finds the table, every row with counts and contexts, and a first row that adds nothing", () => {
     expect(rows.length).toBeGreaterThanOrEqual(3);

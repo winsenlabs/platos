@@ -1466,7 +1466,16 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // 1776 IS RE-MEASURED ON THIS MERGED TREE, and `scripts/arch/env-access.mjs`
     // reads 1775 for the reason stated there: it reads `.ts` only, so
     // `apps/core-api/scripts/dev.mjs` is in this census and not in that one.
-    assert.equal(result.fileCount, 1776, "the generated V1 source census must stay exact");
+    //
+    // AND ONE FILE THIS ROUND'S OWN FIX ADDED, 1776 -> 1777:
+    // `packages/contexts/tools/adapters/mcp-session-failure.integration.test.ts`,
+    // the sibling-call cases for the pool-eviction defect the gates lane fixed in
+    // `apps/agent` and left live in the V1 adapter. It is a FILE and not four more
+    // cases in `dispatch.integration.test.ts` because putting them there took that
+    // suite to 571 effective lines, past the 500 the max-file-lines gate enforces
+    // -- the same budget that produced `sdk-builds.test-fixture.ts` beside it one
+    // tranche earlier.
+    assert.equal(result.fileCount, 1777, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1590,6 +1599,9 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // AND THE ONE FILE THE PREVIOUS MERGE OWED THIS CENSUS: contexts 1 --
       // `tools/adapters/sdk-builds.test-fixture.ts`, which that merge counted in
       // `max-file-lines` and not here.
+      1 +
+      // AND THE ONE FILE THIS ROUND'S OWN FIX ADDED: contexts 1 --
+      // `tools/adapters/mcp-session-failure.integration.test.ts`.
       1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });

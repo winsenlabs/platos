@@ -2888,7 +2888,21 @@ export const EXPECTED = Object.freeze({
   // measure of what that lane proved would be reading a small part of it.
   //
   // 400 + 9 + 4 + 2 + 2 = 417; 21 files.
-  "packages/contexts/tools": { files: 21, cases: 417 },
+  //
+  // AND 417 -> 421 ACROSS 21 -> 22 FILES, the pool-eviction fix this integration
+  // round carried in. `adapters/mcp-session-failure.integration.test.ts` is the
+  // FIRST file on this row in several tranches to move the FILE count as well as
+  // the case count, and the reason is the 500-line budget rather than a new
+  // subject: the four cases were written into `dispatch.integration.test.ts`, took
+  // it to 571 effective lines, and moved out. THREE drive real SDK servers over
+  // loopback sockets -- a sibling call surviving another tool's request timeout,
+  // the absence of a second `initialize` after that timeout (counted on the
+  // server), and a transport that really died STILL being evicted -- and the
+  // fourth asks `failureEndsSession` the classification directly, so the rule has
+  // a gate of its own and not only its consequences.
+  //
+  // 400 + 9 + 4 + 2 + 2 + 4 = 421; 22 files.
+  "packages/contexts/tools": { files: 22, cases: 421 },
   // M2 INTEGRATION: kernel 3 + 1 + 2 = 6 files, 44 + 16 (the redactor's
   // two-sided suite) + 69 (retry and the transaction-outcome behaviour) = 129.
   //
@@ -3862,8 +3876,13 @@ export const EXPECTED = Object.freeze({
 // `apps/core-api`, which is outside `PACKAGE_ROOTS`. The asymmetry the paragraphs
 // above record applies once more.
 //
-// INTEGRATED AND RE-MEASURED: 8359 + 47 + 110 + 15 + 2 + 2 = 8535 over 569 files.
-export const EXPECTED_RUNTIME_TOTAL = 8535;
+// AND THE POOL-EVICTION FIX THIS ROUND CARRIED IN: +4 on
+// `packages/contexts/tools`, and the one file count this round moves -- itemised
+// on that row above.
+//
+// INTEGRATED AND RE-MEASURED: 8359 + 47 + 110 + 15 + 2 + 2 + 4 = 8539 over
+// 569 + 1 = 570 files.
+export const EXPECTED_RUNTIME_TOTAL = 8539;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

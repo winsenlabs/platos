@@ -220,13 +220,21 @@ export class McpConnectionPool implements OnModuleDestroy {
    * restarted mid-session forgets its `Mcp-Session-Id`, answers every request on
    * it with 404, and the pooled client kept being handed out — so an entity used
    * at least once every `MCP_POOL_IDLE_MS` (300 s by default) never recovered
-   * until the agent restarted. The V1 context adapter already evicts on exactly
-   * this condition (`packages/contexts/tools/adapters/mcp-dispatch.ts`, `evict`
-   * in the `callTool` and `listTools` catch arms). Callers go through
-   * `evictAfterFailure`, which is NARROWER than that adapter: a request timeout
-   * and a server's JSON-RPC error answer do not evict (see `failureEndsSession`),
-   * and neither does an `isError: true` result — in all three the session is
-   * alive, and closing it would fail every other call pending on it.
+   * until the agent restarted. Callers go through `evictAfterFailure`: a request
+   * timeout and a server's JSON-RPC error answer do not evict (see
+   * `failureEndsSession`), and neither does an `isError: true` result — in all
+   * three the session is alive, and closing it would fail every other call
+   * pending on it.
+   *
+   * THE V1 CONTEXT ADAPTER NOW APPLIES THE SAME RULE, and this paragraph used to
+   * say something false about it. It said that adapter "already evicts on exactly
+   * this condition" and that this pool is NARROWER than it. It was not narrower;
+   * it was correct and the adapter was wrong. `packages/contexts/tools/adapters/
+   * mcp-dispatch.ts` evicted in both catch arms BEFORE classifying the failure, so
+   * a plain -32001 there closed the session under every caller sharing the pool
+   * key — the identical failure this pool was fixed for. That adapter now exports
+   * its own `failureEndsSession` with the same reading, and its sibling-call cases
+   * in `dispatch.integration.test.ts` hold it to it.
    *
    * IDENTITY, NOT KEY. The entry is dropped only if the pool still holds THIS
    * client for its key. A slow call that fails after a concurrent caller already

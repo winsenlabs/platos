@@ -993,8 +993,14 @@ test("the live selectors scan an exact nonzero source census", () => {
   // the two integration suites are under `src/composition/`, which no selector
   // here names.
   //
-  // ALL SIX, RE-MEASURED ON THE MERGED TREE: 1653 + 2 + 20 + 18 + 3 + 1 + 4 = 1701.
-  assert.equal(result.fileCount, 1701);
+  // AND ONE FILE THIS ROUND'S OWN FIX ADDED -- CONTEXTS +1,
+  // `tools/adapters/mcp-session-failure.integration.test.ts`. THIS GATE IS WHY IT
+  // EXISTS: the four cases were written into `dispatch.integration.test.ts` and
+  // took it to 571 effective lines, so they moved out rather than being shortened.
+  //
+  // ALL SIX PLUS THAT ONE, RE-MEASURED ON THE MERGED TREE:
+  // 1653 + 2 + 20 + 18 + 3 + 1 + 4 + 1 = 1702.
+  assert.equal(result.fileCount, 1702);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -1124,7 +1130,10 @@ test("the live selectors scan an exact nonzero source census", () => {
       // DOING: one file carrying the route, its wire reader and every field refusal
       // would have crossed the 500-line budget, so the reader is its own module and
       // is exercisable without a Nest application.
-      4
+      4 +
+      // AND THIS ROUND'S OWN FIX: CONTEXTS 1 --
+      // `tools/adapters/mcp-session-failure.integration.test.ts`.
+      1
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1384,9 +1393,11 @@ test("the live selectors scan an exact nonzero source census", () => {
   // `APPS-HTTP` are flat: `http/http.module.ts` and the adapter row narrowing are
   // EDITS, and `composition/` is outside every selector here.
   //
-  // ALL SIX TOGETHER, RE-MEASURED ON THE MERGED TREE:
-  // 30 + 1103 + 498 + 22 + 48 = 1701.
-  assert.equal(result.fileCount, 30 + 1103 + 498 + 22 + 48);
+  // AND THIS ROUND'S OWN FIX, +1 IN ONE TERM: CONTEXTS 1103 -> 1104.
+  //
+  // ALL SIX PLUS THAT ONE, RE-MEASURED ON THE MERGED TREE:
+  // 30 + 1104 + 498 + 22 + 48 = 1702.
+  assert.equal(result.fileCount, 30 + 1104 + 498 + 22 + 48);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
