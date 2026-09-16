@@ -259,6 +259,8 @@ jobs:
           pnpm test:sbom
           pnpm test:differential-coverage
           pnpm audit:differential-coverage
+          node --test scripts/rest-cell-coverage.test.mjs
+          node scripts/rest-cell-coverage.mjs --check
           pnpm audit:openapi-compat
           pnpm test:openapi-compat
           pnpm audit:sdk-v1

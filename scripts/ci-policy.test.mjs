@@ -644,6 +644,28 @@ const expectedV1EvidenceCommands = [
   // evidence artifact of the same class as the censuses it reads.
   "pnpm test:differential-coverage",
   "pnpm audit:differential-coverage",
+  // WIN-267 (+2). THE PER-REST-CELL REGISTER, which is the only artifact in this
+  // tree that answers the clause "all capability-matrix REST cells have
+  // contract/integration tests" per CELL. `differential-coverage` above counts
+  // twin-run scenarios, so a cell an integration suite exercises still reads
+  // `uncovered` there; `route-capability-parity --completion` speaks for the 29
+  // REST ids its webapp matrix names. Neither is this.
+  //
+  // `test:` drives the two evidence kinds over synthetic cells, manifests and
+  // test sources — including the mutation that deletes a cell's only case and
+  // requires the row to flip to residue — so the join is watched going red
+  // rather than assumed to work. `audit:` re-derives the register from the
+  // capability matrix, the operation manifest and every tracked test file and
+  // fails when the committed one no longer matches: a route that lands with no
+  // test, a test that stops naming a route, and a moved denominator all reach
+  // it.
+  //
+  // Invoked directly rather than through package.json scripts, for the reason
+  // recorded above the capability-matrix controls: root package.json is a webapp
+  // image build input and a line there moves the SBOM receipt's
+  // buildInputsSha256.
+  "node --test scripts/rest-cell-coverage.test.mjs",
+  "node scripts/rest-cell-coverage.mjs --check",
   // WIN-267 W2 (+2). The V1 OpenAPI contract ratchet. `audit:` compares the
   // schemas DERIVED FROM THE core-api HANDLER TYPES against the committed
   // baseline in `docs/openapi-v1-baseline.json` and fails on any breaking
@@ -692,6 +714,14 @@ const expectedV1EvidenceCommands = [
 // added to the evidence list without a control proving it can be removed is a
 // gate nobody has watched go missing.
 const differentialCoverageCommands = ["pnpm test:differential-coverage", "pnpm audit:differential-coverage"];
+
+// WIN-267. The per-REST-cell register's two commands, listed separately for the
+// same reason: each gets a removal and a concealment control below, so neither
+// can leave CI quietly.
+const restCellCoverageCommands = [
+  "node --test scripts/rest-cell-coverage.test.mjs",
+  "node scripts/rest-cell-coverage.mjs --check",
+];
 
 // WIN-284. The negative-control catalogue runs as its own step so it is legible
 // in the log as the acceptance evidence for the issue rather than buried in a
@@ -3547,6 +3577,22 @@ test("CI policy controls fail under generated semantic source mutations", async 
         mutate: (input) => wrapEvidenceCommand(input, command, ["(", command, ")"]),
       },
     ]),
+    // WIN-267 (+4). The per-REST-cell register is the gate that turns "all REST
+    // cells have tests" from a sentence into a number, so deleting it would
+    // delete the measurement rather than a duplicate of one. Removal and
+    // concealment, for each of its two commands.
+    ...restCellCoverageCommands.flatMap((command) => [
+      {
+        name: `removed WIN-267 REST cell register ${command}`,
+        expected: "V1 evidence script must contain only reviewed top-level simple commands",
+        mutate: (input) => mutateFixture(input, "ci", command, `echo removed # ${command}`),
+      },
+      {
+        name: `concealed WIN-267 REST cell register ${command}`,
+        expected: "V1 evidence script must contain only reviewed top-level simple commands",
+        mutate: (input) => wrapEvidenceCommand(input, command, ["(", command, ")"]),
+      },
+    ]),
     {
       name: "WIN-284 negative-control run cannot be deleted from CI",
       expected: "CI must contain exactly one WIN-284 differential harness step",
@@ -5110,12 +5156,18 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   release gate selector, which derives its `|| true` control, and the exact
   //   script table, which derives one for the command it resolves to. Measured at 396
   //   on the integrated tree before this line was written.
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 2 = 396. The
+  //   REST CELL REGISTER (WIN-267), +4. The per-REST-cell coverage register joins the
+  //   V1 evidence step as TWO commands — the controls over its join and the audit that
+  //   re-derives the register from the tree — and each derives a removal control and a
+  //   concealment control. Four rather than two because a gate that can be commented
+  //   out and a gate that can be buried in a subshell are different deletions, and a
+  //   scan that only greps for the text catches neither.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 2 + 4 = 400. The
   // count is pinned rather than derived so that a control silently disappearing is a
   // failure rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    396,
+    400,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
