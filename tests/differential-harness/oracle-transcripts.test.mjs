@@ -17,7 +17,7 @@
 // Each case states the mutation it survives.
 
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -25,15 +25,20 @@ import { fileURLToPath } from "node:url";
 
 import { normalise } from "./normalisers.mjs";
 import {
+  ORACLE_DRIVER,
+  ORACLE_OWN_MODULES,
   ORACLE_SOURCES,
   TRANSCRIPT_PATH,
   compareTranscripts,
   credentialShapedValues,
+  oracleIsLive,
+  oracleRevivalsIn,
   oracleSourceDigests,
   readTranscripts,
   recordedObservation,
   recordedOracleSubject,
   replayFailures,
+  retirementFailures,
   transcriptFailures,
 } from "./oracle-transcripts.mjs";
 import { twinRun } from "./twin-run.mjs";
@@ -58,27 +63,77 @@ test("the committed transcript is believable: provenance, digests, every scenari
   assert.ok(deletedSources >= 0);
 });
 
-test("every source the oracle driver executes is pinned, and the driver imports every pinned source", () => {
-  const driver = fileURLToPath(new URL("../../apps/webapp/test/differential-oracle.mts", import.meta.url));
-  // READ as a source file rather than imported: importing the driver would pull
-  // the webapp's whole module graph, which needs a database, and this case must
-  // run on a machine with none.
-  const text = readFileSync(driver, "utf8");
-  // The route modules are named by the driver as `~/routes/<id>`; the services
-  // as `~/services/<name>`. Both are checked against the pinned list rather than
-  // against a second copy of it, so a step that starts executing a new route
-  // fails here until the transcript pins that route's digest too.
-  const imported = [...text.matchAll(/from "~\/([^"]+)"|import\("~\/([^"]+)"\)/gu)].map(
-    (match) => `apps/webapp/app/${match[1] ?? match[2] ?? ""}`,
-  );
-  const pinned = new Set(ORACLE_SOURCES.map((path) => path.replace(/\.(ts|tsx)$/u, "")));
-  for (const specifier of imported) {
-    assert.ok(
-      pinned.has(specifier) || pinned.has(`${specifier}/route`),
-      `${specifier} is executed by the oracle driver and no digest is pinned for it`,
+test("the pinned sources are the oracle's, whichever half of its life this tree is in", () => {
+  const driver = join(repositoryRoot, ORACLE_DRIVER);
+  if (oracleIsLive(repositoryRoot)) {
+    // WHILE THE ORACLE CAN ANSWER: every module the driver executes must be
+    // pinned. READ as a source file rather than imported — importing the driver
+    // would pull the webapp's whole module graph, which needs a database, and
+    // this case must run on a machine with none.
+    const text = readFileSync(driver, "utf8");
+    const imported = [...text.matchAll(/from "~\/([^"]+)"|import\("~\/([^"]+)"\)/gu)].map(
+      (match) => `apps/webapp/app/${match[1] ?? match[2] ?? ""}`,
     );
+    const pinned = new Set(ORACLE_SOURCES.map((path) => path.replace(/\.(ts|tsx)$/u, "")));
+    for (const specifier of imported) {
+      assert.ok(
+        pinned.has(specifier) || pinned.has(`${specifier}/route`),
+        `${specifier} is executed by the oracle driver and no digest is pinned for it`,
+      );
+    }
+    assert.ok(imported.length >= 8, `expected the driver to import the oracle, saw ${String(imported.length)} specifiers`);
+    return;
   }
-  assert.ok(imported.length >= 8, `expected the driver to import the oracle, saw ${String(imported.length)} specifiers`);
+
+  // AFTER WIN-257 T8: the driver is gone, so there is no import list to compare
+  // against and nothing left that could re-record. What is asserted instead is
+  // that the transcript still pins a digest for EVERY source it ever recorded —
+  // an artifact that quietly forgot one would be claiming to record less than it
+  // did — and that the deletion is real rather than a rename.
+  const artifact = readTranscripts(repositoryRoot);
+  const pinnedPaths = (artifact.provenance?.oracleSources ?? []).map((entry) => entry.path).sort();
+  assert.deepEqual(pinnedPaths, [...ORACLE_SOURCES].sort());
+  assert.ok(!existsSync(driver), "the oracle driver must be absent for this branch to be the one under test");
+  for (const path of ORACLE_OWN_MODULES) {
+    assert.ok(!existsSync(join(repositoryRoot, path)), `${path} must be deleted by the cutover`);
+  }
+});
+
+test("THE RETIREMENT GATE: with the oracle deleted, it must be unable to come back", () => {
+  // THIS REPLACES THE DIGEST RULE AND IS STRONGER THAN IT. While the driver
+  // existed, "has this source moved?" was the question and a digest answered it.
+  // Afterwards that question has no actionable answer: `auth.server.ts` still
+  // exists and is SUPPOSED to have changed, because T8 rewrote it to call
+  // core-api. So the claim checked instead is the one that still matters — the
+  // oracle is unrecoverable: its two own modules are gone and no surviving
+  // source imports the client or calls a delegate.
+  assert.deepEqual(retirementFailures(repositoryRoot), []);
+  if (!oracleIsLive(repositoryRoot)) {
+    const { failures, oracleLive } = transcriptFailures(repositoryRoot, readTranscripts(repositoryRoot), SCENARIO_IDS);
+    assert.equal(oracleLive, false);
+    assert.deepEqual(failures, []);
+  }
+});
+
+test("MUTATION: the retirement gate is not vacuous — a revived oracle is caught, prose is not", () => {
+  // The three shapes that would mean the oracle is back, and the two that look
+  // like them and are not. Without the comment exclusion the banner of every
+  // file T8 rewrote — each of which QUOTES the delegate calls it deleted — would
+  // report the explanation of the cutover as evidence the cutover was undone.
+  assert.deepEqual(oracleRevivalsIn('import { PrismaClient } from "@platos/tenancy-database";'), [
+    "imports the canonical client again",
+  ]);
+  assert.deepEqual(oracleRevivalsIn("const row = await database.environment.findFirst({});"), [
+    "calls a Prisma delegate again",
+  ]);
+  assert.deepEqual(oracleRevivalsIn("await transaction.projectMembership.create({ data });"), [
+    "calls a Prisma delegate again",
+  ]);
+  assert.deepEqual(oracleRevivalsIn("// it used to run `database.environment.findFirst` here"), []);
+  assert.deepEqual(oracleRevivalsIn(" * `database.organization.create` with a nested membership"), []);
+  // A local named `database` that is not a client is still refused — the scan is
+  // deliberately blunt about a name this tree has only ever used for one thing.
+  assert.deepEqual(oracleRevivalsIn("const url = myDatabase.host;"), []);
 });
 
 // ---------------------------------------------------------------------------
@@ -102,8 +157,22 @@ function scratchTranscript(steps, overrides = {}) {
   return { root, artifact };
 }
 
-test("MUTATION: a source that changed since the recording fails until the transcript is re-recorded", () => {
-  const { artifact } = scratchTranscript({});
+test("MUTATION: while the oracle is LIVE, a source that changed since the recording fails", () => {
+  // WHICH HALF OF ITS LIFE THIS ASSERTS. The digest rule only binds while the
+  // oracle can still be asked, so the mutation is staged in a scratch root that
+  // HAS a driver — otherwise, after WIN-257 T8 deleted the real one, this case
+  // would silently stop testing the rule it is named after and pass on the
+  // retirement branch instead.
+  const { root, artifact } = scratchTranscript({});
+  mkdirSync(dirname(join(root, ORACLE_DRIVER)), { recursive: true });
+  writeFileSync(join(root, ORACLE_DRIVER), "// a stand-in for the driver, so the oracle reads as live\n");
+  // The sources have to exist in that root too, or every one of them reads as
+  // deleted and no digest is compared at all.
+  for (const entry of artifact.provenance.oracleSources) {
+    if (!entry.present) continue;
+    mkdirSync(dirname(join(root, entry.path)), { recursive: true });
+    writeFileSync(join(root, entry.path), readFileSync(join(repositoryRoot, entry.path)));
+  }
   const moved = {
     ...artifact,
     provenance: {
@@ -113,9 +182,17 @@ test("MUTATION: a source that changed since the recording fails until the transc
       ),
     },
   };
-  const { failures } = transcriptFailures(repositoryRoot, moved, []);
-  assert.equal(failures.length, 1);
+  const { failures, oracleLive } = transcriptFailures(root, moved, []);
+  assert.equal(oracleLive, true, "the scratch root must read as a live oracle or this mutation tests nothing");
+  assert.equal(failures.length, 1, failures.join("\n"));
   assert.match(failures[0] ?? "", /has changed since the transcript was recorded/u);
+
+  // AND THE SAME MOVED DIGEST IS NOT A FAILURE ONCE THE DRIVER IS GONE, which is
+  // the pairing that makes the branch a decision rather than a hole.
+  rmSync(join(root, ORACLE_DRIVER), { force: true });
+  const retired = transcriptFailures(root, moved, []);
+  assert.equal(retired.oracleLive, false);
+  assert.deepEqual(retired.failures, []);
 });
 
 test("a source that has been DELETED is the post-cutover state, not a failure", () => {

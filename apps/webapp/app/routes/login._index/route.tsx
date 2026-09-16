@@ -1,28 +1,61 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
 import { Form, useActionData } from "@remix-run/react";
-import { env } from "~/env.server";
-import { commitOperatorSession, operatorAuth, optionalOperator } from "~/services/auth.server";
+import { optionalOperator } from "~/services/auth.server";
+import { CoreApiError, CoreApiUnavailableError, coreRequest } from "~/services/coreApi.server";
+
+// SIGNING IN (WIN-257 T8, D20) — AND WHAT THIS ACTION NO LONGER HOLDS.
+//
+// It used to do three things this process had no business doing: mint a
+// login-capable token with `operatorAuth.issueMagicLink`, build the link itself
+// from `LOGIN_ORIGIN`, and POST it to Resend with an API key out of the webapp's
+// own environment. D20 (2026-09-15): "core-api sends it through the
+// notifier-email adapter. A login-capable token is never returned to the BFF."
+//
+// `POST /api/v1/bff/magic-link` is `startMagicLinkLogin`, which hands the link to
+// the `MagicLinkDelivery` port and answers 202 with the address and the expiry.
+// THERE IS NO FIELD ON THAT RESPONSE A TOKEN COULD BE IN, which is what makes the
+// deletion of the Resend call a removal of a capability rather than a relocation
+// of one.
+//
+// THE DIRECT SIGN-IN IS GONE, AND THIS IS THE FILE THAT SAYS SO.
+// `bff/magic-link.controller.ts` recorded the divergence in full and asked T8 to
+// state it here: the old `BACKDOOR_PLATOS_DEV` / `PLATOS_TEST_MODE` branch issued
+// AND spent a link in-process and answered `Set-Cookie`, mailing nothing. It
+// worked only because the BFF held the login-capable token, which is precisely
+// what D20 says it never receives, and a route that turned D20 off behind an
+// environment flag would be a sign-in-as-anyone endpoint one misconfiguration
+// away from production. What is lost is a developer's hand-set local sign-in
+// without SMTP; what replaces it is a local relay (Mailpit) and the link out of
+// its API, which is what `composition/identity-tenancy-rest.integration.test.ts`
+// already does.
+//
+// THE ANSWER IS THE SAME SHAPE FOR EVERY ADDRESS. An account that exists and one
+// that does not both get 202 and the same sentence, because the alternative is an
+// endpoint that reports whether an address has an account here.
 
 export async function loader({ request }: LoaderFunctionArgs) { if (await optionalOperator(request)) throw redirect("/"); return null; }
-async function sendMagicLink(email: string, link: string) {
-  if (!env.RESEND_API_KEY) return false;
-  const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: env.FROM_EMAIL, to: [email], subject: "Sign in to Platos", text: `Sign in to Platos: ${link}` }) });
-  return response.ok;
-}
+
 export async function action({ request }: ActionFunctionArgs) {
   const form = await request.formData(); const email = String(form.get("email") ?? "").trim().toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(email)) return json({ ok: false, message: "Enter a valid email address" }, { status: 400 });
   try {
-    const issued = await operatorAuth.issueMagicLink({ email, rateLimitIdentifier: `dashboard:${email}` });
-    const direct = env.NODE_ENV !== "production" && (env.BACKDOOR_PLATOS_DEV === "1" || env.PLATOS_TEST_MODE === "1") && (!env.BACKDOOR_PLATOS_DEV_EMAIL || env.BACKDOOR_PLATOS_DEV_EMAIL === email);
-    if (direct) { const session = await operatorAuth.consumeMagicLink(issued.token); return redirect("/", { headers: { "Set-Cookie": await commitOperatorSession(session.token, session.expiresAt) } }); }
-    const link = new URL("/magic", env.LOGIN_ORIGIN); link.searchParams.set("token", issued.token);
-    const sent = await sendMagicLink(email, link.toString());
-    return json({ ok: true, message: sent ? "Check your inbox for a sign-in link." : "Email delivery is not configured. Ask an operator to configure RESEND_API_KEY." });
-  } catch {
+    await coreRequest("magicLink.start", { request, body: { email } });
+    return json({ ok: true, message: "Check your inbox for a sign-in link." });
+  } catch (error) {
+    // 429 is the address spending its LOGIN budget and 503 covers both a
+    // limiter that failed closed (D3) and a relay that is not composed. Each
+    // keeps its status; none of them reflects the upstream body.
+    if (error instanceof CoreApiError && error.status === 429) {
+      return json({ ok: false, message: "Too many sign-in attempts. Try again shortly." }, { status: 429 });
+    }
+    if (error instanceof CoreApiError && error.status === 400) {
+      return json({ ok: false, message: "Enter a valid email address" }, { status: 400 });
+    }
+    void (error instanceof CoreApiUnavailableError);
     return json({ ok: false, message: "Sign in is temporarily unavailable" }, { status: 503 });
   }
 }
+
 export default function Login() {
   const result = useActionData<typeof action>();
 

@@ -1,41 +1,62 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
 import { requireOperator } from "~/services/auth.server";
-import { database } from "~/services/database.server";
-import { operatorVisibleProjectWhere } from "~/services/projectAccess.server";
+import { coreData, type CoreOrganization, type CoreProject } from "~/services/coreApi.server";
+
+// ONE ORGANIZATION AND THE PROJECTS INSIDE IT (WIN-257 T8, route-004).
+//
+// `database.organization.findFirst` with `memberships: { some: { userId,
+// deactivatedAt: null } }` as the gate and `operatorVisibleProjectWhere` on the
+// nested projects becomes two reads that are both keyed by the operator alone:
+// `GET /organizations` (`listOperatorOrganizations`, which applies the
+// membership gate) and `GET /projects` (`listVisibleProjects`, which is the
+// visibility rule). The slug in the URL then SELECTS from what came back.
+//
+// THAT IS WHY THE 404 IS STILL A 404 AND STILL MEANS THE SAME THING. The old
+// query returned null both for an organization that does not exist and for one
+// this operator is not a live member of, and answered the same stable "Not
+// found" for both — a deliberate non-disclosure. Filtering the two lists by slug
+// reproduces it exactly: an organization missing from `listOperatorOrganizations`
+// is indistinguishable from one that was never created.
+//
+// NO PER-PROJECT ROUND TRIP. The environments each project links to come back on
+// the project rows themselves (`ProjectResource.environments`, WIN-257 T8), which
+// is the nested `environments` select this query carried.
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-  const operator = await requireOperator(request);
-  let organization;
+  await requireOperator(request);
+  let organizations: readonly CoreOrganization[];
+  let projects: readonly CoreProject[];
   try {
-    organization = await database.organization.findFirst({
-      where: {
-        slug: params.organizationSlug,
-        archivedAt: null,
-        memberships: { some: { userId: operator.userId, deactivatedAt: null } },
-      },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        projects: {
-          where: operatorVisibleProjectWhere(operator.userId),
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            environments: {
-              where: { archivedAt: null },
-              select: { id: true, name: true, slug: true },
-            },
-          },
-        },
-      },
-    });
-  } catch {
+    [organizations, projects] = await Promise.all([
+      coreData<readonly CoreOrganization[]>("organizations.list", { request }),
+      coreData<readonly CoreProject[]>("projects.list", { request }),
+    ]);
+  } catch (error) {
+    if (error instanceof Response) throw error;
     throw new Response("Organization unavailable", { status: 503 });
   }
-  if (!organization) throw new Response("Not found", { status: 404 });
+  const found = organizations.find(
+    (row) => row.slug === params.organizationSlug && row.archivedAt === null,
+  );
+  if (!found) throw new Response("Not found", { status: 404 });
+  const organization = {
+    id: found.id,
+    name: found.name,
+    slug: found.slug,
+    projects: projects
+      .filter((project) => project.organizationId === found.id)
+      .map((project) => ({
+        id: project.id,
+        name: project.name,
+        slug: project.slug,
+        environments: project.environments.map((environment) => ({
+          id: environment.id,
+          name: environment.name,
+          slug: environment.slug,
+        })),
+      })),
+  };
   return json({ organization });
 }
 

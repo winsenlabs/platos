@@ -1,12 +1,19 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
+// WIN-257 T8 — THE FOURTEENTH FILE, AND THE ONLY ONE THAT NEVER TOUCHED THE
+// DATABASE. It imported four frozen string arrays and a union type from
+// `@platos/tenancy-database` and nothing else: no client, no query, no delegate.
+// That one import was enough to keep the generated Prisma client in the
+// dashboard's production dependency closure, so the vocabulary is restated in
+// `~/utils/coreVocabulary` and joined to `internal-packages/tenancy-database/src/
+// memory-contract.ts` by a test that reads it off disk.
 import {
   MEMORY_ARCHIVE_STATES,
   MEMORY_KINDS,
   MEMORY_SOURCES,
   MEMORY_VISIBILITIES,
   type MemoryKind,
-} from "@platos/tenancy-database";
+} from "~/utils/coreVocabulary";
 import { M4Surface } from "~/components/platos/M4Surface";
 import { loadSurface } from "~/services/m4Route.server";
 import { agentRequest, booleanField, enumField, jsonObject, m4Mutation, optionalText, requiredText, stringList } from "~/services/m4Mutation.server";

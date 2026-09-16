@@ -33,17 +33,41 @@ const KNOWN_CONTEXTS = new Set(CONTEXT_NAMES);
 
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 
-// The V1 layout directories M2 creates. Legacy strangler code (apps/webapp,
-// apps/agent) is intentionally NOT scanned by default: its migration locks
-// (e.g. webapp-no-prisma) are proven in fixtures and bind once those trees move
-// under the V1 layout in M2.2.
-const DEFAULT_SCAN_ROOTS = [
+// The V1 layout directories M2 creates, plus `apps/webapp`.
+//
+// WIN-257 T8 ADDED `apps/webapp`, AND THE SENTENCE THAT USED TO STAND HERE IS
+// WHY IT HAD TO. It said the legacy strangler trees were "intentionally NOT
+// scanned by default: its migration locks (e.g. webapp-no-prisma) are proven in
+// fixtures and bind once those trees move under the V1 layout in M2.2." Proven in
+// fixtures is not the same claim as enforced over the tree, and the difference
+// was measurable: at this tranche's base the webapp held fifteen Prisma
+// operations in ten route modules, and the rule named after that exact migration
+// was scanning no file that could contain one. (It also could not have MATCHED
+// one — see `webapp-no-prisma` in `boundary-rules.mjs`. Both halves were broken,
+// which is why neither was noticed.)
+//
+// `apps/agent` IS STILL NOT SCANNED, and that is a live scope statement rather
+// than an omission: it holds 808 Prisma delegate calls, its retirement is
+// WIN-258's, and turning the scan on for it here would produce hundreds of
+// violations that block every other rule in this checker from being read.
+// `apps/webapp` is added the day it has NO violations left, which is the only
+// moment a scan root can be added without also adding a suppression list.
+/**
+ * The V1 layout, and the set the generated source census counts.
+ *
+ * Kept separate from `DEFAULT_SCAN_ROOTS` so that adding a legacy tree to the
+ * scan cannot silently move a figure that means "how big is V1" —
+ * `arch-boundaries.test.mjs` pins this set and `apps/webapp` separately.
+ */
+export const V1_SCAN_ROOTS = Object.freeze([
   "packages/kernel",
   "packages/contexts",
   "packages/adapters",
   "apps/core-api",
   "apps/mcp-stdio",
-];
+]);
+
+const DEFAULT_SCAN_ROOTS = [...V1_SCAN_ROOTS, "apps/webapp"];
 
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"]);
 const SKIP_DIRECTORIES = new Set([

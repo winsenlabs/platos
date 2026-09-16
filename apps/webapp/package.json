@@ -30,7 +30,6 @@
   ],
   "dependencies": {
     "@internal/workload-identity": "workspace:*",
-    "@platos/tenancy-database": "workspace:*",
     "@remix-run/express": "2.1.0",
     "@remix-run/node": "2.1.0",
     "@remix-run/react": "2.1.0",
@@ -47,6 +46,7 @@
     "zod": "3.25.76"
   },
   "devDependencies": {
+    "@platos/tenancy-database": "workspace:*",
     "@remix-run/dev": "2.1.0",
     "@remix-run/eslint-config": "2.1.0",
     "@remix-run/testing": "^2.1.0",

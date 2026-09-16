@@ -31,6 +31,28 @@
 // therefore an encoded offset, and `nextCursor` is minted FROM the contract's own
 // `hasMore` rather than by comparing numbers here — so the envelope's derived
 // `hasMore` and the contract's cannot disagree.
+//
+// AND `offset` IS ACCEPTED AS WELL AS `cursor` (WIN-257 T8), WHICH IS A DECISION
+// RATHER THAN A CONVENIENCE. The dashboard screen this route serves is
+// page-numbered: its controls are `?page=&pageSize=`, its Previous/Next links are
+// built from a page NUMBER, and it prints "Page 3 of 12". The Prisma query it
+// replaces was `skip`/`take` beside a `count`. None of that is expressible
+// through a cursor a caller is told is opaque and may only echo back, so cutting
+// the screen over to cursors alone would have been a silent regression of it:
+// deep links to a page would stop working and only forward walking would remain.
+//
+// The honest reading is that this collection was never really cursor-paged. It
+// publishes `total`, and a collection that tells a caller how many rows exist has
+// already committed to random access; its "opaque" cursor is
+// `base64url({"offset":N})` and nothing else. The offset is therefore published
+// in the one spelling a caller can construct.
+//
+// THE TWO SPELLINGS MAY NEVER DISAGREE, so sending BOTH is REFUSED
+// (`query.offset`, code `conflict`) rather than resolved by a precedence rule
+// nobody would remember. That is the argument `collectionEnvelope` already makes
+// for deriving `hasMore` from `nextCursor` instead of accepting both: two fields
+// carrying one fact can contradict each other, and the fix is to make the
+// contradiction unrepresentable.
 
 import { Controller, Get, Inject, Param, Query, Req } from "@nestjs/common";
 
@@ -116,6 +138,8 @@ export interface EndUserWireQuery {
   readonly search?: string;
   readonly limit?: string;
   readonly cursor?: string;
+  /** WIN-257 T8. Never together with `cursor`; see the banner. */
+  readonly offset?: string;
 }
 
 /** A single-valued, optional string parameter. A repeated one is refused. */
@@ -174,6 +198,50 @@ export function offsetInCursor(cursor: string | null, violations: FieldViolation
   return offset;
 }
 
+const OFFSET = /^(?:0|[1-9][0-9]{0,9})$/u;
+
+/**
+ * The `offset` parameter, in the one spelling a caller can construct.
+ *
+ * See the banner for why it exists at all. It is refused ALONGSIDE `cursor`
+ * rather than merged with it, because the two are one fact and a precedence rule
+ * would let a self-contradicting request succeed with an answer nobody asked for.
+ */
+export function explicitOffset(
+  query: QueryInput,
+  cursorPresent: boolean,
+  violations: FieldViolation[],
+): number | null {
+  const raw = optional(query, "offset", violations);
+  if (raw === null) return null;
+  if (cursorPresent) {
+    violations.push({
+      field: "query.offset",
+      code: "conflict",
+      message: "Send offset or cursor, never both: they address the same position.",
+    });
+    return null;
+  }
+  if (!OFFSET.test(raw)) {
+    violations.push({
+      field: "query.offset",
+      code: "not_an_integer",
+      message: "offset must be a whole number of rows, zero or more.",
+    });
+    return null;
+  }
+  const offset = Number(raw);
+  if (!Number.isSafeInteger(offset)) {
+    violations.push({
+      field: "query.offset",
+      code: "out_of_range",
+      message: "offset must be a whole number of rows, zero or more.",
+    });
+    return null;
+  }
+  return offset;
+}
+
 export const endUserQueryValidator = (input: unknown): Result<EndUserQuery> => {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     return err(
@@ -189,7 +257,8 @@ export const endUserQueryValidator = (input: unknown): Result<EndUserQuery> => {
   const violations: FieldViolation[] = page.ok ? [] : [...page.error.fields];
   const status = optional(query, "status", violations);
   const search = optional(query, "search", violations);
-  const offset = page.ok ? offsetInCursor(page.value.cursor, violations) : 0;
+  const explicit = explicitOffset(query, query["cursor"] !== undefined, violations);
+  const offset = explicit ?? (page.ok ? offsetInCursor(page.value.cursor, violations) : 0);
   if (violations.length > 0) return err(requestInvalid(violations));
   if (!page.ok) return err(page.error);
   return ok({ offset, limit: page.value.limit, status, search });

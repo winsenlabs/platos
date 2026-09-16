@@ -28,8 +28,11 @@ import { after, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 
-import { check } from "./arch-boundaries.mjs";
+import { check, V1_SCAN_ROOTS } from "./arch-boundaries.mjs";
 import { ALL_RULES } from "./boundary-rules.mjs";
+
+/** This repository, for the cases that scan the REAL tree rather than a fixture. */
+const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
 
 const tempRoots = [];
 after(() => {
@@ -338,23 +341,101 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
   });
 
   it("(k) webapp-no-prisma: the webapp must not import Prisma directly", () => {
-    // Proven by pointing an explicit scan at a webapp-shaped fixture; the
-    // default scan excludes legacy apps/webapp during the strangler window.
     const bad = fixture({
       "apps/webapp/app/routes/loader.ts": `import { PrismaClient } from "@prisma/client";\nexport const db = new PrismaClient();\n`,
     });
+    assert.ok(has(check(bad), "webapp-no-prisma"), "webapp importing @prisma must fire");
+
+    // THE SPECIFIER THE WEBAPP ACTUALLY WROTE, AND THE ONE THIS RULE USED TO
+    // MISS. Until WIN-257 T8 the `to` pattern's only `node_modules/` branch was
+    // `@prisma/`; this checker resolves a bare specifier to
+    // `node_modules/<specifier>`, so `@platos/tenancy-database` — the generated
+    // client `app/services/database.server.ts` imported for fifteen live Prisma
+    // operations — resolved to a path the rule could not match. Delete the
+    // `TENANCY_DATABASE_SOURCE` reuse in `boundary-rules.mjs` and this case is
+    // the one that goes red.
+    const generatedClient = fixture({
+      "apps/webapp/app/services/database.server.ts":
+        `import { PrismaClient } from "@platos/tenancy-database";\nexport const database = new PrismaClient();\n`,
+    });
     assert.ok(
-      has(check(bad, { scanRoots: ["apps/webapp"] }), "webapp-no-prisma"),
-      "webapp importing @prisma must fire"
+      has(check(generatedClient), "webapp-no-prisma"),
+      "webapp importing the GENERATED workspace client must fire — this is the import the rule was written for",
     );
+
+    // An enum-only import is still an import: it is what kept the generated
+    // client in the dashboard's production dependency closure.
+    const enumsOnly = fixture({
+      "apps/webapp/app/routes/memories.tsx":
+        `import { MEMORY_KINDS } from "@platos/tenancy-database";\nexport const k = MEMORY_KINDS;\n`,
+    });
+    assert.ok(has(check(enumsOnly), "webapp-no-prisma"), "an enum-only import of the client must fire");
 
     const good = fixture({
       "apps/webapp/app/routes/loader.ts": `export async function loader() { return fetch("/api/v1/threads"); }\n`,
     });
+    assert.ok(!has(check(good), "webapp-no-prisma"), "webapp calling core-api over HTTP must pass");
+  });
+
+  it("(k) webapp-no-prisma binds over the REAL apps/webapp: a planted import turns the default scan red", () => {
+    // A LIVE NEGATIVE CONTROL, NOT A FIXTURE. Every case above builds a tree in
+    // os.tmpdir(), and a rule can pass all of them while scanning no file that
+    // could ever contain a violation — which is exactly what happened here:
+    // `DEFAULT_SCAN_ROOTS` excluded `apps/webapp` for the whole strangler window,
+    // so the fixtures were green while ten route modules ran Prisma. A fixture
+    // proves the PATTERN; only the real tree proves the SCAN.
+    //
+    // So this plants a file in the repository's own `apps/webapp/app`, runs the
+    // DEFAULT scan — no `scanRoots` argument, the same call
+    // `pnpm audit:arch-boundaries` makes — and requires it to go red, then
+    // removes the file and requires it to go green. The `finally` removes the
+    // plant even if an assertion throws, and the path is one no build output
+    // could collide with.
+    const planted = join(repositoryRoot, "apps/webapp/app/services/__arch-negative-control.server.ts");
     assert.ok(
-      !has(check(good, { scanRoots: ["apps/webapp"] }), "webapp-no-prisma"),
-      "webapp calling core-api over HTTP must pass"
+      !existsSync(planted),
+      "the negative control's path must not already exist in the tree",
     );
+    let withPlant;
+    try {
+      writeFileSync(
+        planted,
+        "// Temporary negative control for scripts/arch/arch-boundaries.test.mjs.\n" +
+          'import { PrismaClient } from "@platos/tenancy-database";\n' +
+          "export const planted = new PrismaClient();\n",
+        "utf8",
+      );
+      withPlant = check(repositoryRoot);
+    } finally {
+      rmSync(planted, { force: true });
+    }
+    const fired = withPlant.violations.filter(
+      (violation) => violation.rule === "webapp-no-prisma",
+    );
+    assert.ok(
+      fired.length > 0,
+      "a Prisma import planted in the real apps/webapp/app must fire webapp-no-prisma under the DEFAULT scan; " +
+        "if it does not, either the rule's pattern or the scan root is wrong",
+    );
+    assert.ok(
+      fired.some((violation) => violation.from.endsWith("__arch-negative-control.server.ts")),
+      "the violation must name the planted file, not some other one",
+    );
+
+    // AND GREEN AGAIN, which is the half that makes the control a control: a
+    // scan that were red for an unrelated reason would satisfy the assertion
+    // above on its own.
+    const clean = check(repositoryRoot);
+    assert.equal(
+      clean.violations.filter((violation) => violation.rule === "webapp-no-prisma").length,
+      0,
+      "with the plant removed the real tree must hold no webapp-no-prisma violation",
+    );
+    assert.ok(
+      clean.scanRoots.includes("apps/webapp"),
+      "the default scan must include apps/webapp, or every case above is a fixture nobody applies",
+    );
+    assert.ok(!existsSync(planted), "the negative control must leave nothing behind");
   });
 
   it("(k2) transport-reaches-no-store: the transport tree reaches no store, by any route", () => {
@@ -413,7 +494,11 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
   });
 
   it("the real repository scan is clean and non-vacuous", () => {
-    const result = check(new URL("../..", import.meta.url).pathname);
+    // OVER THE V1 LAYOUT, EXPLICITLY. `DEFAULT_SCAN_ROOTS` gained `apps/webapp`
+    // with WIN-257 T8 so the migration lock binds over the tree it is named
+    // after; the census below counts V1 and must not move because a legacy tree
+    // joined the scan. The webapp's own clean scan is the case after this one.
+    const result = check(new URL("../..", import.meta.url).pathname, { scanRoots: [...V1_SCAN_ROOTS] });
     // M2 INTEGRATION DELTA — 104 -> 948. Twelve adopting slices make disjoint
     // projects real, so the census is the sum of all of them, not any one
     // branch's pin:
@@ -1432,7 +1517,18 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // each lane measured its own delta against 1701, and only the merge can say
     // what the four together produce. `scripts/arch/env-access.mjs`'s
     // EXPECTED_FILE_COUNT is the second independent copy and reads 1760 too.
-    assert.equal(result.fileCount, 1760, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 1761, "the generated V1 source census must stay exact");
+    // AND THE CENSUS COUNTS V1, NOT WHATEVER THE DEFAULT SCAN HAPPENS TO BE.
+    // WIN-257 T8 added `apps/webapp` to `DEFAULT_SCAN_ROOTS` so the migration
+    // lock binds over the tree it names, and the first thing that did was move
+    // this figure by 158 — a number about the dashboard, arriving inside a
+    // number that means "how big is V1". The two are pinned separately now, and
+    // `result` above is taken over `V1_SCAN_ROOTS` for exactly that reason.
+    assert.deepEqual(
+      [...V1_SCAN_ROOTS],
+      ["packages/kernel", "packages/contexts", "packages/adapters", "apps/core-api", "apps/mcp-stdio"],
+      "the V1 census roots are the V1 layout; a legacy tree added here would corrupt the figure above",
+    );
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1537,7 +1633,20 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       6 + 7 + 7 + 1 +
       // WIN-271 (M4.5), D10: adapters 18 -- `channel-discord`'s thirteen modules and
       // five suites, a new directory and so no placeholder to net against.
-      18);
+      18 +
+      // THE EVIDENCE REGISTERS (2026-09-15), 1760 -> 1761. ONE file inside this
+      // scan: `apps/core-api/src/composition/transport-differential.integration.
+      // test.ts`, the V1 REST transport twin-run against the webapp it replaces.
+      // Its sibling halves land OUTSIDE deliberately — the harness registry, the
+      // transcript and their controls under `tests/`, and (until WIN-257 T8
+      // deleted it) the oracle driver in `apps/webapp`.
+      //
+      // FOUND STALE BY WIN-257 T8, not by the lane that caused it: this flat pin
+      // still read 1760 while `scripts/arch/env-access.mjs`'s
+      // `EXPECTED_FILE_COUNT` — the second independent copy, and the one whose
+      // banner already narrated "1760 + 1 = 1761" — read 1761. Two copies of one
+      // figure disagreed and the suite had been red on the branch since.
+      1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
@@ -1703,6 +1812,17 @@ describe("(h) tenancy-prisma-only reaches the workspace path a resolver actually
         result.violations.filter((v) => v.rule === "tenancy-prisma-only").map((v) => v.from),
       ),
     ].sort();
+    // WIN-257 T8 LANDED, SO THE ANSWER IS NOW ZERO — which is the figure this
+    // clause is measured by, stated rather than left implied by an empty
+    // `deepEqual`. Two empty lists compare equal for free; asserting the count
+    // separately is what stops this case reading as a pass when the walk below
+    // has silently stopped finding files.
+    assert.equal(
+      offenders.length,
+      0,
+      `apps/webapp/app still imports the canonical client from: ${offenders.join(", ")}`,
+    );
+    assert.ok(result.fileCount > 50, "the walk must really have scanned the webapp tree");
 
     const importers = [];
     const walk = (dir) => {

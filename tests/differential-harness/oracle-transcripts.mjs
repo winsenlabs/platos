@@ -91,6 +91,121 @@ export const ORACLE_SOURCES = Object.freeze([
   "internal-packages/tenancy-database/src/auth.ts",
 ]);
 
+/**
+ * THE EXECUTABLE THE ORACLE WAS. Deleted by WIN-257 T8.
+ *
+ * `apps/webapp/test/differential-oracle.mts` is the one process that could ever
+ * ask the oracle a question: it imports the real route modules and the real
+ * `auth.server` exports and runs them against a real PostgreSQL. While it exists
+ * the recording can be re-made, and a source that has moved since must be
+ * re-recorded (that is `transcriptFailures`'s digest rule). Once it is gone there
+ * is nothing left to re-record FROM, and the transcript is the only surviving
+ * account of what those files answered.
+ *
+ * Which is why its presence — not a flag, not a date — is what switches this
+ * module between its two lives.
+ */
+export const ORACLE_DRIVER = "apps/webapp/test/differential-oracle.mts";
+
+/**
+ * THE ORACLE'S OWN MODULES, the two T8 deletes outright.
+ *
+ * `database.server.ts` is the `PrismaClient`; `projectAccess.server.ts` is the
+ * visibility rule that existed only as a `Prisma.ProjectWhereInput`. After the
+ * cutover neither may come back, because either one coming back would mean the
+ * webapp holds a database client again and the transcript's claim to be the
+ * record of something that no longer exists would be false.
+ */
+export const ORACLE_OWN_MODULES = Object.freeze([
+  "apps/webapp/app/services/database.server.ts",
+  "apps/webapp/app/services/projectAccess.server.ts",
+]);
+
+/**
+ * Whether the oracle can still be asked a question.
+ *
+ * TRUE while the driver exists — the transcript is a RECORDING that must match
+ * what the sources answer today, and a drifted source fails until it is
+ * re-recorded. FALSE once T8 has deleted it — the transcript is the FROZEN
+ * RECORD, and what must be checked instead is that it can never be contradicted:
+ * see `retirementFailures`.
+ */
+export function oracleIsLive(root) {
+  return existsSync(join(root, ORACLE_DRIVER));
+}
+
+/**
+ * A surviving oracle source that could still reach a database.
+ *
+ * THE POST-CUTOVER GATE, AND IT IS NOT A RELAXATION OF THE DIGEST RULE — it is a
+ * STRONGER join. While the oracle is live the question is "has this file moved
+ * since we recorded it?", which a digest answers. Once it is deleted that
+ * question has no answer anybody can act on: `auth.server.ts` still exists and is
+ * SUPPOSED to have changed, because T8 rewrote it to call core-api. Pinning its
+ * digest forever would freeze a file the cutover exists to change; dropping the
+ * check entirely would leave the transcript claiming to record something nobody
+ * checks any more.
+ *
+ * So the claim that is checked is the one that actually matters afterwards: THE
+ * ORACLE IS UNRECOVERABLE. Its two own modules are gone, and no surviving source
+ * imports the canonical client or calls a Prisma delegate. If any of that stopped
+ * being true, the webapp would hold a database client again — and the transcript
+ * would be the frozen record of an oracle that had come back to life, which is
+ * the one state in which believing it is wrong.
+ *
+ * It is a byte scan and not an import graph on purpose: it runs with no install,
+ * on every CI run, beside the other transcript controls. `webapp-no-prisma`
+ * (scripts/arch) is the structural enforcement and this is the join the
+ * transcript makes for itself, so neither stands alone.
+ */
+export function retirementFailures(root) {
+  const failures = [];
+  for (const path of ORACLE_OWN_MODULES) {
+    if (existsSync(join(root, path))) {
+      failures.push(
+        `${path} exists again. The transcript is the frozen record of an oracle that was deleted; an oracle that ` +
+          "came back cannot be recorded by a file nobody re-runs",
+      );
+    }
+  }
+  for (const path of ORACLE_SOURCES) {
+    if (ORACLE_OWN_MODULES.includes(path)) continue;
+    if (!path.startsWith("apps/webapp/")) continue;
+    const absolute = join(root, path);
+    if (!existsSync(absolute)) continue;
+    for (const finding of oracleRevivalsIn(readFileSync(absolute, "utf8"))) {
+      failures.push(`${path} ${finding}; the oracle this transcript recorded is back`);
+    }
+  }
+  return failures;
+}
+
+/**
+ * Ways one file could be an oracle again, scanned LINE BY LINE with comment
+ * lines skipped.
+ *
+ * THE COMMENTS ARE THE REASON THIS IS NOT A WHOLE-FILE REGEX. Every file T8
+ * rewrote explains what it used to do, in prose, quoting the delegate calls it
+ * deleted — `auth.server.ts` names `database.environment.findFirst` in its own
+ * banner. A scan that read those would report the explanation of the cutover as
+ * evidence the cutover was undone, which is the kind of false positive that gets
+ * a gate switched off.
+ */
+export function oracleRevivalsIn(text) {
+  const found = [];
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    if (line.startsWith("//") || line.startsWith("*") || line.startsWith("/*")) continue;
+    if (/from\s+["']@platos\/tenancy-database["']/u.test(line) || /require\(["']@platos\/tenancy-database["']\)/u.test(line)) {
+      found.push("imports the canonical client again");
+    }
+    if (/(?:^|[^A-Za-z0-9_$.])(?:database|transaction)\.[A-Za-z$][A-Za-z0-9_]*\s*[.(]/u.test(line)) {
+      found.push("calls a Prisma delegate again");
+    }
+  }
+  return [...new Set(found)];
+}
+
 function digestOf(root, path) {
   const absolute = join(root, path);
   if (!existsSync(absolute)) return { path, present: false, sha256: null };
@@ -343,6 +458,10 @@ export function transcriptFailures(root, artifact = readTranscripts(root), scena
         `${String(ORACLE_SOURCES.length)}; re-record it`,
     );
   }
+  // WHICH HALF OF THE TRANSCRIPT'S LIFE THIS TREE IS IN. See `oracleIsLive`: the
+  // driver's presence is the switch, because the driver is the only thing that
+  // could ever re-record.
+  const live = oracleIsLive(root);
   let deleted = 0;
   for (const current of oracleSourceDigests(root)) {
     const before = recordedSources.get(current.path);
@@ -359,7 +478,13 @@ export function transcriptFailures(root, artifact = readTranscripts(root), scena
     }
     if (before.present === false) {
       failures.push(`${current.path} exists again but the transcript records it as deleted; re-record the transcript`);
-    } else if (before.sha256 !== current.sha256) {
+    } else if (before.sha256 !== current.sha256 && live) {
+      // ONLY WHILE THE ORACLE CAN ANSWER. Afterwards a moved digest is not a
+      // failure and not an excuse either: `retirementFailures` replaces it with
+      // the claim that survives — that the oracle cannot come back. Half the
+      // pinned sources are files T8 REWRITES (`auth.server.ts`, five routes), so
+      // keeping the digest rule here would freeze exactly the files the cutover
+      // exists to change.
       failures.push(
         `${current.path} has changed since the transcript was recorded (${String(before.sha256)} -> ${String(current.sha256)}); ` +
           "re-record with PLATOS_DIFFERENTIAL_RECORD=1 and read the diff, or the differential is comparing the " +
@@ -367,6 +492,7 @@ export function transcriptFailures(root, artifact = readTranscripts(root), scena
       );
     }
   }
+  if (!live) failures.push(...retirementFailures(root));
 
   for (const id of scenarioIds) {
     if (!(id in (artifact.steps ?? {}))) {
@@ -376,5 +502,5 @@ export function transcriptFailures(root, artifact = readTranscripts(root), scena
   for (const value of credentialShapedValues(artifact)) {
     failures.push(`${TRANSCRIPT_PATH} ${value}; a committed transcript may carry no credential`);
   }
-  return { failures, deletedSources: deleted };
+  return { failures, deletedSources: deleted, oracleLive: live };
 }

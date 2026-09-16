@@ -459,13 +459,49 @@ export const RULES = [
   },
 
   // (k) M2.2 — webapp may not touch Prisma (ADR M0.3 §5.1 rule (k)).
+  //
+  // THIS RULE WAS WRITTEN TO CATCH THE WEBAPP'S IMPORT AND COULD NOT MATCH IT.
+  // WIN-257 T8 measured it: the webapp wrote `import { PrismaClient } from
+  // "@platos/tenancy-database"`, `arch-boundaries.mjs` resolves a bare specifier
+  // to `node_modules/<specifier>` (`resolveTargetVirtualPath`), and the `to`
+  // pattern's only `node_modules/` branch was `@prisma/`. So the resolved target
+  // was `node_modules/@platos/tenancy-database`, the pattern's other branch
+  // wanted a workspace path, and the ONE rule named after this migration matched
+  // nothing — while fifteen Prisma operations ran in ten route modules. Forcing
+  // the scan at apps/webapp/app before the fix printed `0 webapp-no-prisma
+  // violations` against a tree full of them.
+  //
+  // IT NOW REUSES `TENANCY_DATABASE_SOURCE`, which is the same list of
+  // specifiers `tenancy-prisma-only` bans and already carries BOTH spellings —
+  // the `node_modules/` form this checker resolves to and the workspace form
+  // dependency-cruiser resolves to — with the workspace half derived from
+  // `TENANCY_DATABASE_HOME_PATH` rather than typed again. A second hand-written
+  // pattern beside it would be a second thing to keep in step, and the one that
+  // went stale would be this one, exactly as it just did.
+  //
+  // THE SCAN ROOT IS THE OTHER HALF, and a rule nothing scans is a rule that
+  // cannot fire however it is written: `DEFAULT_SCAN_ROOTS` in
+  // `arch-boundaries.mjs` excluded `apps/webapp` until T8 and now includes it.
+  //
+  // `apps/webapp/test/` IS EXCLUDED, DELIBERATELY AND NARROWLY. The persisted-
+  // state gate drives a DEPLOYED candidate over HTTP and then reads the rows back
+  // out of PostgreSQL; that read-back is the half that joins to something the
+  // candidate does not control, and it needs a client. It lives in
+  // `tests/persisted-state-gate/read-back.ts` and the suite under `apps/webapp/
+  // test/` imports it. What ships is `apps/webapp/app` and the server entry
+  // beside it, and nothing there may hold a client — which is what the live
+  // negative control in `arch-boundaries.test.mjs` plants and proves.
   {
     id: "webapp-no-prisma",
     severity: "error",
     comment: "apps/webapp must reach data through core-api query ports, never Prisma directly (the M2.2 migration lock).",
-    from: { path: "^apps/webapp/" },
+    from: { path: "^apps/webapp/", pathNot: "^apps/webapp/test/" },
     to: {
-      path: "^(node_modules/@prisma/|internal-packages/(database|tenancy-database)/)",
+      // `TENANCY_DATABASE_SOURCE` plus the LEGACY `@platos/database` workspace,
+      // which the pattern this replaces also named. That package generates the
+      // other Prisma client in this repository; dropping it here would have made
+      // the fix a widening in one direction and a narrowing in another.
+      path: `^(${TENANCY_DATABASE_SOURCE}|node_modules/@platos/database(?:/|$)|internal-packages/database(?:/|$))`,
     },
   },
 

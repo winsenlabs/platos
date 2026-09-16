@@ -13,8 +13,39 @@ const { requireEnvironmentScope } = vi.hoisted(() => ({
 
 vi.mock("../app/services/auth.server", () => ({ requireEnvironmentScope }));
 vi.mock("~/env.server", () => ({
-  env: { PLATOS_AGENT_API_URL: "http://agent.internal:3100", PLATOS_INTERNAL_AUTH_TOKEN: "internal" },
+  env: {
+    NODE_ENV: "test",
+    PLATOS_AGENT_API_URL: "http://agent.internal:3100",
+    // WIN-257 T8 — the two MINTS on these screens now dispatch to core-api while
+    // the config, the ACL, the listings and the revocations stay on the agent.
+    // Two upstreams in one suite is the per-route cutover (D11) made visible: the
+    // assertions below name which host each operation went to.
+    PLATOS_CORE_API_URL: "http://core.internal:3030",
+    PLATOS_INTERNAL_AUTH_TOKEN: "internal",
+  },
 }));
+
+/** A V1 mint, in the envelope `itemEnvelope` writes. */
+function mintEnvelope(overrides: Record<string, unknown>): string {
+  return JSON.stringify({
+    data: {
+      tokenId: "token-1",
+      token: "plt_mcp_once",
+      label: "CI",
+      permissions: ["agents.list"],
+      tier: "scope",
+      expiresAt: "2026-12-01T00:00:00.000Z",
+      createdAt: "2026-08-24T12:00:00.000Z",
+      ...overrides,
+    },
+    meta: { contractVersion: "M0.1" },
+  });
+}
+
+/** A V1 refusal, in the envelope `writeFailure` writes. */
+function faultEnvelope(code: string, body: string): string {
+  return JSON.stringify({ error: { code, title: "unavailable", body, errorId: "e", traceRef: "t", version: "1" } });
+}
 
 import {
   action as entityAction,
@@ -91,7 +122,7 @@ describe("MCP management route read-back", () => {
 
   it("reveals a Platform token only in create action state and reloads metadata-only inventory", async () => {
     vi.mocked(fetch)
-      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "token-1", token: "plt_mcp_once", name: "CI" }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(mintEnvelope({}), { status: 201 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ tokens: [{ id: "token-1", name: "CI" }], total: 1, limit: 25, offset: 0 }), { status: 200 }));
     const form = new FormData();
     form.set("intent", "create");
@@ -102,8 +133,22 @@ describe("MCP management route read-back", () => {
 
     const actionResponse = await platformAction(routeArgs(new Request("https://dashboard.example/mcps", { method: "POST", body: form })));
     const actionPayload = await actionResponse.json();
-    expect(actionPayload).toMatchObject({ ok: true, result: { id: "token-1", plaintextSecret: "plt_mcp_once" } });
+    expect(actionPayload).toMatchObject({ ok: true, result: { tokenId: "token-1", plaintextSecret: "plt_mcp_once" } });
     expect(actionPayload.result).not.toHaveProperty("token");
+    // THE MINT WENT TO CORE-API, WITH THE KEY ITS POLICY DEMANDS. `http/
+    // idempotency-policy.ts` marks this operation `required`: a replayed form
+    // submission must not leave a second live credential nobody holds.
+    const [mintUrl, mintInit] = vi.mocked(fetch).mock.calls[0] ?? [];
+    expect(String(mintUrl)).toBe("http://core.internal:3030/mcp/platform/tokens");
+    expect((mintInit as RequestInit).method).toBe("POST");
+    expect((mintInit as any).headers["Idempotency-Key"]).toMatch(/^[A-Za-z0-9_.:-]{1,255}$/u);
+    expect(JSON.parse(String((mintInit as RequestInit).body))).toMatchObject({
+      environmentId: "env-1",
+      name: "CI",
+      tier: "scope",
+    });
+    // AND CARRIED THE OPERATOR'S COOKIE, NOT THE AGENT'S SHARED SECRET.
+    expect((mintInit as any).headers["X-Platos-Internal-Auth"]).toBeUndefined();
 
     const loaderResponse = await platformLoader(routeArgs(new Request("https://dashboard.example/mcps?page=1&pageSize=25")));
     const loaderPayload = await loaderResponse.json();
@@ -140,7 +185,7 @@ describe("MCP management route read-back", () => {
 
   it("creates an Entity bearer once and reads back only persisted PAT metadata", async () => {
     vi.mocked(fetch)
-      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "pat-1", raw: "plt_ent_once", label: "CI", revokedAt: null }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(mintEnvelope({ tokenId: "pat-1", token: "plt_ent_once", tier: null }), { status: 201 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ entityId: "acme", config: { enabled: true } }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
         tokens: [{ id: "pat-1", label: "CI", revokedAt: null }],
@@ -159,9 +204,23 @@ describe("MCP management route read-back", () => {
     const actionPayload = await actionResponse.json();
     expect(actionPayload).toMatchObject({
       ok: true,
-      result: { id: "pat-1", label: "CI", plaintextSecret: "plt_ent_once" },
+      result: { tokenId: "pat-1", label: "CI", plaintextSecret: "plt_ent_once" },
     });
+    // THE FIELD CHANGED NAME ON THE WIRE AND NOT ON THE SCREEN. The agent handler
+    // answered `{ raw }`; the V1 mint answers `{ token }` because that is what
+    // both legacy handlers returned and what every existing client reads
+    // (`token-mint.ts`). `plaintextSecret` is what this surface has always
+    // rendered, so the rename stops at the seam.
     expect(actionPayload.result).not.toHaveProperty("raw");
+    expect(actionPayload.result).not.toHaveProperty("token");
+    const [mintUrl, mintInit] = vi.mocked(fetch).mock.calls[0] ?? [];
+    expect(String(mintUrl)).toBe("http://core.internal:3030/mcp/entity/acme/tokens");
+    expect((mintInit as any).headers["Idempotency-Key"]).toMatch(/^[A-Za-z0-9_.:-]{1,255}$/u);
+    expect(JSON.parse(String((mintInit as RequestInit).body))).toMatchObject({
+      environmentId: "env-1",
+      label: "CI",
+      ttlSeconds: 3600,
+    });
 
     const loaderResponse = await entityLoader(routeArgs(new Request("https://dashboard.example/mcps/acme?page=1&pageSize=25"), "acme"));
     const loaderSerialized = JSON.stringify(await loaderResponse.json());
@@ -201,28 +260,34 @@ describe("MCP management route read-back", () => {
   it.each([
     ["Platform", platformAction, undefined, { intent: "create", name: "CI", permissions: "agents.list", tier: "scope", ttlSeconds: "3600" }],
     ["Entity", entityAction, "acme", { intent: "token-create", label: "CI", scopes: "mcp:tools", expiresIn: "3600" }],
-  ] as const)("keeps %s Agent failures stable and secret-safe", async (_label, action, entityId, fields) => {
-    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({
-      code: "AGENT_UNAVAILABLE",
-      message: "The Agent service is unavailable",
-      details: { credential: "SENTINEL_MCP_UPSTREAM_SECRET" },
-    }), { status: 503 }));
+  ] as const)("keeps %s mint failures stable and secret-safe", async (_label, action, entityId, fields) => {
+    // THE REFUSAL IS CORE-API'S NOW, AND IT KEEPS ITS CODE AND ITS STATUS.
+    // `m4Mutation.server.ts` names `CoreApiError` explicitly for this: the
+    // fallback it would otherwise take renders `error.message`, which for a V1
+    // failure is another deployable's prose written for an operator reading core's
+    // logs.
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(faultEnvelope("TENANCY_ENVIRONMENT_FORBIDDEN", "SENTINEL_MCP_UPSTREAM_SECRET"), { status: 503 }),
+    );
     const form = new FormData();
     for (const [key, value] of Object.entries(fields)) form.set(key, value);
 
     const response = await action(routeArgs(new Request("https://dashboard.example/mcps", { method: "POST", body: form }), entityId));
     const serialized = JSON.stringify(await response.json());
     expect(response.status).toBe(503);
-    expect(serialized).toContain("AGENT_UNAVAILABLE");
+    expect(serialized).toContain("TENANCY_ENVIRONMENT_FORBIDDEN");
     expect(serialized).not.toContain("SENTINEL_MCP_UPSTREAM_SECRET");
     expect(serialized).not.toContain("internal");
   });
 
   it.each([
-    ["Platform", platformAction, undefined, { intent: "create", name: "CI", permissions: "agents.list", tier: "scope", ttlSeconds: "3600" }, { id: "token-1", token: "plt_mcp_once", tokenHash: "SENTINEL_TOKEN_HASH" }],
-    ["Entity", entityAction, "acme", { intent: "token-create", label: "CI", scopes: "mcp:tools", expiresIn: "3600" }, { id: "pat-1", raw: "plt_ent_once", tokenHash: "SENTINEL_TOKEN_HASH" }],
+    ["Platform", platformAction, undefined, { intent: "create", name: "CI", permissions: "agents.list", tier: "scope", ttlSeconds: "3600" }, { tokenHash: "SENTINEL_TOKEN_HASH" }],
+    ["Entity", entityAction, "acme", { intent: "token-create", label: "CI", scopes: "mcp:tools", expiresIn: "3600" }, { tokenId: "pat-1", token: "plt_ent_once", tokenHash: "SENTINEL_TOKEN_HASH" }],
   ] as const)("fails closed when the %s create response contains persisted secret material", async (_label, action, entityId, fields, payload) => {
-    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify(payload), { status: 201 }));
+    // A SECOND SECRET ON A MINT RESPONSE IS STILL REFUSED. `token` is split off
+    // by name and everything left is swept by `assertCredentialSafePayload`; this
+    // is what stops the published field list quietly growing a `tokenHash`.
+    vi.mocked(fetch).mockResolvedValue(new Response(mintEnvelope(payload), { status: 201 }));
     const form = new FormData();
     for (const [key, value] of Object.entries(fields)) form.set(key, value);
 

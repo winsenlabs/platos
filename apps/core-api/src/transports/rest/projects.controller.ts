@@ -39,6 +39,14 @@ import { raise } from "./fault.js";
 import { instant, nullableInstant } from "./resources.js";
 import { authenticateOperator, requireTenancy, type InboundOperatorRequest } from "./operator.js";
 
+/** An environment as a switcher renders it: enough to link, nothing more. */
+export interface EnvironmentSummaryResource {
+  readonly id: string;
+  readonly slug: string;
+  readonly name: string;
+  readonly createdAt: string;
+}
+
 export interface ProjectResource {
   readonly id: string;
   readonly organizationId: string;
@@ -48,17 +56,28 @@ export interface ProjectResource {
   readonly createdAt: string;
   /** `organization-admin` or `project-membership`. See the banner. */
   readonly through: string;
+  /**
+   * The project's unarchived environments, oldest first (WIN-257 T8).
+   *
+   * A LIST THAT STOPPED AT THE PROJECT WOULD BE A LIST NOBODY COULD ACT ON. The
+   * two dashboard screens this route serves both CHOOSE AN ENVIRONMENT — the
+   * landing redirect takes the first, the organization page links every one —
+   * and the Prisma query they used carried this exact nested select. Publishing
+   * the project without it leaves a caller one round trip per project short of a
+   * link, or leaves it a reason to keep a database client, which is what T8 is
+   * removing.
+   *
+   * It is a SUMMARY, not an environment resource. Everything an operator can DO
+   * inside an environment still goes through the authorization
+   * `GET /environments/by-slugs` mints.
+   */
+  readonly environments: readonly EnvironmentSummaryResource[];
 }
 
 /** What `createProject` commits, all three rows of it. */
 export interface CreatedProjectResource {
   readonly project: ProjectResource;
-  readonly environment: {
-    readonly id: string;
-    readonly slug: string;
-    readonly name: string;
-    readonly createdAt: string;
-  };
+  readonly environment: EnvironmentSummaryResource;
   readonly membership: { readonly id: string; readonly role: string };
 }
 
@@ -84,6 +103,15 @@ export const createProjectValidator = (input: unknown): Result<CreateProjectBody
 
 const CREATE_PROJECT_PIPE = new DomainValidationPipe(createProjectValidator);
 
+export function environmentSummaryResource(row: {
+  readonly id: string;
+  readonly slug: string;
+  readonly name: string;
+  readonly createdAt: Date;
+}): EnvironmentSummaryResource {
+  return { id: row.id, slug: row.slug, name: row.name, createdAt: instant(row.createdAt) };
+}
+
 export function projectResource(row: OperatorProject): ProjectResource {
   return {
     id: row.project.id,
@@ -93,6 +121,7 @@ export function projectResource(row: OperatorProject): ProjectResource {
     archivedAt: nullableInstant(row.project.archivedAt),
     createdAt: instant(row.project.createdAt),
     through: row.through,
+    environments: row.environments.map(environmentSummaryResource),
   };
 }
 
@@ -104,13 +133,17 @@ function createdProjectResource(created: CreatedProject): CreatedProjectResource
     // even for an organization admin, who would also have seen it the other way.
     // Reporting the grant the operation MADE, rather than the widest one that
     // happens to apply, is what keeps this field a fact rather than a guess.
-    project: projectResource({ project: created.project, through: "project-membership" }),
-    environment: {
-      id: created.environment.id,
-      slug: created.environment.slug,
-      name: created.environment.name,
-      createdAt: instant(created.environment.createdAt),
-    },
+    // THE PROJECT'S `environments` IS THE ONE ROW JUST WRITTEN, not a re-read.
+    // `createProject` commits the project and its FIRST environment in one unit
+    // of work and hands both back, so the create already knows the whole answer;
+    // going back to the store for it would be a second read that could disagree
+    // with the transaction that produced it.
+    project: projectResource({
+      project: created.project,
+      through: "project-membership",
+      environments: [created.environment],
+    }),
+    environment: environmentSummaryResource(created.environment),
     membership: { id: created.membership.id, role: created.membership.role },
   };
 }

@@ -111,6 +111,18 @@ export interface OperatorOrganization {
 export interface OperatorProject {
   readonly project: ProjectRecord;
   readonly through: ProjectVisibility;
+  /**
+   * The project's unarchived environments, oldest first (WIN-257 T8).
+   *
+   * The nested `environments` select the Remix `_app._index` and
+   * `_app.orgs.$organizationSlug._index` queries carried. Both of those screens
+   * CHOOSE AN ENVIRONMENT — one to redirect into, the other to link — so a list
+   * that stopped at the project would have left the webapp a Prisma query for
+   * the level below it, which is the coupling T8 removes.
+   * `application/operator-read-models.ts` states the filter and the order and
+   * why they are the oracle's.
+   */
+  readonly environments: readonly EnvironmentRecord[];
 }
 
 export interface ResolvedEnvironmentScope {

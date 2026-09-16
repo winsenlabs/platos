@@ -1,28 +1,38 @@
-import { OrganizationRole } from "@platos/tenancy-database";
 import { redirect, type ActionFunctionArgs } from "@remix-run/node";
 import { Form } from "@remix-run/react";
 import { requireOperator } from "~/services/auth.server";
-import { database } from "~/services/database.server";
+import { coreData, type CoreOrganization } from "~/services/coreApi.server";
+
+// FOUNDING AN ORGANIZATION (WIN-257 T8, route-075).
+//
+// `database.organization.create` with a nested `memberships: { create: { userId,
+// role: OWNER } }` — the founder's membership written in the same statement —
+// becomes `POST /api/v1/organizations`, which is `createOrganization`. The
+// invariant that made the nested write correct (an organization whose founder
+// holds no membership is one nobody can reach) is the use case's now, which is
+// where M4 keeps it.
+//
+// THE OWNER ROLE IS NOT SENT. It was `OrganizationRole.OWNER` here, imported from
+// the Prisma client; `createOrganization` decides it, because "who founded this"
+// is not a field a caller should be able to choose.
 
 const slugify = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 
 export async function action({ request }: ActionFunctionArgs) {
-  const operator = await requireOperator(request);
+  await requireOperator(request);
   const form = await request.formData();
   const name = String(form.get("name") ?? "").trim();
   const slug = slugify(String(form.get("slug") ?? name));
   if (!name || !slug) throw new Response("Name is required", { status: 400 });
 
-  let organization;
+  let organization: CoreOrganization;
   try {
-    organization = await database.organization.create({
-      data: {
-        name,
-        slug,
-        memberships: { create: { userId: operator.userId, role: OrganizationRole.OWNER } },
-      },
+    organization = await coreData<CoreOrganization>("organizations.create", {
+      request,
+      body: { name, slug },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Response) throw error;
     throw new Response("Organization creation failed", { status: 503 });
   }
   throw redirect(`/orgs/${organization.slug}/projects/new`);

@@ -2,19 +2,23 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { canonicalOperatorScope } from "../../../tests/persisted-state-gate/fixture-contract";
 
-const { database, requireEnvironmentScope } = vi.hoisted(() => ({
-  database: {
-    endUser: { findMany: vi.fn(), count: vi.fn() },
-    environmentVariable: { findMany: vi.fn(), upsert: vi.fn() },
-  },
-  requireEnvironmentScope: vi.fn(),
-}));
+// WIN-257 T8 — THESE ROUTES NO LONGER REACH A DATABASE, SO NEITHER DOES THIS
+// SUITE. The `database` double with its `endUser` and `environmentVariable`
+// delegates is gone: the end-user page is now `GET /environments/:id/end-users`
+// and the two variable screens are the V1 secrets routes, all dispatched through
+// `app/services/coreApi.server.ts`. The double is `fetch`, one level below the
+// client, so the operation table really resolves each path and the assertions
+// are about what went on the wire rather than about a `where` tree nothing
+// executed.
 
-vi.mock("~/services/database.server", () => ({ database }));
+const { requireEnvironmentScope } = vi.hoisted(() => ({ requireEnvironmentScope: vi.fn() }));
+
 vi.mock("~/services/auth.server", () => ({ requireEnvironmentScope }));
 vi.mock("~/env.server", () => ({
   env: {
+    NODE_ENV: "test",
     PLATOS_AGENT_API_URL: "http://agent.invalid",
+    PLATOS_CORE_API_URL: "http://core.invalid",
     PLATOS_INTERNAL_AUTH_TOKEN: "SENTINEL_SERVER_ONLY_OPERATOR_CREDENTIAL",
   },
 }));
@@ -28,6 +32,8 @@ const primary = canonicalOperatorScope("alpha");
 const secondary = canonicalOperatorScope("beta");
 const internalCredential = "SENTINEL_SERVER_ONLY_OPERATOR_CREDENTIAL";
 const submittedValue = "SENTINEL_SUBMITTED_PLAIN_VALUE";
+/** A value core-api could put in a fault body. It must never reach a page. */
+const upstreamSecret = "SENTINEL_CORE_API_FAULT_DETAIL";
 
 function params() {
   return {
@@ -79,69 +85,126 @@ function actionArgs(path: string, fields: Record<string, string>): ActionFunctio
   };
 }
 
+type Call = { method: string; url: URL; body: unknown; cookie: string | null };
+let calls: Call[] = [];
+let routes: Map<string, [number, unknown]>;
+
+function collection(rows: readonly unknown[], total = rows.length): unknown {
+  return { data: rows, page: { cursor: null, nextCursor: null, limit: rows.length, hasMore: false, total } };
+}
+function item(data: unknown): unknown {
+  return { data, meta: { contractVersion: "M0.1" } };
+}
+function fault(code: string): unknown {
+  return { error: { code, title: "unavailable", body: upstreamSecret, errorId: "e", traceRef: "t", version: "1" } };
+}
+function serve(method: string, pathname: string, status: number, payload: unknown) {
+  routes.set(`${method} ${pathname}`, [status, payload]);
+}
+function dispatched(method: string, pathname: string): Call | undefined {
+  return calls.find((call) => call.method === method && call.url.pathname === pathname);
+}
+
+const endUsersPath = `/api/v1/environments/${primary.environmentId}/end-users`;
+const variablesPath = `/api/v1/environments/${primary.environmentId}/variables`;
+
 beforeEach(() => {
   vi.clearAllMocks();
+  calls = [];
+  routes = new Map();
   requireEnvironmentScope.mockImplementation(authorizeFixture);
-  database.endUser.findMany.mockResolvedValue([]);
-  database.endUser.count.mockResolvedValue(0);
-  database.environmentVariable.findMany.mockResolvedValue([]);
-  database.environmentVariable.upsert.mockResolvedValue({ id: "variable-1" });
-  vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ memories: [] }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  })));
+  serve("GET", endUsersPath, 200, collection([]));
+  serve("GET", variablesPath, 200, collection([]));
+  serve("PUT", `${variablesPath}/PUBLIC_NAME`, 200, item({
+    id: "variable-1",
+    key: "PUBLIC_NAME",
+    kind: "PLAIN",
+    value: submittedValue,
+    hasSecret: false,
+    version: 1,
+    lastUpdatedBy: primary.userId,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  }));
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = new URL(String(input));
+    const method = init?.method ?? "GET";
+    const headers = (init?.headers ?? {}) as Record<string, string>;
+    if (url.origin === "http://core.invalid") {
+      calls.push({
+        method,
+        url,
+        body: init?.body === undefined ? undefined : JSON.parse(String(init.body)),
+        cookie: headers["Cookie"] ?? null,
+      });
+      const served = routes.get(`${method} ${url.pathname}`);
+      if (served === undefined) return new Response("{}", { status: 404, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify(served[1]), { status: served[0], headers: { "Content-Type": "application/json" } });
+    }
+    return new Response(JSON.stringify({ memories: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }));
 });
 
-describe("authenticated direct database route evidence", () => {
-  it("pages Organization-owned EndUsers through canonical authenticated IDs", async () => {
-    database.endUser.findMany.mockResolvedValueOnce([{
-      id: primary.endUserId,
+describe("authenticated V1-served route evidence", () => {
+  it("pages Organization-owned EndUsers through the V1 end-user route", async () => {
+    serve("GET", endUsersPath, 200, collection([{
+      endUserId: primary.endUserId,
       displayName: "Ada",
       disabledAt: null,
-      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      createdAt: "2026-01-01T00:00:00.000Z",
       identities: [{ issuer: "oidc", channel: "web", subject: "ada", verifiedAt: null, disabledAt: null }],
-    }]);
-    database.endUser.count.mockResolvedValueOnce(31);
+    }], 31));
 
     const response = await accountsLoader(loaderArgs(
       `/orgs/${primary.organizationSlug}/projects/${primary.projectSlug}/env/${primary.environmentSlug}/agent-accounts?page=2&pageSize=10&search=Ada&status=active`,
     ));
     const payload = await response.json();
 
-    expect(database.endUser.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ organizationId: primary.organizationId, disabledAt: null }),
-      take: 10,
-      skip: 10,
-    }));
-    expect(database.endUser.count).toHaveBeenCalledWith({
-      where: expect.objectContaining({ organizationId: primary.organizationId, disabledAt: null }),
+    // THE SCOPE ON THE WIRE IS THE ONE THE AUTHORIZATION RESOLVED, never a slug
+    // from the URL: the environment id is in the path and the page controls are
+    // the screen's own.
+    const call = dispatched("GET", endUsersPath);
+    expect(call).toBeDefined();
+    expect(Object.fromEntries(call!.url.searchParams)).toEqual({
+      limit: "10",
+      offset: "10",
+      status: "active",
+      search: "Ada",
     });
     expect(payload.panel.data.total).toBe(31);
     expect(payload.panel.data.pagination.hasNext).toBe(true);
     expect(JSON.stringify(payload)).not.toContain(internalCredential);
   });
 
-  it("redacts Credential-backed Environment values from the complete loader payload", async () => {
-    database.environmentVariable.findMany.mockResolvedValueOnce([
-      { id: "credential-var", key: "API_KEY", kind: "SECRET", value: "SENTINEL_STORED_CREDENTIAL", credentialId: "credential-1", version: 1, updatedAt: new Date() },
-      { id: "plain-var", key: "PUBLIC_NAME", kind: "PLAIN", value: "visible", credentialId: null, version: 1, updatedAt: new Date() },
-    ]);
+  it("refuses a malformed status filter before dispatching", async () => {
+    await expect(accountsLoader(loaderArgs(
+      `/orgs/${primary.organizationSlug}/projects/${primary.projectSlug}/env/${primary.environmentSlug}/agent-accounts?status=banana`,
+    ))).rejects.toMatchObject({ status: 400 });
+    expect(calls).toEqual([]);
+  });
+
+  it("renders the secrets context's own redaction rather than deciding one here", async () => {
+    // `value: null` with `hasSecret: true` is what a credential-backed row looks
+    // like on the V1 wire. The loader used to compute that from `credentialId`
+    // one line away from the raw column; now it renders what it is given.
+    serve("GET", variablesPath, 200, collection([
+      { id: "credential-var", key: "API_KEY", kind: "SECRET", value: null, hasSecret: true, version: 1, lastUpdatedBy: null, createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: "plain-var", key: "PUBLIC_NAME", kind: "PLAIN", value: "visible", hasSecret: false, version: 1, lastUpdatedBy: null, createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+    ]));
 
     const response = await variablesLoader(loaderArgs(
       `/orgs/${primary.organizationSlug}/projects/${primary.projectSlug}/env/${primary.environmentSlug}/environment-variables`,
     ));
     const serialized = JSON.stringify(await response.json());
 
-    expect(database.environmentVariable.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { environmentId: primary.environmentId },
-    }));
+    expect(dispatched("GET", variablesPath)).toBeDefined();
     expect(serialized).toContain("PUBLIC_NAME");
     expect(serialized).toContain("visible");
-    expect(serialized).not.toContain("SENTINEL_STORED_CREDENTIAL");
+    expect(serialized).toContain('"present":true');
     expect(serialized).not.toContain(internalCredential);
   });
 
-  it("writes a plain Environment value with exact mutation authorization without echoing it", async () => {
+  it("writes a plain Environment value at the mutation access level without echoing it", async () => {
     const response = await newVariableAction(actionArgs(
       `/orgs/${primary.organizationSlug}/projects/${primary.projectSlug}/env/${primary.environmentSlug}/environment-variables/new`,
       { key: "PUBLIC_NAME", value: submittedValue },
@@ -149,36 +212,39 @@ describe("authenticated direct database route evidence", () => {
     const serialized = JSON.stringify(await response.json());
 
     expect(requireEnvironmentScope).toHaveBeenCalledWith(expect.objectContaining({ access: "secret:mutate" }));
-    expect(database.environmentVariable.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      where: { environmentId_key: { environmentId: primary.environmentId, key: "PUBLIC_NAME" } },
-      create: expect.objectContaining({ environmentId: primary.environmentId, value: submittedValue, lastUpdatedBy: primary.userId }),
-    }));
+    const call = dispatched("PUT", `${variablesPath}/PUBLIC_NAME`);
+    expect(call?.body).toEqual({ value: submittedValue, secret: false });
     expect(response.status).toBe(200);
+    // THE RESPONSE IS NOT THE RESOURCE. The V1 route answers with the row, which
+    // carries the plaintext back for a PLAIN value; echoing it into a form
+    // response would put the value in history, proxy logs and any screenshot.
     expect(serialized).toBe('{"ok":true}');
     expect(serialized).not.toContain(submittedValue);
   });
 
-  it("returns stable non-reflective database failures", async () => {
-    database.endUser.findMany.mockRejectedValueOnce(new Error("SENTINEL_DATABASE_DETAILS"));
+  it("returns stable non-reflective failures when core-api refuses", async () => {
+    serve("GET", endUsersPath, 503, fault("IDENTITY_STORE_UNAVAILABLE"));
     await expect(accountsLoader(loaderArgs(
       `/orgs/${primary.organizationSlug}/projects/${primary.projectSlug}/env/${primary.environmentSlug}/agent-accounts`,
     ))).rejects.toMatchObject({ status: 503 });
 
-    database.environmentVariable.findMany.mockRejectedValueOnce(new Error("SENTINEL_DATABASE_DETAILS"));
+    serve("GET", variablesPath, 503, fault("SECRETS_STORE_UNAVAILABLE"));
     await expect(variablesLoader(loaderArgs(
       `/orgs/${primary.organizationSlug}/projects/${primary.projectSlug}/env/${primary.environmentSlug}/environment-variables`,
     ))).rejects.toMatchObject({ status: 503 });
 
-    database.environmentVariable.upsert.mockRejectedValueOnce(new Error("SENTINEL_DATABASE_DETAILS"));
+    serve("PUT", `${variablesPath}/PUBLIC_NAME`, 503, fault("SECRETS_STORE_UNAVAILABLE"));
     const response = await newVariableAction(actionArgs(
       `/orgs/${primary.organizationSlug}/projects/${primary.projectSlug}/env/${primary.environmentSlug}/environment-variables/new`,
       { key: "PUBLIC_NAME", value: submittedValue },
     ));
     expect(response.status).toBe(503);
-    expect(JSON.stringify(await response.json())).not.toMatch(/SENTINEL_DATABASE_DETAILS|SENTINEL_SUBMITTED_PLAIN_VALUE/);
+    expect(JSON.stringify(await response.json())).not.toMatch(
+      new RegExp(`${upstreamSecret}|SENTINEL_SUBMITTED_PLAIN_VALUE`),
+    );
   });
 
-  it("rejects unauthenticated and mixed scopes before direct database access", async () => {
+  it("rejects unauthenticated and mixed scopes before reaching core-api", async () => {
     const cases = [
       [accountsLoader, loaderArgs(`/orgs/${primary.organizationSlug}/projects/${primary.projectSlug}/env/${primary.environmentSlug}/agent-accounts`)],
       [variablesLoader, loaderArgs(`/orgs/${primary.organizationSlug}/projects/${primary.projectSlug}/env/${primary.environmentSlug}/environment-variables`)],
@@ -187,8 +253,7 @@ describe("authenticated direct database route evidence", () => {
       requireEnvironmentScope.mockRejectedValueOnce(new Response(null, { status: 302, headers: { Location: "/login" } }));
       await expect(loader(args)).rejects.toMatchObject({ status: 302 });
     }
-    expect(database.endUser.findMany).not.toHaveBeenCalled();
-    expect(database.environmentVariable.findMany).not.toHaveBeenCalled();
+    expect(calls).toEqual([]);
 
     for (const [key, value] of [
       ["organizationSlug", secondary.organizationSlug],
@@ -199,7 +264,7 @@ describe("authenticated direct database route evidence", () => {
       args.params = { ...args.params, [key]: value };
       await expect(variablesLoader(args)).rejects.toMatchObject({ status: 404 });
     }
-    expect(database.environmentVariable.findMany).not.toHaveBeenCalled();
+    expect(calls).toEqual([]);
   });
 });
 

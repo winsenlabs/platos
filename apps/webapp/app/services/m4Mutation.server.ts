@@ -1,7 +1,18 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { requireEnvironmentScope } from "./auth.server";
+import { CoreApiError, CoreApiUnavailableError } from "./coreApiError";
 import { agentRequest, PlatosAgentApiError, UnsafeCredentialResponseError } from "./platosAgent.server";
+
+// WIN-257 T8 — WHY `CoreApiError` IS NAMED HERE.
+//
+// The fallback below renders `error.message` for anything that is merely an
+// `Error`. A `CoreApiError` IS an `Error`, and its message is the V1 failure
+// envelope's `body` — another deployable's prose, written for an operator
+// reading core's logs. Falling through would have published it into a mutation
+// response a browser renders, and would have answered 400 for a 403 or a 503.
+// So a core refusal is treated exactly like an agent refusal: its own code, the
+// stable `<operation> failed (<code>)` message, and its own status.
 
 export async function m4MutationContext(args: ActionFunctionArgs) {
   const organizationSlug = args.params.organizationSlug;
@@ -32,18 +43,27 @@ export async function m4Mutation(
     // Remix redirect/not-found/auth Responses carry routing semantics. Turning
     // them into mutation JSON creates false 400s and can bypass login redirects.
     if (error instanceof Response) throw error;
-    const code = error instanceof PlatosAgentApiError || error instanceof UnsafeCredentialResponseError
+    const code = error instanceof PlatosAgentApiError
+      || error instanceof UnsafeCredentialResponseError
+      || error instanceof CoreApiError
+      || error instanceof CoreApiUnavailableError
       ? error.code
       : "INVALID_REQUEST";
-    const status = error instanceof PlatosAgentApiError && error.status >= 400 && error.status < 600
+    const status = (error instanceof PlatosAgentApiError || error instanceof CoreApiError)
+      && error.status >= 400 && error.status < 600
       ? error.status
-      : 400;
+      : error instanceof CoreApiUnavailableError
+        ? 503
+        : 400;
     return json(
       {
         ok: false as const,
         error: {
           code,
-          message: error instanceof PlatosAgentApiError || error instanceof UnsafeCredentialResponseError
+          message: error instanceof PlatosAgentApiError
+            || error instanceof UnsafeCredentialResponseError
+            || error instanceof CoreApiError
+            || error instanceof CoreApiUnavailableError
             ? `${operation} failed (${code})`
             : error instanceof Error
               ? error.message

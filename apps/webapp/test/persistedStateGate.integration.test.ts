@@ -1,14 +1,23 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { database } from "../app/services/database.server";
 import {
   agentPanel,
   agentRequestResult,
   agentResponse,
   credentialRequestResult,
 } from "../app/services/platosAgent.server";
-import { commitOperatorSession, operatorAuth } from "../app/services/auth.server";
+// WIN-257 T8 — THE READ-BACK HANDLE AND THE SESSION MINT ARE THE GATE'S OWN NOW.
+// They used to be `app/services/database.server` and `app/services/auth.server`,
+// the webapp's production modules, which T8 deletes: the dashboard reaches its
+// data through core-api and holds no database credential. A gate that read its
+// evidence through the subject's own client would also have inherited the
+// subject's bugs. `tests/persisted-state-gate/read-back.ts` says the rest.
+import {
+  gateAuth,
+  gateDatabase as database,
+  gateOperatorCookie,
+} from "../../../tests/persisted-state-gate/read-back";
 import {
   PERFORMANCE_RECEIPT_FILE,
   verifyPerformanceVerificationReceipt,
@@ -191,14 +200,10 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
     }
     manifest = JSON.parse(await readFile(fixturePath, "utf8")) as FixtureManifest;
     [primary, secondary] = manifest.scopes;
-    const session = await operatorAuth.issueOperatorSession({ userId: primary.operatorId });
-    const runnerCookie = (await commitOperatorSession(session.token, session.expiresAt)).split(
-      ";",
-      1
-    )[0];
-    // The test runner uses NODE_ENV=test, while the exact production webapp
-    // candidate intentionally uses the secure __Host- cookie name.
-    operatorCookie = runnerCookie.replace(/^[^=]+=/, "__Host-platos_operator_session=");
+    const session = await gateAuth().issueOperatorSession({ userId: primary.operatorId });
+    // The runner is NODE_ENV=test; the candidate image is production and uses the
+    // secure `__Host-` cookie name, so the gate writes that name directly.
+    operatorCookie = gateOperatorCookie(session.token);
   });
 
   afterAll(async () => {

@@ -1,61 +1,59 @@
-// WIN-257 / WIN-284 — THE V1 REST TRANSPORT, TWIN-RUN AGAINST THE WEBAPP IT REPLACES.
+// WIN-257 / WIN-284 — THE V1 REST TRANSPORT, REPLAYED AGAINST THE WEBAPP IT
+// REPLACED.
 //
-// `docs/audits/win-284-differential-coverage.json` reported `rest 0/313`, every
-// row blocked on WIN-267 with the reason "no V1 REST transport exists at this
-// baseline". Eight routes were served when that sentence was last true and
-// nineteen are served now, so the sentence had become false and the number it
-// justified had become wrong. This suite is what makes it right again.
+// THIS SUITE CHANGED SHAPE WITH T8, AND THAT WAS THE PLAN ALL ALONG. It used to
+// twin-run two live systems: the oracle was the webapp EXECUTED — real Remix
+// loaders and actions out of `apps/webapp/app/routes` against a real PostgreSQL,
+// driven by `apps/webapp/test/differential-oracle.mts` — and the candidate was
+// the composed core-api process. T8 deletes that oracle: `database.server.ts`,
+// `projectAccess.server.ts`, the fifteen Prisma operations and the driver itself
+// are gone, because a dashboard holding a database credential is the thing the
+// cutover removes.
+//
+// A differential whose oracle has been deleted does not go red. It goes QUIET —
+// the scenarios still execute, the candidate still answers, and the comparison
+// has nothing to compare against. That is the worst failure a parity harness has,
+// because it looks exactly like success. So the oracle was RECORDED AS IT RAN,
+// through the normaliser register, with the digest of every source that produced
+// it, and `tests/differential-harness/oracle-transcripts.json` is what T8 leaves
+// behind. This suite now compares the CANDIDATE against that frozen record,
+// through the same `twinRun`, the same comparators and the same approved
+// differences that compared it against the live oracle. One comparison engine,
+// not two — which is the property that makes the recording worth anything.
 //
 // WHAT IS REAL HERE.
 //
-//   REAL  ONE PostgreSQL SERVER, TWO DATABASES. The issue asks for the comparison
-//         to run "on the same live PostgreSQL"; `twinRun` refuses two sides that
-//         report the same store identity, because one store twin-run against
-//         itself compares equal for free. Both are true at once with one server
-//         and two databases, which is exactly the shape `subjects/postgres-twin.mjs`
-//         already uses. Both are built by the repository's own
-//         `prisma migrate deploy` over the real tenancy schema and seeded by
-//         IDENTICAL SQL, so the two sides start from the same rows with the same
-//         identifiers.
-//   REAL  THE ORACLE IS THE WEBAPP, EXECUTED. Every oracle answer comes from
-//         running a real Remix `loader`/`action` out of `apps/webapp/app/routes`,
-//         or a real export of `apps/webapp/app/services/auth.server`, in the
-//         webapp's own package where `@remix-run/node`, the generated Prisma
-//         client and the `~/*` alias resolve. Nothing here re-implements a Prisma
-//         query, a membership rule or a cookie format.
 //   REAL  THE CANDIDATE IS THE COMPOSED PROCESS. `constructAdapters` ->
-//         `assembleContextPorts` -> `startCoreApi`, the same three calls `main.ts`
-//         makes, answering real HTTP with real session cookies over a real Redis
-//         and a real SMTP relay.
-//   REAL  THE STORE COMPARISON. After every step both databases are dumped by the
-//         SAME mechanism and the declared tables are compared row for row. That
-//         half passes through no projection at all, which is what stands under
-//         the projected `schema` dimension.
+//         `assembleContextPorts` -> `startCoreApi`, the same three calls
+//         `main.ts` makes, answering real HTTP with real session cookies over a
+//         real PostgreSQL, a real Redis and a real SMTP relay. Nothing about the
+//         candidate side is recorded or faked.
+//   REAL  THE STORE COMPARISON. After every step the candidate's database is
+//         dumped by a `psql` process and the declared tables are compared row for
+//         row against the rows the oracle left. That half passes through no
+//         projection at all, which is what stands under the projected `schema`
+//         dimension.
+//   REAL  THE ORACLE'S ANSWERS. They were produced by executing the webapp, once,
+//         before it was deleted — not written by hand here. `oracle-transcripts.
+//         test.mjs` runs the controls on that artifact on every CI run with no
+//         Docker daemon: provenance, every scenario recorded, all four dimensions
+//         per step, no credential, and — now that the driver is gone — that the
+//         oracle CANNOT COME BACK (`retirementFailures`). A transcript claiming
+//         to record something that had been restored is the one state in which
+//         believing it would be wrong.
 //
-// AND THE ORACLE IS RECORDED AS IT RUNS. WIN-257 T8 deletes `database.server.ts`
-// and the `PlatosAuthService` calls with it. A scenario whose oracle has been
-// deleted quietly stops meaning anything, so every live oracle answer is written
-// to `tests/differential-harness/oracle-transcripts.json` together with the
-// digest of the source files that produced it. While those files exist the
-// transcript must match what they answer TODAY — a drifted oracle fails this
-// suite rather than being silently re-recorded — and once the cutover removes
-// them the transcript is the frozen record of what they answered, which the
-// candidate keeps being compared against.
-//
-// NO TOKEN IS EVER TRANSCRIBED. The recorded facts are booleans, names, slugs and
-// seeded identifiers. `Set-Cookie` is used by the run and dropped before the
-// transcript is written, because a committed transcript carrying a live session
-// credential would be a secret-response defect of exactly the class WIN-259
-// counts.
+// THE SEEDS STILL RUN, AND STILL AGAINST THE RECORD. One designated seed per
+// declared dimension, each changing what the CANDIDATE asks, so a divergence is
+// attributable to the seed and to nothing else. A harness that compared a live
+// system against a frozen file and never watched that comparison go red would be
+// asserting a constant.
 //
 // IT FAILS WHEN DOCKER IS ABSENT rather than skipping, like every suite in this
 // directory: a skipped run and a passing run are indistinguishable in a summary.
 
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import { RedisContainer, type StartedRedisContainer } from "@testcontainers/redis";
@@ -81,13 +79,16 @@ const AMBIENT: Readonly<Record<string, string | undefined>> = Object.freeze({ ..
 const RUN = randomBytes(3).toString("hex");
 const MAILPIT_IMAGE = "axllent/mailpit:v1.21";
 const REPOSITORY_ROOT = resolve(process.cwd(), "../..");
-const TRANSCRIPT_PATH = resolve(REPOSITORY_ROOT, "tests/differential-harness/oracle-transcripts.json");
-const RECORDING = (AMBIENT["PLATOS_DIFFERENTIAL_RECORD"] ?? "") === "1";
 
 const OPERATOR_EMAIL = "differential-operator@platos.win284.test";
 const AT = "2026-09-16T00:00:00.000Z";
 
-/** Seeded identifiers. IDENTICAL in both databases, so a difference is never a fixture's. */
+/**
+ * Seeded identifiers, IDENTICAL to the ones the oracle's database held when the
+ * transcript was recorded — which is what makes a difference a system's rather
+ * than a fixture's. They are literals for that reason: the oracle's rows are
+ * frozen in the artifact and nothing can re-derive them.
+ */
 const ID = {
   user: "eeeeeeee-0001-4000-8000-000000000001",
   alpha: "eeeeeeee-0011-4000-8000-000000000011",
@@ -107,19 +108,18 @@ const ID = {
   variable: "eeeeeeee-0071-4000-8000-000000000071",
 } as const;
 
-const VISIBLE_SLUGS = ["alpha", "beta", "gamma"] as const;
-
-interface OracleAnswer {
-  readonly status: number;
-  readonly facts: Record<string, unknown>;
-  readonly auth: { principal: string | null; scopes: string[]; decision: "allow" | "deny"; reason: string | null };
-  readonly setCookie: string | null;
+/** The four dimensions an observation carries, on the candidate side. */
+interface AuthFacts {
+  readonly principal: string | null;
+  readonly scopes: string[];
+  readonly decision: "allow" | "deny";
+  readonly reason: string | null;
 }
 
 interface Side {
   readonly status: number;
   readonly facts: Record<string, unknown>;
-  readonly auth: OracleAnswer["auth"];
+  readonly auth: AuthFacts;
   readonly store: Record<string, unknown[]>;
 }
 
@@ -130,24 +130,24 @@ let construction: AdapterConstruction;
 let running: RunningCoreApi;
 let base = "";
 let mailApi = "";
-let workspace = "";
-let oracleUrl = "";
 let candidateUrl = "";
 
 let harness: any;
 let scenarios: any;
+let transcripts: any;
 let recorded: Record<
   string,
   {
     status: number;
     facts: Record<string, unknown>;
-    auth: OracleAnswer["auth"];
+    auth: AuthFacts;
     store: Record<string, unknown[]>;
     storeIdentity: string;
   }
 > = {};
-const observations = new Map<string, { oracle: Side; candidate: Side }>();
-const seeded = new Map<string, { oracle: Side; candidate: Side; scenario: string }>();
+/** One CANDIDATE observation per scenario. The oracle's is in the transcript. */
+const observations = new Map<string, Side>();
+const seeded = new Map<string, { candidate: Side; scenario: string }>();
 
 // ---------------------------------------------------------------------------
 // PostgreSQL, addressed by a psql PROCESS — the same reader for both databases
@@ -169,9 +169,11 @@ function urlFor(database: string): string {
 /**
  * Every row of every declared table, as JSON, read by a `psql` process.
  *
- * ONE MECHANISM FOR BOTH SIDES. A dump taken through the oracle's Prisma client
- * and a dump taken through `psql` would differ in how they render a timestamp,
- * a numeric and a null — and every one of those differences would read as drift.
+ * THE SAME MECHANISM THE ORACLE'S ROWS WERE READ BY. When the transcript was
+ * recorded both databases were dumped by this same `psql` process, never through
+ * a Prisma client: two readers would differ in how they render a timestamp, a
+ * numeric and a null, and every one of those differences would read as drift
+ * forever, because one side of the comparison can no longer be re-read.
  */
 async function dump(database: string, tables: readonly string[]): Promise<Record<string, unknown[]>> {
   const store: Record<string, unknown[]> = {};
@@ -180,39 +182,6 @@ async function dump(database: string, tables: readonly string[]): Promise<Record
     store[table] = JSON.parse(raw === "" ? "[]" : raw) as unknown[];
   }
   return store;
-}
-
-// ---------------------------------------------------------------------------
-// The oracle: one child process per step, executed in apps/webapp
-// ---------------------------------------------------------------------------
-
-function oracle(step: string, params: Record<string, unknown>): OracleAnswer {
-  const requestPath = join(workspace, `oracle-${step}-request.json`);
-  const outPath = join(workspace, `oracle-${step}-out.json`);
-  writeFileSync(requestPath, JSON.stringify({ step, params }));
-  execFileSync(
-    resolve(REPOSITORY_ROOT, "apps/webapp/node_modules/.bin/tsx"),
-    [resolve(REPOSITORY_ROOT, "apps/webapp/test/differential-oracle.mts"), requestPath, outPath],
-    {
-      cwd: resolve(REPOSITORY_ROOT, "apps/webapp"),
-      env: {
-        PATH: AMBIENT["PATH"] ?? "",
-        NODE_ENV: "test",
-        DATABASE_URL: oracleUrl,
-        ENCRYPTION_KEY: "e".repeat(64),
-        PLATOS_INTERNAL_AUTH_TOKEN: "differential-internal-token-0001",
-        LOGIN_ORIGIN: "http://oracle.differential.test",
-        // The one configuration in which the REAL login action runs end to end
-        // without an outbound email provider: it issues AND consumes the link
-        // itself. Both halves are the oracle's own.
-        BACKDOOR_PLATOS_DEV: "1",
-        BACKDOOR_PLATOS_DEV_EMAIL: OPERATOR_EMAIL,
-      },
-      stdio: ["ignore", "pipe", "pipe"],
-      encoding: "utf8",
-    },
-  );
-  return JSON.parse(readFileSync(outPath, "utf8")) as OracleAnswer;
 }
 
 // ---------------------------------------------------------------------------
@@ -244,7 +213,7 @@ async function call(method: string, path: string, options: { cookie?: string; bo
   return { status: response.status, headers: response.headers, body, text };
 }
 
-function authOf(answer: Answer, principal: string | null): OracleAnswer["auth"] {
+function authOf(answer: Answer, principal: string | null): AuthFacts {
   const code = answer.body?.error?.code;
   return {
     principal,
@@ -269,12 +238,12 @@ async function mailToken(address: string): Promise<string | null> {
 // Observations
 // ---------------------------------------------------------------------------
 
-function observation(side: "oracle" | "candidate", scenarioId: string, storeName: string, value: Side): any {
+function observation(scenarioId: string, value: Side): any {
   return {
     scenario: scenarioId,
-    side,
-    subject: side === "oracle" ? "webapp-prisma-oracle" : "core-api-rest-candidate",
-    storeIdentity: storeName,
+    side: "candidate",
+    subject: "core-api-rest-candidate",
+    storeIdentity: "differential_candidate",
     // Headers are deliberately empty on both sides. See the registry banner: the
     // one header carrying a fact this differential is about is projected into
     // the body as `cookieName`, where it is compared like any other value.
@@ -322,10 +291,8 @@ beforeAll(async () => {
     normalise: (await import(`${HARNESS}/normalisers.mjs`)).normalise,
   };
   scenarios = await import(`${HARNESS}/transport-scenarios.mjs`);
-  const transcripts = await import(`${HARNESS}/oracle-transcripts.mjs`);
+  transcripts = await import(`${HARNESS}/oracle-transcripts.mjs`);
   recorded = transcripts.readTranscripts(REPOSITORY_ROOT).steps ?? {};
-
-  workspace = mkdtempSync(join(tmpdir(), `m2m4-evidence-registers-differential-${RUN}-`));
 
   const [startedPostgres, startedRedis, startedMailpit] = await Promise.all([
     new PostgreSqlContainer("pgvector/pgvector:pg16").withName(`m2m4-evidence-registers-differential-pg-${RUN}`).start(),
@@ -341,22 +308,23 @@ beforeAll(async () => {
   mailpit = startedMailpit;
   mailApi = `http://${mailpit.getHost()}:${String(mailpit.getMappedPort(8025))}`;
 
-  await psql(postgres.getDatabase(), `CREATE DATABASE differential_oracle`);
+  // ONE DATABASE NOW, AND ITS NAME IS PART OF THE COMPARISON. The oracle's was
+  // `differential_oracle` and its rows are in the transcript, tagged with that
+  // name; `twinRun` refuses two sides reporting the SAME store identity, because
+  // one store twin-run against itself compares equal for free. The candidate's
+  // stays `differential_candidate`, so that refusal still has something to check.
   await psql(postgres.getDatabase(), `CREATE DATABASE differential_candidate`);
-  oracleUrl = urlFor("differential_oracle");
   candidateUrl = urlFor("differential_candidate");
 
   const databasePackage = resolve(REPOSITORY_ROOT, "internal-packages/tenancy-database");
-  for (const url of [oracleUrl, candidateUrl]) {
-    execFileSync(
-      resolve(REPOSITORY_ROOT, "node_modules/.bin/prisma"),
-      ["migrate", "deploy", "--schema", resolve(databasePackage, "prisma/schema.prisma")],
-      { cwd: databasePackage, env: { ...AMBIENT, DATABASE_URL: url }, stdio: "pipe" },
-    );
-  }
-  // IDENTICAL SQL, so the two sides begin with the same rows and the same
-  // identifiers. Anything that differs afterwards was produced by a system.
-  await psql("differential_oracle", SEED_SQL());
+  execFileSync(
+    resolve(REPOSITORY_ROOT, "node_modules/.bin/prisma"),
+    ["migrate", "deploy", "--schema", resolve(databasePackage, "prisma/schema.prisma")],
+    { cwd: databasePackage, env: { ...AMBIENT, DATABASE_URL: candidateUrl }, stdio: "pipe" },
+  );
+  // THE SAME SQL THE ORACLE'S DATABASE WAS SEEDED WITH, so the candidate begins
+  // from the rows and the identifiers the recording began from. Anything that
+  // differs afterwards was produced by a system rather than by a fixture.
   await psql("differential_candidate", SEED_SQL());
 
   const platform = loadPlatformConfiguration({
@@ -422,19 +390,12 @@ function tablesFor(id: string): readonly string[] {
   return entry.storeTables;
 }
 
-async function put(id: string, oracleSide: Omit<Side, "store">, candidateSide: Omit<Side, "store">): Promise<void> {
-  const tables = tablesFor(id);
-  observations.set(id, {
-    oracle: { ...oracleSide, store: await dump("differential_oracle", tables) },
-    candidate: { ...candidateSide, store: await dump("differential_candidate", tables) },
-  });
+async function put(id: string, candidateSide: Omit<Side, "store">): Promise<void> {
+  observations.set(id, { ...candidateSide, store: await dump("differential_candidate", tablesFor(id)) });
 }
 
 async function drive(): Promise<void> {
-  // 1. The sign-in. Both sides end holding a live operator session.
-  const oracleLogin = oracle("magic-link-login", { email: OPERATOR_EMAIL });
-  const oracleCookie = (oracleLogin.setCookie ?? "").split(";")[0] ?? "";
-
+  // 1. The sign-in. The candidate ends holding a live operator session.
   const started = await call("POST", "/bff/magic-link", { body: { email: OPERATOR_EMAIL } });
   expect(started.status, started.text).toBe(202);
   let token: string | null = null;
@@ -454,245 +415,170 @@ async function drive(): Promise<void> {
   // of this suite did exactly that.
   const candidateToken = sessionTokenFromCookieValue(decodeURIComponent(candidateCookie.split("=").slice(1).join("=")));
 
-  // SYMMETRY, AND IT IS NOT COSMETIC. The oracle resolves its principal through
-  // `optionalOperator`, which authenticates the session — and authentication is
-  // what stamps `lastSeenAt`. Reading the candidate's principal out of the
-  // completion body instead would leave its session row unstamped and report a
-  // `lastSeenAt` difference that only the two DRIVERS created. Both sides now
-  // ask the same question the same way.
+  // SYMMETRY WITH HOW THE ORACLE WAS OBSERVED, AND IT IS NOT COSMETIC. The
+  // oracle resolved its principal through `optionalOperator`, which authenticates
+  // the session — and authentication is what stamps `lastSeenAt`. Reading the
+  // candidate's principal out of the completion body instead would leave its
+  // session row unstamped and report a `lastSeenAt` difference that only the two
+  // DRIVERS created. The recording cannot be re-made, so this asymmetry would be
+  // permanent.
   const whoamiAfterLogin = await call("GET", "/identity/session", { cookie: candidateCookie });
-  await put(
-    "transport-magic-link-login",
-    { status: oracleLogin.status, facts: oracleLogin.facts, auth: oracleLogin.auth },
-    {
-      status: completed.status,
-      facts: {
-        signedIn: candidateCookie !== "",
-        cookieName: candidateCookie.split("=")[0] ?? null,
-        redirectTo: null,
-      },
-      auth: authOf(completed, whoamiAfterLogin.body?.data?.effectiveUserId ?? null),
+  await put("transport-magic-link-login", {
+    status: completed.status,
+    facts: {
+      signedIn: candidateCookie !== "",
+      cookieName: candidateCookie.split("=")[0] ?? null,
+      redirectTo: null,
     },
-  );
+    auth: authOf(completed, whoamiAfterLogin.body?.data?.effectiveUserId ?? null),
+  });
 
   // 2. Who is this browser?
-  const oracleWhoami = oracle("identity-session", { cookie: oracleCookie });
   const whoami = await call("GET", "/identity/session", { cookie: candidateCookie });
-  await put(
-    "transport-identity-session",
-    { status: oracleWhoami.status, facts: oracleWhoami.facts, auth: oracleWhoami.auth },
-    {
-      status: whoami.status,
-      facts: { authenticated: whoami.status === 200, email: whoami.body?.data?.email ?? null },
-      auth: authOf(whoami, whoami.body?.data?.effectiveUserId ?? null),
-    },
-  );
+  await put("transport-identity-session", {
+    status: whoami.status,
+    facts: { authenticated: whoami.status === 200, email: whoami.body?.data?.email ?? null },
+    auth: authOf(whoami, whoami.body?.data?.effectiveUserId ?? null),
+  });
 
   // 3 and 4. What this operator can see.
-  const oracleOrganizations = oracle("organization-list", { cookie: oracleCookie, slugs: [...VISIBLE_SLUGS] });
   const organizations = await call("GET", "/organizations", { cookie: candidateCookie });
-  await put(
-    "transport-organization-list",
-    { status: oracleOrganizations.status, facts: oracleOrganizations.facts, auth: oracleOrganizations.auth },
-    {
-      status: organizations.status,
-      facts: {
-        organizations: (organizations.body?.data ?? [])
-          .map((row: any) => ({ slug: row.slug, name: row.name }))
-          .sort((left: any, right: any) => (left.slug < right.slug ? -1 : 1)),
-      },
-      auth: authOf(organizations, ID.user),
+  await put("transport-organization-list", {
+    status: organizations.status,
+    facts: {
+      organizations: (organizations.body?.data ?? [])
+        .map((row: any) => ({ slug: row.slug, name: row.name }))
+        .sort((left: any, right: any) => (left.slug < right.slug ? -1 : 1)),
     },
-  );
+    auth: authOf(organizations, ID.user),
+  });
 
-  const oracleProjects = oracle("project-list", { cookie: oracleCookie, slugs: [...VISIBLE_SLUGS] });
   const projects = await call("GET", "/projects", { cookie: candidateCookie });
-  await put(
-    "transport-project-list",
-    { status: oracleProjects.status, facts: oracleProjects.facts, auth: oracleProjects.auth },
-    {
-      status: projects.status,
-      facts: {
-        projects: (projects.body?.data ?? [])
-          .map((row: any) => ({ slug: row.slug, name: row.name }))
-          .sort((left: any, right: any) => (left.slug < right.slug ? -1 : 1)),
-      },
-      auth: authOf(projects, ID.user),
+  await put("transport-project-list", {
+    status: projects.status,
+    facts: {
+      projects: (projects.body?.data ?? [])
+        .map((row: any) => ({ slug: row.slug, name: row.name }))
+        .sort((left: any, right: any) => (left.slug < right.slug ? -1 : 1)),
     },
-  );
+    auth: authOf(projects, ID.user),
+  });
 
   // 5. The end-user page.
-  const oracleEndUsers = oracle("end-user-page", {
-    cookie: oracleCookie,
-    organizationSlug: "alpha",
-    projectSlug: "app",
-    environmentSlug: "prod",
-  });
   const endUsers = await call("GET", `/environments/${ID.alphaProd}/end-users`, { cookie: candidateCookie });
-  await put(
-    "transport-end-user-page",
-    { status: oracleEndUsers.status, facts: oracleEndUsers.facts, auth: oracleEndUsers.auth },
-    {
-      status: endUsers.status,
-      facts: {
-        endUsers: (endUsers.body?.data ?? []).map((row: any) => ({ displayName: row.displayName })),
-        total: endUsers.body?.page?.total ?? null,
-      },
-      auth: authOf(endUsers, ID.user),
+  await put("transport-end-user-page", {
+    status: endUsers.status,
+    facts: {
+      endUsers: (endUsers.body?.data ?? []).map((row: any) => ({ displayName: row.displayName })),
+      total: endUsers.body?.page?.total ?? null,
     },
-  );
+    auth: authOf(endUsers, ID.user),
+  });
 
   // 6. The environment scope, from slugs.
-  const oracleScope = oracle("environment-by-slugs", {
-    cookie: oracleCookie,
-    organizationSlug: "alpha",
-    projectSlug: "app",
-    environmentSlug: "prod",
-  });
   const scope = await call("GET", "/environments/by-slugs?organizationSlug=alpha&projectSlug=app&environmentSlug=prod", {
     cookie: candidateCookie,
   });
-  await put(
-    "transport-environment-by-slugs",
-    { status: oracleScope.status, facts: oracleScope.facts, auth: oracleScope.auth },
-    {
-      status: scope.status,
-      facts: {
-        resolved: scope.status < 400,
-        organizationRole: scope.body?.data?.organizationRole ?? null,
-        projectRole: scope.body?.data?.projectRole ?? null,
-      },
-      auth: {
-        principal: ID.user,
-        scopes: typeof scope.body?.data?.organizationRole === "string" ? [scope.body.data.organizationRole] : [],
-        decision: scope.status < 400 ? "allow" : "deny",
-        reason: typeof scope.body?.error?.code === "string" ? scope.body.error.code : null,
-      },
+  await put("transport-environment-by-slugs", {
+    status: scope.status,
+    facts: {
+      resolved: scope.status < 400,
+      organizationRole: scope.body?.data?.organizationRole ?? null,
+      projectRole: scope.body?.data?.projectRole ?? null,
     },
-  );
+    auth: {
+      principal: ID.user,
+      scopes: typeof scope.body?.data?.organizationRole === "string" ? [scope.body.data.organizationRole] : [],
+      decision: scope.status < 400 ? "allow" : "deny",
+      reason: typeof scope.body?.error?.code === "string" ? scope.body.error.code : null,
+    },
+  });
 
   // 7 and 8. Environment variables: write, then read.
-  const oracleWrite = oracle("environment-variable-set", {
-    cookie: oracleCookie,
-    organizationSlug: "alpha",
-    projectSlug: "app",
-    environmentSlug: "prod",
-    key: "WRITTEN_PLAIN",
-    value: "written-value",
-  });
   const write = await call("PUT", `/environments/${ID.alphaProd}/variables/WRITTEN_PLAIN`, {
     cookie: candidateCookie,
     body: { value: "written-value" },
   });
-  await put(
-    "transport-environment-variable-set",
-    { status: oracleWrite.status, facts: oracleWrite.facts, auth: oracleWrite.auth },
-    { status: write.status, facts: { written: write.status < 400 }, auth: authOf(write, ID.user) },
-  );
-
-  const oracleList = oracle("environment-variable-list", {
-    cookie: oracleCookie,
-    organizationSlug: "alpha",
-    projectSlug: "app",
-    environmentSlug: "prod",
+  await put("transport-environment-variable-set", {
+    status: write.status,
+    facts: { written: write.status < 400 },
+    auth: authOf(write, ID.user),
   });
+
   const listed = await call("GET", `/environments/${ID.alphaProd}/variables`, { cookie: candidateCookie });
-  await put(
-    "transport-environment-variable-list",
-    { status: oracleList.status, facts: oracleList.facts, auth: oracleList.auth },
-    {
-      status: listed.status,
-      facts: {
-        variables: (listed.body?.data ?? [])
-          .map((row: any) => ({
-            key: row.key,
-            kind: row.kind,
-            plaintextVisible: row.value !== null,
-            present: row.value !== null || row.hasSecret === true,
-          }))
-          .sort((left: any, right: any) => (left.key < right.key ? -1 : 1)),
-      },
-      auth: authOf(listed, ID.user),
+  await put("transport-environment-variable-list", {
+    status: listed.status,
+    facts: {
+      variables: (listed.body?.data ?? [])
+        .map((row: any) => ({
+          key: row.key,
+          kind: row.kind,
+          plaintextVisible: row.value !== null,
+          present: row.value !== null || row.hasSecret === true,
+        }))
+        .sort((left: any, right: any) => (left.key < right.key ? -1 : 1)),
     },
-  );
+    auth: authOf(listed, ID.user),
+  });
 
   // 9 and 10. The two creates.
-  const oracleOrganizationCreate = oracle("organization-create", { cookie: oracleCookie, name: "Delta", slug: "delta" });
   const organizationCreate = await call("POST", "/organizations", { cookie: candidateCookie, body: { name: "Delta", slug: "delta" } });
-  await put(
-    "transport-organization-create",
-    { status: oracleOrganizationCreate.status, facts: oracleOrganizationCreate.facts, auth: oracleOrganizationCreate.auth },
-    {
-      status: organizationCreate.status,
-      facts: { created: organizationCreate.status < 400, redirectTo: null },
-      auth: authOf(organizationCreate, ID.user),
-    },
-  );
-
-  const oracleProjectCreate = oracle("project-create", {
-    cookie: oracleCookie,
-    organizationSlug: "alpha",
-    name: "Second",
-    slug: "second",
-    environment: "Production",
+  await put("transport-organization-create", {
+    status: organizationCreate.status,
+    facts: { created: organizationCreate.status < 400, redirectTo: null },
+    auth: authOf(organizationCreate, ID.user),
   });
+
   const projectCreate = await call("POST", "/projects", {
     cookie: candidateCookie,
     body: { organizationId: ID.alpha, name: "Second", slug: "second", environmentName: "Production", environmentSlug: "production" },
   });
-  await put(
-    "transport-project-create",
-    { status: oracleProjectCreate.status, facts: oracleProjectCreate.facts, auth: oracleProjectCreate.auth },
-    {
-      status: projectCreate.status,
-      facts: { created: projectCreate.status < 400, redirectTo: null },
-      auth: authOf(projectCreate, ID.user),
-    },
-  );
+  await put("transport-project-create", {
+    status: projectCreate.status,
+    facts: { created: projectCreate.status < 400, redirectTo: null },
+    auth: authOf(projectCreate, ID.user),
+  });
 
   // 11. The exchange.
-  const oracleExchange = oracle("session-exchange", { cookie: oracleCookie, expiresAt: "2027-01-01T00:00:00.000Z" });
   const exchange = await call("POST", "/bff/session", { cookie: candidateCookie, body: { token: candidateToken } });
   const exchangedCookie = (exchange.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
-  await put(
-    "transport-session-exchange",
-    { status: oracleExchange.status, facts: oracleExchange.facts, auth: oracleExchange.auth },
-    {
-      status: exchange.status,
-      facts: { exchanged: exchange.status < 400, cookieName: exchangedCookie === "" ? null : exchangedCookie.split("=")[0] },
-      auth: authOf(exchange, exchange.body?.data?.effectiveUserId ?? null),
-    },
-  );
+  await put("transport-session-exchange", {
+    status: exchange.status,
+    facts: { exchanged: exchange.status < 400, cookieName: exchangedCookie === "" ? null : exchangedCookie.split("=")[0] },
+    auth: authOf(exchange, exchange.body?.data?.effectiveUserId ?? null),
+  });
 
-  // 12. Sign out, LAST, because it revokes the session both sides have been using.
-  const oracleSignOut = oracle("sign-out", { cookie: oracleCookie });
+  // 12. Sign out, LAST, because it revokes the session everything above used.
   const signOut = await call("DELETE", "/bff/session", { cookie: candidateCookie });
   const after = await call("GET", "/identity/session", { cookie: candidateCookie });
-  await put(
-    "transport-sign-out",
-    { status: oracleSignOut.status, facts: oracleSignOut.facts, auth: oracleSignOut.auth },
-    {
-      status: signOut.status,
-      facts: { endedSession: after.status === 401, cookieCleared: (signOut.headers.get("set-cookie") ?? "") !== "" },
-      auth: { principal: ID.user, scopes: [], decision: "allow", reason: null },
-    },
-  );
+  await put("transport-sign-out", {
+    status: signOut.status,
+    facts: { endedSession: after.status === 401, cookieCleared: (signOut.headers.get("set-cookie") ?? "") !== "" },
+    auth: { principal: ID.user, scopes: [], decision: "allow", reason: null },
+  });
 
-  await driveSeeds(oracleCookie, candidateCookie);
+  await driveSeeds();
 }
 
 /**
  * The sensitivity phase: one designated seed per declared dimension, run against
- * the same two databases after the clean pass.
+ * the FROZEN RECORD after the clean pass.
  *
- * Each seed changes what the CANDIDATE asks, never what the oracle does, so any
- * divergence is attributable to the seed and to nothing else.
+ * Each seed changes what the CANDIDATE asks — the oracle's answers are in the
+ * transcript and cannot be changed by anything — so a divergence is attributable
+ * to the seed and to nothing else. That is a stronger attribution than the live
+ * twin-run had, where a seed could in principle have moved both sides.
+ *
+ * `candidate-skips-write` FLIPPED DIRECTION, AND THE DIMENSION IT PROVES DID NOT.
+ * It used to have the ORACLE write a row the candidate never asked for. Nothing
+ * can make the oracle write now, so the candidate writes a row the recording
+ * never had. Either way one store holds a row the other does not, which is the
+ * fact the `store` dimension exists to catch, and the write is a REAL one through
+ * the real route rather than a perturbation of an observation.
  */
-async function driveSeeds(oracleCookie: string, candidateCookie: string): Promise<void> {
-  // The clean pass signed both sides out, so the seeds that need a session use a
-  // fresh one. This is the same real sign-in, run again.
-  const oracleLogin = oracle("magic-link-login", { email: OPERATOR_EMAIL });
-  const freshOracleCookie = (oracleLogin.setCookie ?? "").split(";")[0] ?? oracleCookie;
+async function driveSeeds(): Promise<void> {
+  // The clean pass signed the candidate out, so the seeds that need a session
+  // use a fresh one. This is the same real sign-in, run again.
   await call("POST", "/bff/magic-link", { body: { email: OPERATOR_EMAIL } });
   let token: string | null = null;
   for (let attempt = 0; attempt < 60 && token === null; attempt += 1) {
@@ -700,22 +586,17 @@ async function driveSeeds(oracleCookie: string, candidateCookie: string): Promis
     if (token === null) await new Promise((done) => setTimeout(done, 500));
   }
   const completed = await call("POST", "/bff/magic-link/complete", { body: { token } });
-  const freshCandidateCookie = (completed.headers.get("set-cookie") ?? "").split(";")[0] ?? candidateCookie;
+  const freshCandidateCookie = (completed.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
 
   const organizationTables = tablesFor("transport-organization-list");
 
-  // `candidate-anonymous` — status and auth.
+  // `candidate-anonymous` — status and auth. The recorded oracle answered 200
+  // for the signed-in operator; an anonymous candidate answers 401 with no
+  // principal.
   {
-    const oracleAnswer = oracle("organization-list", { cookie: freshOracleCookie, slugs: [...VISIBLE_SLUGS] });
     const anonymous = await call("GET", "/organizations");
     seeded.set("candidate-anonymous", {
       scenario: "transport-organization-list",
-      oracle: {
-        status: oracleAnswer.status,
-        facts: oracleAnswer.facts,
-        auth: oracleAnswer.auth,
-        store: await dump("differential_oracle", organizationTables),
-      },
       candidate: {
         status: anonymous.status,
         facts: { organizations: [] },
@@ -725,18 +606,13 @@ async function driveSeeds(oracleCookie: string, candidateCookie: string): Promis
     });
   }
 
-  // `candidate-truncated-page` — schema.
+  // `candidate-truncated-page` — schema. Same status, same principal, a shorter
+  // set, which is exactly the regression a status-only comparison reports as
+  // parity.
   {
-    const oracleAnswer = oracle("organization-list", { cookie: freshOracleCookie, slugs: [...VISIBLE_SLUGS] });
     const truncated = await call("GET", "/organizations?limit=1", { cookie: freshCandidateCookie });
     seeded.set("candidate-truncated-page", {
       scenario: "transport-organization-list",
-      oracle: {
-        status: oracleAnswer.status,
-        facts: oracleAnswer.facts,
-        auth: oracleAnswer.auth,
-        store: await dump("differential_oracle", organizationTables),
-      },
       candidate: {
         status: truncated.status,
         facts: {
@@ -750,31 +626,25 @@ async function driveSeeds(oracleCookie: string, candidateCookie: string): Promis
     });
   }
 
-  // `candidate-skips-write` — store. The oracle writes a variable the candidate
-  // never asks for, so one database is short a row while both sides report the
-  // status of the request they actually made.
+  // `candidate-skips-write` — store. The candidate really writes a variable the
+  // recorded oracle never held, so the two stores differ by one row while the
+  // reported status is the one each side gave for the request it made.
   {
     const variableTables = tablesFor("transport-environment-variable-set");
-    const oracleAnswer = oracle("environment-variable-set", {
-      cookie: freshOracleCookie,
-      organizationSlug: "alpha",
-      projectSlug: "app",
-      environmentSlug: "prod",
-      key: "SEED_ONLY_ON_THE_ORACLE",
-      value: "seed-value",
+    const extra = await call("PUT", `/environments/${ID.alphaProd}/variables/SEED_ONLY_ON_THE_CANDIDATE`, {
+      cookie: freshCandidateCookie,
+      body: { value: "seed-value" },
     });
+    expect(extra.status, extra.text).toBeLessThan(400);
     seeded.set("candidate-skips-write", {
       scenario: "transport-environment-variable-set",
-      oracle: {
-        status: oracleAnswer.status,
-        facts: oracleAnswer.facts,
-        auth: oracleAnswer.auth,
-        store: await dump("differential_oracle", variableTables),
-      },
       candidate: {
-        status: oracleAnswer.status,
+        // The recorded oracle answered 200 with `{written: true}` for ITS write,
+        // so status and facts agree and only the rows differ — which is what
+        // makes this seed prove `store` and nothing else.
+        status: 200,
         facts: { written: true },
-        auth: oracleAnswer.auth,
+        auth: { principal: ID.user, scopes: [], decision: "allow", reason: null },
         store: await dump("differential_candidate", variableTables),
       },
     });
@@ -785,18 +655,48 @@ async function driveSeeds(oracleCookie: string, candidateCookie: string): Promis
 // The cases
 // ---------------------------------------------------------------------------
 
-describe("the V1 REST transport against the webapp it replaces", () => {
+describe("the V1 REST transport against the webapp it replaced", () => {
   it("registers a well-formed scenario set with a designated prover for every dimension", () => {
     expect(scenarios.assertTransportRegistryIsWellFormed()).toEqual([]);
   });
 
-  it("drove every registered scenario on both sides", () => {
+  it("drove every registered scenario against the composed process", () => {
     const missing = scenarios.TRANSPORT_SCENARIO_REGISTRY.map((entry: any) => entry.id).filter(
       (id: string) => !observations.has(id),
     );
     expect(missing, "a registered scenario that was never driven would report parity over nothing").toEqual([]);
   });
 
+  it("the oracle is RETIRED and cannot come back, which is what makes the record believable", () => {
+    // THE JOIN THE DIGEST RULE USED TO MAKE. While the oracle driver existed, a
+    // source that had moved since the recording failed until it was re-recorded.
+    // T8 deleted the driver, so there is nothing left to re-record from, and half
+    // the pinned sources are files T8 deliberately rewrote. What replaces it is
+    // the claim that still matters: `database.server.ts` and
+    // `projectAccess.server.ts` are gone and no surviving source imports the
+    // canonical client or calls a Prisma delegate. A transcript that recorded an
+    // oracle which had come back would be the one artifact in this harness that
+    // is worse than absent.
+    expect(transcripts.oracleIsLive(REPOSITORY_ROOT)).toBe(false);
+    expect(transcripts.retirementFailures(REPOSITORY_ROOT)).toEqual([]);
+    const { failures, oracleLive } = transcripts.transcriptFailures(
+      REPOSITORY_ROOT,
+      transcripts.readTranscripts(REPOSITORY_ROOT),
+      scenarios.TRANSPORT_SCENARIO_REGISTRY.map((entry: any) => entry.id),
+    );
+    expect(oracleLive).toBe(false);
+    expect(failures).toEqual([]);
+  });
+
+  // -------------------------------------------------------------------------
+  // THE REPLAY — the candidate against the frozen record
+  // -------------------------------------------------------------------------
+  //
+  // One case per scenario, so a failure names the flow rather than the suite.
+  // The oracle subject is `recordedOracleSubject`, which hands `twinRun` the
+  // recorded step as an observation: the same engine, the same comparators and
+  // the same approved differences that compared the candidate against the live
+  // oracle before T8 deleted it.
   for (const entry of [
     "transport-magic-link-login",
     "transport-identity-session",
@@ -811,15 +711,19 @@ describe("the V1 REST transport against the webapp it replaces", () => {
     "transport-environment-variable-list",
     "transport-sign-out",
   ]) {
-    it(`reaches parity on ${entry}`, async () => {
+    it(`replays ${entry} against the frozen oracle transcript`, async () => {
       const scenario = scenarios.TRANSPORT_SCENARIO_REGISTRY.find((row: any) => row.id === entry);
-      const pair = observations.get(entry);
-      expect(pair, `${entry} was never driven`).toBeDefined();
+      const candidate = observations.get(entry);
+      expect(candidate, `${entry} was never driven`).toBeDefined();
+      expect(
+        transcripts.replayFailures({ steps: recorded }, [entry]),
+        "a recorded step that carries no store, or no storeIdentity, is not an oracle — it is a souvenir",
+      ).toEqual([]);
       const result = await harness.twinRun(
         scenario,
         {
-          oracle: { run: () => observation("oracle", entry, "differential_oracle", pair!.oracle) },
-          candidate: { run: () => observation("candidate", entry, "differential_candidate", pair!.candidate) },
+          oracle: transcripts.recordedOracleSubject(recorded, entry),
+          candidate: { run: () => observation(entry, candidate!) },
         },
         { skipNormalisers: scenario.normalisation?.skip ?? [] },
       );
@@ -840,110 +744,35 @@ describe("the V1 REST transport against the webapp it replaces", () => {
       const result = await harness.twinRun(
         scenario,
         {
-          oracle: { run: () => observation("oracle", seed.scenario, "differential_oracle", pair!.oracle) },
-          candidate: { run: () => observation("candidate", seed.scenario, "differential_candidate", pair!.candidate) },
+          oracle: transcripts.recordedOracleSubject(recorded, seed.scenario),
+          candidate: { run: () => observation(seed.scenario, pair!.candidate) },
         },
         { skipNormalisers: scenario.normalisation?.skip ?? [] },
       );
       const moved = new Set<string>((result.divergences ?? []).map((row: any) => row.dimension));
       for (const dimension of seed.proves) {
-        expect(moved.has(dimension), `seed ${seed.id} was designated to move ${dimension} and did not: ${harness.formatResult(result)}`).toBe(true);
+        expect(
+          moved.has(dimension),
+          `seed ${seed.id} was designated to move ${dimension} and did not: ${harness.formatResult(result)}`,
+        ).toBe(true);
       }
       report.push(`${seed.id}: ${[...moved].sort().join(", ")}`);
     }
     expect(report.length).toBe(scenarios.TRANSPORT_SEEDS.length);
   });
 
-  it("matches the recorded oracle transcript, or records it when asked to", async () => {
-    const transcripts = await import(`${HARNESS}/oracle-transcripts.mjs`);
-    const live: Record<string, unknown> = {};
-    for (const [id, pair] of observations) {
-      // RECORDED THROUGH THE NORMALISERS, and all four dimensions of them. The
-      // first version wrote {status, facts, auth} only, which left the `store`
-      // half — the one that passes through no projection, and the only half that
-      // says anything at all about `transport-environment-variable-set` — out of
-      // the record the cutover leaves behind. Normalising before writing is what
-      // makes the step replayable by the same engine AND what keeps a session
-      // tokenHash out of the artifact: `digest-ordinal` has already replaced it.
-      const scenario = scenarios.TRANSPORT_SCENARIO_REGISTRY.find((row: any) => row.id === id);
-      const normalised = harness.normalise(observation("oracle", id, "differential_oracle", pair.oracle), {
-        unorderedCollections: scenario?.unorderedCollections ?? [],
-        skip: scenario?.normalisation?.skip ?? [],
-      });
-      live[id] = {
-        status: normalised.response.status,
-        facts: normalised.response.body,
-        auth: normalised.auth,
-        store: normalised.store,
-        storeIdentity: normalised.storeIdentity,
-      };
-    }
-    if (RECORDING) {
-      transcripts.writeTranscripts(REPOSITORY_ROOT, live);
-      return;
-    }
-    const drift = transcripts.compareTranscripts(recorded, live);
-    expect(
-      drift,
-      "the live oracle no longer answers what the committed transcript recorded. Either the webapp changed — in " +
-        "which case the transcript must be re-recorded with PLATOS_DIFFERENTIAL_RECORD=1 and the change reviewed — " +
-        "or the differential has drifted.",
-    ).toEqual([]);
-  });
-
-  // -------------------------------------------------------------------------
-  // THE REPLAY. This is the case WIN-257's write-up claimed and did not have.
-  // -------------------------------------------------------------------------
-  //
-  // The case above compares the RECORDING against the LIVE oracle: a drift
-  // detector, and one that stops working the moment T8 deletes the sources. This
-  // one compares the CANDIDATE against the FROZEN RECORD, which is what T8 leaves
-  // behind — the same `twinRun`, the same comparators, the same approved
-  // differences, with the recorded step handed back as the oracle subject.
-  //
-  // It is not redundant with `reaches parity on …` today and it is the only
-  // comparison left tomorrow. Today it is the proof that the record is
-  // SUFFICIENT: if a scenario's meaning does not survive being written down and
-  // read back, that is visible now, while the oracle still exists to re-record
-  // from, rather than on the first run after the cutover.
-  it("replays the CANDIDATE against the frozen transcript, which is the oracle the cutover leaves behind", async () => {
-    if (RECORDING) return;
-    const transcripts = await import(`${HARNESS}/oracle-transcripts.mjs`);
-    const ids = [...observations.keys()].sort();
-    expect(
-      transcripts.replayFailures({ steps: recorded }, ids),
-      "a recorded step that carries no store, or no storeIdentity, is not an oracle — it is a souvenir",
-    ).toEqual([]);
-
-    const report: string[] = [];
-    for (const id of ids) {
-      const scenario = scenarios.TRANSPORT_SCENARIO_REGISTRY.find((row: any) => row.id === id);
-      const pair = observations.get(id);
-      const result = await harness.twinRun(
-        scenario,
-        {
-          oracle: transcripts.recordedOracleSubject(recorded, id),
-          candidate: { run: () => observation("candidate", id, "differential_candidate", pair!.candidate) },
-        },
-        { skipNormalisers: scenario.normalisation?.skip ?? [] },
-      );
-      const detail = `${harness.formatResult(result)}\n${JSON.stringify(result.divergences ?? [], null, 1).slice(0, 4000)}`;
-      expect(detail, `${id} does not replay against its recorded oracle`).toContain("PARITY");
-      report.push(id);
-    }
-    expect(report.length, "every driven scenario must replay, or the record is partial").toBe(ids.length);
-  });
-
   it("the replay is not vacuous: a candidate that drifts from the frozen record is caught", async () => {
-    if (RECORDING) return;
-    const transcripts = await import(`${HARNESS}/oracle-transcripts.mjs`);
     // THE MUTATION IS PERMANENT AND IN-SUITE. Without it "replays" would be
     // satisfied by a comparison that compares nothing — the exact failure the
-    // transcript exists to prevent, reintroduced one level up.
+    // transcript exists to prevent, reintroduced one level up. The seeds above
+    // prove the same thing through real requests; this one proves it on the
+    // dimension that passes through no projection, by perturbing the OBSERVATION
+    // rather than the request, so a store comparison that had quietly stopped
+    // comparing rows is caught even if every route still behaves.
     const id = "transport-environment-variable-set";
     const scenario = scenarios.TRANSPORT_SCENARIO_REGISTRY.find((row: any) => row.id === id);
-    const pair = observations.get(id);
-    const live = observation("candidate", id, "differential_candidate", pair!.candidate);
+    const candidate = observations.get(id);
+    const live = observation(id, candidate!);
     const table = Object.keys(live.store)[0] ?? "";
     expect(live.store[table]?.length ?? 0, "the mutation needs a row to drop and a row to keep").toBeGreaterThan(1);
     const perturbed = {
@@ -967,8 +796,7 @@ describe("the V1 REST transport against the webapp it replaces", () => {
     ).toBe(true);
   });
 
-  it("carries no credential in the transcript it commits", async () => {
-    const transcripts = await import(`${HARNESS}/oracle-transcripts.mjs`);
+  it("carries no credential in the transcript it replays", () => {
     expect(transcripts.credentialShapedValues(transcripts.readTranscripts(REPOSITORY_ROOT))).toEqual([]);
   });
 });

@@ -541,12 +541,31 @@ services:
       NODE_ENV: production
       PORT: "3000"
       APP_ORIGIN: "${APP_ORIGIN:-http://localhost:3030}"
-      LOGIN_ORIGIN: "${LOGIN_ORIGIN:-http://localhost:3030}"
       API_ORIGIN: "${API_ORIGIN:-http://localhost:3030}"
-      # Webapp and agent share the canonical clean database.
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
-      DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
-      DATABASE_HOST: "postgres:5432"
+      # ─────────────────────────────────────────────────────────────
+      # WIN-257 T8 — THE DASHBOARD NO LONGER HOLDS A DATABASE CREDENTIAL.
+      #
+      # `DATABASE_URL`, `DIRECT_URL` and `DATABASE_HOST` stood here and gave the
+      # process that renders HTML to a browser a PostgreSQL superuser DSN. It used
+      # them: `app/services/database.server.ts` built a `PrismaClient` from
+      # `DATABASE_URL` and fifteen Prisma operations ran in ten Remix route
+      # modules. All of it now reaches core-api over HTTP, `app/env.server.ts`
+      # no longer declares the variables, and they are removed here rather than
+      # left unread — a variable compose still supplies is a credential an
+      # operator still has to put on this host.
+      #
+      # `LOGIN_ORIGIN` goes with them. D20 moved the magic-link email to
+      # core-api's notifier-email adapter, which composes the link from
+      # `PLATOS_CHANNELS_EMAIL_LOGIN_URL` on the core-api service; the webapp
+      # builds no link and sends no mail.
+      #
+      # THIS IS THE CUTOVER'S CONFIGURATION AND NOT ITS ACTIVATION. Taking it to
+      # production is the founder's merge and deploy (D11). Until the core-api
+      # profile is running and reachable at the URL below, a webapp started from
+      # this file answers 503 on the screens that were cut over — which is the
+      # honest failure, and the reason this variable has no silent fallback to
+      # the agent.
+      PLATOS_CORE_API_URL: "${PLATOS_CORE_API_URL:-http://core-api:3030}"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_TLS_DISABLED: "true"
@@ -595,19 +614,15 @@ services:
       # flags. The init container handles the DDL.
       SKIP_POSTGRES_MIGRATIONS: "1"
       SKIP_CLICKHOUSE_MIGRATIONS: "1"
-      # EOBD.50 — email only when RESEND_API_KEY is set. If unset,
-      # EMAIL_TRANSPORT stays unset so the webapp's
-      # NullMailTransport fallback kicks in and magic-link codes
-      # are printed to the webapp container logs (adequate for
-      # OSS self-host + local dev).
-      EMAIL_TRANSPORT: "${EMAIL_TRANSPORT:-${RESEND_API_KEY:+resend}}"
-      RESEND_API_KEY: "${RESEND_API_KEY:-}"
-      FROM_EMAIL: "${FROM_EMAIL:-}"
-      REPLY_TO_EMAIL: "${REPLY_TO_EMAIL:-}"
-      # EOBD.50 follow-up — force console-logged magic-link codes even
-      # when NODE_ENV=production for OSS self-hosters without SMTP.
-      # Default empty; set to "1" to force the fallback explicitly.
-      PLATOS_DEV_MAGIC_LINK_AUTOREDIRECT: "${PLATOS_DEV_MAGIC_LINK_AUTOREDIRECT:-}"
+      # WIN-257 T8 / D20 — THE SIGN-IN EMAIL IS NOT THIS SERVICE'S ANY MORE.
+      # `EMAIL_TRANSPORT`, `RESEND_API_KEY`, `FROM_EMAIL`, `REPLY_TO_EMAIL` and
+      # `PLATOS_DEV_MAGIC_LINK_AUTOREDIRECT` are gone from this block: the login
+      # action called Resend from inside the Remix process with an API key out of
+      # this environment, and D20 moved the whole flow — mint, link and delivery —
+      # behind `POST /api/v1/bff/magic-link`, where core-api sends it through the
+      # notifier-email adapter and no login-capable token is ever returned to a
+      # BFF. Configure the relay on the `core-api` service
+      # (`PLATOS_CHANNELS_EMAIL_*`), not here.
       # Talk to agent over the compose network
       PLATOS_AGENT_API_URL: http://agent:3100
       # OSS launch — hard cap on org members + pending invites. Mirrors
