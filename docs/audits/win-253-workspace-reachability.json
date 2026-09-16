@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d2c3709cc69d005465f827e6a11db00ff7f2144faa9a50751c65974f1170c157",
+  "evidenceSha256": "6fd1282891d040406bfe0bc54e17148bb09a6b8c542f82de0a591e5058dbb237",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 42,
@@ -121,7 +121,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "41bcaf3aaadd33b9bda62de0ad3035734c4c2cdff2f0f6b69de87b8e4a94466c",
+    "aggregateSha256": "89f03367f0e19453447d0c93504cdd62f4976db8007b80bcf63258a92a747c9e",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4965,7 +4965,7 @@
       },
       {
         "path": "docs/error-taxonomy.json",
-        "sha256": "9700cf95999e40140b4627f20560ed8fc2d25f8c5e8b6b9172c344e4d966c579"
+        "sha256": "70aa53486d4c9166ce79924c4f4e5e0b379327a9678f5ed735d2c564458668f2"
       },
       {
         "path": "docs/errors-retrying.mdx",
@@ -6629,7 +6629,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "91c0d00675e2fb4cd4c9ea3514050bb60c1727b81fb145d560e1ae5121065c62"
+        "sha256": "aead227a7677dbefcd51b2b7445c07823f6a4fc34e7b02fb5d03bd8ff2b7740b"
       },
       {
         "path": "docs/v3-openapi.yaml",
