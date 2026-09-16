@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "c2542c339afbd73df25babb3456f5b6b1e9359763a5b9363ce900c61b6c61391",
+  "evidenceSha256": "7356c6f93a6ed2613dfebaeee748358fcc9f0e1b6510f64f79aa1f079bf8c8a1",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 40,
@@ -117,7 +117,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "41699b8091b34f7a3dcf25a09cfaa0919e7f4a6eda6d3d12cc85597b4fb1fdfb",
+    "aggregateSha256": "76f82e504ab0a5627cd24b839dc36d360b12f2f92e8b3babddc308575d2620ab",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2669,7 +2669,7 @@
       },
       {
         "path": "apps/core-api/src/composition/installation.test.ts",
-        "sha256": "1ab07185e4135f58890b5e7fd03e020841de3188e462e44c02a4560f4cf9387a"
+        "sha256": "0d02e11c9bb0889a1fb2927c4683c68bab4f98cc5b27be0cf81fbac37dc21a23"
       },
       {
         "path": "apps/core-api/src/composition/integration-database.test.ts",
@@ -2841,7 +2841,7 @@
       },
       {
         "path": "apps/core-api/src/process.test.ts",
-        "sha256": "edd6083c85febec3fa788e87dbc6317c2207243247f2dffa6e6eb0e9d8aad9bc"
+        "sha256": "5382a5b126e2eb86144bd5b5130ec00f908e84a7b96320758a7fb66a242cbd90"
       },
       {
         "path": "apps/core-api/src/runtime/correlation.test.ts",
@@ -11489,7 +11489,7 @@
       },
       {
         "path": "packages/adapters/channel-discord/src/discord-transport.test.ts",
-        "sha256": "97c30dd2d6ff7ce59b271b19080077fbe83c1e7ad20a29a27c865498e1891391"
+        "sha256": "ca4a617b538b66d4b1b22e993685b7618d621dcdd25a5693e46f6dcaa0f1d9b8"
       },
       {
         "path": "packages/adapters/channel-discord/src/ed25519.ts",
@@ -11525,7 +11525,7 @@
       },
       {
         "path": "packages/adapters/channel-discord/src/rate-limit.ts",
-        "sha256": "3d388a1acfe8247ca44ccef9a0a4a2dbbae2efe5ed8ddd27067e5a27ad279dec"
+        "sha256": "72d5a1d61e0606654a3e3f84338e3998b3be74284fceb183b64f601f6361b8c0"
       },
       {
         "path": "packages/adapters/channel-discord/src/rfc8032-vectors.ts",
@@ -14141,7 +14141,7 @@
       },
       {
         "path": "packages/contexts/channels/application/ports/channel-runtime.ts",
-        "sha256": "fa9936952a7294856a5056a091cd6ca75925f0934439a6adcd9bcda47bf5f8a4"
+        "sha256": "cc9b9cca6a0f2da1192a4045fd7dd94c97432a2e72e0ebb2cea41715918ab34f"
       },
       {
         "path": "packages/contexts/channels/application/ports/channels-repository.ts",
@@ -87159,7 +87159,7 @@
             {
               "file": "packages/contexts/channels/application/ports/channel-runtime.ts",
               "from": "packages/contexts/channels",
-              "line": 86,
+              "line": 109,
               "specifier": "@platos/kernel"
             },
             {
@@ -97184,7 +97184,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "2ce10a678a5887799f400de76c64fb0e5765e6ea241424c5c97999ab75b4416a",
+      "evidenceSha256": "9947a1b7f18ffa577f91d12115447446ea2d3b46f757e955a7086fab57eae4d4",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

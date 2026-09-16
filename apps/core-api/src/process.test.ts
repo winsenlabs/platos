@@ -355,7 +355,7 @@ describe("the built binary starts, serves and stops", () => {
     // satisfied from its first commit — 57/62 on that lane, remainder unchanged.
     // Together: 60 + 1 + 2 = 63 declared, 55 + 2 + 2 = 59 satisfied, 4 not.
     expect(body.detail.declaredBindings).toBe(63);
-    expect(body.detail.satisfiedBindings).toHaveLength(57);
+    expect(body.detail.satisfiedBindings).toHaveLength(59);
     // WIN-267 A1 + A2: 41 -> 45 of 49 -> 53. Both new directories need no
     // configuration, so all four of their bindings are satisfied in every
     // install and the EIGHT that remain are the same eight generated interfaces.

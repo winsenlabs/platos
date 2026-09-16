@@ -95,7 +95,28 @@ export interface ObservedResponse {
   readonly global: boolean;
 }
 
-/** How many entries, across the three tables below, are held before a sweep. */
+/**
+ * The size at which a sweep runs. NOT a bound on the tables.
+ *
+ * MEASURED, because the first version of this comment said "bounds" and it does
+ * not. `prune` returns immediately below this figure, and above it deletes only
+ * what has EXPIRED — so when every remembered window is still live it deletes
+ * nothing and the tables keep growing, with every subsequent `observe` rescanning
+ * all three. Against the built adapter, one distinct followup route per iteration
+ * answered 429 with `retry_after=3600` (so nothing expires): N=1000 -> size 2000
+ * at 21.5us/observe, N=5000 -> 10000 at 118.5us, N=20000 -> 40000 at 628.8us.
+ * With `retry_after=1` and the clock advanced past it, size stays at 64 after
+ * 20000 calls, which is the case the two bounded-table suites exercise: they
+ * prove the SWEEP IS CORRECT, not that the table is bounded.
+ *
+ * THE REAL BOUND IS THE NUMBER OF LIVE WINDOWS, and it is left that way
+ * deliberately: a live window is a limit Discord is currently imposing, and
+ * forgetting one to cap memory would send a request the far side has already said
+ * to hold. Live windows reset within seconds in production. An amortised
+ * high-water threshold, or an expiry-ordered structure making a sweep O(expired),
+ * would fix the rescan cost; no behavioural case in this suite can tell the two
+ * apart, so neither was written on a guess.
+ */
 export const MAX_REMEMBERED_WINDOWS = 1024;
 
 /** The route a bucket was learned from, and the (credential, bucket) group it belongs to. */
@@ -117,7 +138,13 @@ export class DiscordRateLimits {
 
   constructor(private readonly now: () => number) {}
 
-  /** Entries held across every table: the figure `MAX_REMEMBERED_WINDOWS` bounds. */
+  /**
+   * Entries held across every table.
+   *
+   * Bounded by the number of LIVE windows, NOT by `MAX_REMEMBERED_WINDOWS` — see
+   * that constant. This figure crossing it is what makes `prune` run at all; it is
+   * not a ceiling the sweep restores.
+   */
   get size(): number {
     return this.bucketOfRoute.size + this.resetAtByBucket.size + this.globalResetAt.size;
   }

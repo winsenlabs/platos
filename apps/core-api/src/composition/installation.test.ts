@@ -412,7 +412,7 @@ describe("readiness over what was actually constructed", () => {
     );
   });
 
-  it("reports 50 of 57, and the 7 that remain are exactly the bindings with no implementation", () => {
+  it("reports 59 of 63, and the 4 that remain are exactly the bindings with no implementation", () => {
     // THE ARITHMETIC, PINNED AND DERIVED. The literal catches drift in either
     // direction; the identity beside it says WHY the number is that number, so a
     // future tranche that implements one of the remaining directories sees both
@@ -486,7 +486,7 @@ describe("readiness over what was actually constructed", () => {
     // 55 -> 59 of 60 -> 63 on the integrated tree: `notifier-email`'s two and both
     // Discord rows, all four satisfied because this fixture declares
     // `channels.emailNotifier` and `channels.discord`. See the subtraction above.
-    expect(verdict.detail.satisfiedBindings).toHaveLength(57);
+    expect(verdict.detail.satisfiedBindings).toHaveLength(59);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
     expect(verdict.detail.unsatisfiedBindings).toHaveLength(4);
     // STILL RED, AND HONESTLY SO. Five ports have no implementation in this
@@ -496,7 +496,7 @@ describe("readiness over what was actually constructed", () => {
     expect(verdict.ready).toBe(false);
   });
 
-  it("is 3 of 57 with nothing wired, and says which kind of nothing the other 54 are", () => {
+  it("is 3 of 63 with nothing wired, and says which kind of nothing the other 60 are", () => {
     // IT USED TO BE 0 OF 49, AND THE CHANGE IS THE DELIVERABLE RATHER THAN A
     // RELAXATION. Before WIN-267 there was no port in this tree an install could
     // satisfy without configuring something, so "nothing configured" and

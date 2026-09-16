@@ -319,7 +319,7 @@ describe("Discord's rate limits, read from Discord's headers", () => {
   });
 });
 
-describe("the remembered rate-limit state is bounded, and a sweep never forgets a live limit", () => {
+describe("a sweep drops what has expired and never forgets a live limit, so the tables are bounded by the LIVE windows", () => {
   const answer = (status: number, headers: Record<string, string>, global = false): ObservedResponse => ({
     status,
     header: (name) => headers[name.toLowerCase()] ?? null,
