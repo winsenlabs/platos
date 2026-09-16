@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Headers,
+  HttpCode,
   HttpException,
   HttpStatus,
   Inject,
@@ -32,7 +33,7 @@ import { ToolRegistryService } from "../tool-gateway/tool-registry.service";
 import type { RequestScope } from "../auth/scope.guard";
 import { requireOperator } from "../auth/scope.guard";
 import type { JsonRpcRequest, JsonRpcResponse } from "./mcp-router";
-import { RPC_ERRORS } from "./mcp-router";
+import { RPC_ERRORS, isJsonRpcNotification, loggingSetLevelResponse } from "./mcp-router";
 // WIN-268 P1 — the ONE expression of both MCP version axes.
 import {
   ENTITY_MCP_SCOPES,
@@ -44,6 +45,7 @@ import {
 import { McpBearerTokenService } from "./mcp-bearer-token.service";
 import { McpIdentityResolverService } from "./identity-resolver.service";
 import { McpToolAclService } from "./mcp-tool-acl.service";
+import { createSubscriber, readySubscriber } from "./redis-subscriber";
 import {
   validateIdentityProviders,
   validateMcpIdentityMode,
@@ -541,14 +543,18 @@ export class McpEntityController {
   // HTTP (streamable JSON-RPC)
   // ═════════════════════════════════════════════════════════════════════
 
+  // WIN-268 (M4.2) conformance — 200 for a JSON-RPC response and 202 with no
+  // body for a notification, for the reasons `McpPlatformController.jsonRpc`
+  // states; Nest's `@Post()` default of 201 is neither.
   @Post(":entityId")
+  @HttpCode(HttpStatus.OK)
   async jsonRpc(
     @Param("entityId") entityIdSlug: string,
     @Headers("authorization") authorization: string | undefined,
     @Body() body: JsonRpcRequest,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<JsonRpcResponse> {
+  ): Promise<JsonRpcResponse | undefined> {
     const bearer = this.extractBearer(authorization);
     const auth = await this.authenticate(entityIdSlug, bearer ?? undefined, req);
     if ("error" in auth) {
@@ -561,6 +567,10 @@ export class McpEntityController {
       );
     }
     const response = await this.handleRpc(body, auth.entity!, auth.token);
+    if (isJsonRpcNotification(body)) {
+      res.status(HttpStatus.ACCEPTED);
+      return undefined;
+    }
     // When the JSON-RPC body carries a rate-limit error, surface the
     // retry hint as the standard HTTP `Retry-After` header so MCP
     // clients (Claude Code, Inspector, etc.) can back off without
@@ -598,6 +608,49 @@ export class McpEntityController {
     // client's POST /messages correctly. TTL bounded at 1h to match
     // OAuth access-token TTL.
     const sessionKey = `platos:mcp:entity:session:${sessionId}`;
+    const sseChannel = `platos:mcp:entity:sse:${sessionId}`;
+    const sub = createSubscriber(this.redis);
+    let pingInterval: ReturnType<typeof setInterval> | null = null;
+    let cleanedUp = false;
+    let cleanupPromise: Promise<void> | null = null;
+
+    // WIN-268 (M4.2) — THE DISCONNECT LISTENERS ARE REGISTERED BEFORE THE FIRST
+    // `await`, and `cleanedUp` is re-checked after each one. They used to be
+    // registered at the very END of this handler, so a client that hung up while
+    // the handler was still awaiting Redis left the duplicated subscriber
+    // connection open, the 1-hour session key in Redis and (once it was armed)
+    // the ping interval running, for the lifetime of the process. The ready
+    // check this tranche added made that window a round trip longer, which is
+    // what turned a theoretical race into one worth closing.
+    // `McpPlatformController.sse` guards the same race the same way.
+    const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      req.off("close", cleanup);
+      res.off("close", cleanup);
+      if (pingInterval) clearInterval(pingInterval);
+      cleanupPromise = (async () => {
+        await sub.unsubscribe(sseChannel).catch(() => undefined);
+        await sub.quit().catch(() => undefined);
+        await this.redis.del(sessionKey).catch(() => undefined);
+      })();
+      try {
+        res.end();
+      } catch {
+        /* already closed */
+      }
+    };
+    req.on("close", cleanup);
+    res.on("close", cleanup);
+
+    sub.on("message", (_ch, message) => {
+      try {
+        res.write(`event: message\ndata: ${message}\n\n`);
+      } catch {
+        /* socket closed */
+      }
+    });
+
     await this.redis.set(
       sessionKey,
       JSON.stringify({
@@ -608,10 +661,36 @@ export class McpEntityController {
       "EX",
       3600,
     );
+    if (cleanedUp) {
+      await cleanupPromise;
+      return;
+    }
+    try {
+      // READY before SUBSCRIBE — see `redis-subscriber.ts` for the frames this lost.
+      await readySubscriber(sub);
+      if (cleanedUp) {
+        await cleanupPromise;
+        return;
+      }
+      await sub.subscribe(sseChannel);
+    } catch {
+      /* best-effort */
+    }
+    if (cleanedUp) {
+      await cleanupPromise;
+      return;
+    }
+
+    // WIN-268 (M4.2) — the endpoint is advertised only AFTER the subscriber is
+    // listening. It used to be written first, so a client that POSTed as soon as
+    // it read the endpoint could have its response published to a channel with
+    // no subscriber yet: the same lost frame `redis-subscriber.ts` describes,
+    // reached by ordering instead of by the ready check. `McpPlatformController`
+    // already advertised last.
     const endpointUrl = `/mcp/entity/${encodeURIComponent(entityIdSlug)}/messages?sessionId=${sessionId}`;
     res.write(`event: endpoint\ndata: ${endpointUrl}\n\n`);
 
-    const pingInterval = setInterval(() => {
+    pingInterval = setInterval(() => {
       try {
         const msg = JSON.stringify({ jsonrpc: "2.0", method: "notifications/ping" });
         res.write(`event: message\ndata: ${msg}\n\n`);
@@ -619,41 +698,11 @@ export class McpEntityController {
         /* socket closed */
       }
     }, 30_000);
-
-    const sseChannel = `platos:mcp:entity:sse:${sessionId}`;
-    const sub = this.redis.duplicate();
-    try {
-      await sub.subscribe(sseChannel);
-    } catch {
-      /* best-effort */
-    }
-    sub.on("message", (_ch, message) => {
-      try {
-        res.write(`event: message\ndata: ${message}\n\n`);
-      } catch {
-        /* socket closed */
-      }
-    });
-
-    const cleanup = () => {
+    // The socket can have closed while the endpoint frame was being written.
+    if (cleanedUp) {
       clearInterval(pingInterval);
-      sub.unsubscribe(sseChannel).catch(() => {
-        /* */
-      });
-      sub.quit().catch(() => {
-        /* */
-      });
-      this.redis.del(sessionKey).catch(() => {
-        /* */
-      });
-      try {
-        res.end();
-      } catch {
-        /* */
-      }
-    };
-    req.on("close", cleanup);
-    res.on("close", cleanup);
+      await cleanupPromise;
+    }
   }
 
   @Post(":entityId/messages")
@@ -822,9 +871,12 @@ export class McpEntityController {
     res.status(202).send();
     try {
       const response = await this.handleRpc(body, entity, token);
+      // A notification has no answer; see `isJsonRpcNotification`.
+      if (isJsonRpcNotification(body)) return;
       const frame = JSON.stringify(response);
       await this.redis.publish(`platos:mcp:entity:sse:${sessionId}`, frame);
     } catch (err) {
+      if (isJsonRpcNotification(body)) return;
       const rpcError = {
         jsonrpc: "2.0" as const,
         id: body.id ?? null,
@@ -933,6 +985,9 @@ export class McpEntityController {
         case "notifications/ping":
         case "ping":
           return { jsonrpc: "2.0", id, result: {} };
+        case "logging/setLevel":
+          // The capability is advertised above; see `loggingSetLevelResponse`.
+          return loggingSetLevelResponse(id, req.params);
         case "tools/list":
           // await (not bare return) so a rejection from the ACL prisma query
           // is caught by this try/catch and returned as a JSON-RPC error

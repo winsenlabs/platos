@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Headers,
+  HttpCode,
   HttpException,
   HttpStatus,
   Inject,
@@ -21,7 +22,12 @@ import type { Request, Response } from "express";
 import * as crypto from "node:crypto";
 import { PlatosMCPTokenService, AdminMintForbiddenError } from "./token.service";
 import type { VerifiedToken, PlatosMCPTokenTier } from "./token.service";
-import { McpRouter, type JsonRpcRequest, type McpApprovalGate } from "./mcp-router";
+import {
+  McpRouter,
+  isJsonRpcNotification,
+  type JsonRpcRequest,
+  type McpApprovalGate,
+} from "./mcp-router";
 import { MCPPermissionGatewayService } from "./permission-gateway.service";
 import { buildPlatformToolHandlers } from "./tools";
 import { MacroRecordingState } from "./tools/macros";
@@ -71,6 +77,7 @@ import { OrganizationService } from "../admin/organization.service";
 import { EnvironmentService } from "../admin/environment.service";
 import { AgentClusterService } from "../agent-runtime/agent-cluster.service";
 import type { McpStdioSession } from "./stdio-transport";
+import { createSubscriber, readySubscriber } from "./redis-subscriber";
 
 /**
  * Theme K.4 — Platform MCP controller.
@@ -460,7 +467,17 @@ export class McpPlatformController {
     };
   }
 
+  /**
+   * WIN-268 (M4.2) conformance — `@HttpCode(200)`. Nest answers every `@Post()`
+   * with 201 Created unless told otherwise, and a JSON-RPC response creates
+   * nothing: the Streamable HTTP transport answers a request with 200 and a
+   * JSON body, and the published OpenAPI for this operation already said 200.
+   * A NOTIFICATION is answered 202 Accepted with no body, as the transport
+   * specification requires; the status is set on the passthrough response
+   * inside the handler, which Nest applies after this decorator's default.
+   */
   @Post()
+  @HttpCode(HttpStatus.OK)
   async jsonRpc(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -474,7 +491,19 @@ export class McpPlatformController {
     };
     req.once("aborted", onDisconnect);
     res.once("close", onDisconnect);
-    if (req.aborted || req.destroyed || res.destroyed) onDisconnect();
+    // WIN-268 (M4.2) — `req.destroyed` ALONE IS NOT A DISCONNECT. Node destroys
+    // an `IncomingMessage` as soon as its body has been read to the end, and the
+    // JSON body parser reads every body before this handler is entered — so
+    // `req.destroyed` was true on EVERY request that carried one, and this
+    // pre-check aborted the dispatch signal before the tool ever ran. Nothing
+    // noticed because only three platform tools take the signal; the one that
+    // does, `macros.replay`, answered `-32603 "internal error"` on its first step
+    // for every Streamable HTTP caller. A complete request whose body was
+    // consumed is not a client that went away — `req.complete` is what tells the
+    // two apart — and a client that really did hang up still reaches
+    // `onDisconnect` through `aborted`, `res` close, or an already-destroyed
+    // response.
+    if (req.aborted || (req.destroyed && !req.complete) || res.destroyed) onDisconnect();
     try {
       const bearer = this.extractBearer(authorization);
       if (!bearer) {
@@ -493,12 +522,17 @@ export class McpPlatformController {
           HttpStatus.BAD_REQUEST
         );
       }
-      return await this.getRouter().handle(body, token, {
+      const response = await this.getRouter().handle(body, token, {
         approvalId: approvalIdHeader ?? null,
         dashboardOrigin:
           process.env["APP_ORIGIN"] ?? process.env["PLATOS_WEBAPP_ORIGIN"] ?? null,
         abortSignal: requestAbort.signal,
       });
+      if (isJsonRpcNotification(body)) {
+        res.status(HttpStatus.ACCEPTED);
+        return undefined;
+      }
+      return response;
     } finally {
       req.off("aborted", onDisconnect);
       res.off("close", onDisconnect);
@@ -571,7 +605,7 @@ export class McpPlatformController {
     const cancelKey = `platos:mcp:platform:sse-cancelled:${sessionId}`;
     const cancelChannel = `platos:mcp:platform:sse-cancel:${sessionId}`;
     const sessionAbort = new AbortController();
-    const sub = this.redis.duplicate();
+    const sub = createSubscriber(this.redis);
     let pingInterval: ReturnType<typeof setInterval> | null = null;
     let cleanedUp = false;
     let cleanupPromise: Promise<void> | null = null;
@@ -637,6 +671,12 @@ export class McpPlatformController {
       return;
     }
     try {
+      // READY before SUBSCRIBE — see `redis-subscriber.ts` for the frames this lost.
+      await readySubscriber(sub);
+      if (cleanedUp) {
+        await cleanupPromise;
+        return;
+      }
       await sub.subscribe(sseChannel);
     } catch {
       if (!cleanedUp) {
@@ -724,7 +764,7 @@ export class McpPlatformController {
     res.status(202).send();
 
     const dispatchAbort = new AbortController();
-    const cancelSub = this.redis.duplicate();
+    const cancelSub = createSubscriber(this.redis);
     const localSignal = this.sseSessionAborts?.get(sessionId)?.signal;
     const abortDispatch = () => {
       if (!dispatchAbort.signal.aborted) dispatchAbort.abort();
@@ -736,6 +776,7 @@ export class McpPlatformController {
     else localSignal?.addEventListener("abort", abortDispatch, { once: true });
     cancelSub.on("message", onCancel);
     try {
+      await readySubscriber(cancelSub);
       await cancelSub.subscribe(cancelChannel);
       const [cancelled, activeSession] = await Promise.all([
         this.redis.get(cancelKey).catch(() => null),
@@ -747,8 +788,13 @@ export class McpPlatformController {
         dashboardOrigin: process.env["APP_ORIGIN"] ?? process.env["PLATOS_WEBAPP_ORIGIN"] ?? null,
         abortSignal: dispatchAbort.signal,
       });
-      await this.redis.publish(`platos:mcp:platform:sse:${sessionId}`, JSON.stringify(response));
+      // A notification has no answer, so nothing is published for it. This was
+      // the frame the official SDK client rejected on every legacy-SSE handshake.
+      if (!isJsonRpcNotification(body)) {
+        await this.redis.publish(`platos:mcp:platform:sse:${sessionId}`, JSON.stringify(response));
+      }
     } catch (err) {
+      if (isJsonRpcNotification(body)) return;
       const rpcError = {
         jsonrpc: "2.0" as const,
         id: body.id ?? null,
@@ -854,9 +900,10 @@ export class McpPlatformController {
     // once .subscribe() is called, so we duplicate. ioredis keyPrefix
     // applies to publish channels but NOT to subscribe channels, so we
     // pre-prefix `platos:` here to match the publisher's namespace.
-    const sub = this.redis.duplicate();
+    const sub = createSubscriber(this.redis);
     const prefixedChannel = `platos:${scopeChannel}`;
     try {
+      await readySubscriber(sub);
       await sub.subscribe(prefixedChannel);
     } catch (err) {
       res.write(

@@ -107,6 +107,77 @@ export const RPC_ERRORS = {
   RATE_LIMITED: -32099,
 } as const;
 
+/**
+ * WIN-268 (M4.2) conformance — JSON-RPC 2.0 §4.1: "A Notification is a Request
+ * object without an `id` member", and "the Server MUST NOT reply to a
+ * Notification". MCP's own base protocol repeats it ("Notifications MUST NOT
+ * include an ID ... The receiver MUST NOT send a response").
+ *
+ * THIS IS THE ONE PREDICATE EVERY PLATOS MCP TRANSPORT READS. Before it, the
+ * stdio transport knew the rule (`parsed.id === undefined`) and the three HTTP
+ * servers did not: `POST /mcp/platform` answered `notifications/initialized`
+ * with `{"jsonrpc":"2.0","id":null,"result":{}}` under a 201, and the legacy SSE
+ * transport PUBLISHED that frame onto the session stream, where the official
+ * SDK client rejects it (`id: null` is not a valid response id) and raises
+ * `onerror` on every handshake. `mcp-protocol-conformance.integration.test.ts`
+ * drives the real servers with the SDK client and reads the raw stream to prove
+ * no such frame is written any more.
+ *
+ * `id: null` is NOT a notification. JSON-RPC permits it on a request and MCP
+ * forbids it; either way the member is PRESENT, so the sender asked for an
+ * answer and gets one — the router's error for it is the answer.
+ */
+export function isJsonRpcNotification(message: unknown): boolean {
+  if (!message || typeof message !== "object" || Array.isArray(message)) return false;
+  return (message as { id?: unknown }).id === undefined;
+}
+
+/**
+ * MCP `logging` capability — the RFC 5424 severities the specification names
+ * for `logging/setLevel` (server/utilities/logging).
+ */
+export const MCP_LOGGING_LEVELS = [
+  "debug",
+  "info",
+  "notice",
+  "warning",
+  "error",
+  "critical",
+  "alert",
+  "emergency",
+] as const;
+
+/**
+ * WIN-268 (M4.2) conformance — `logging/setLevel`.
+ *
+ * All three Platos MCP servers ADVERTISE `capabilities.logging` in their
+ * `initialize` result, and none of them handled the one request that capability
+ * obliges a server to accept: a conforming client calling `setLoggingLevel` got
+ * `-32601 method not found` from a server that had just told it the method
+ * existed. Removing the capability would have moved the published handshake;
+ * honouring it moves nothing. The level is VALIDATED (an unknown severity is
+ * `-32602`) and otherwise has no effect, which the specification permits — a
+ * server is never obliged to emit `notifications/message` at all, only not to
+ * emit below the level it was given, and these servers emit none.
+ */
+export function loggingSetLevelResponse(
+  id: string | number | null,
+  params: Record<string, unknown> | undefined,
+): JsonRpcResponse {
+  const level = params?.["level"];
+  if (typeof level !== "string" || !(MCP_LOGGING_LEVELS as readonly string[]).includes(level)) {
+    return {
+      jsonrpc: "2.0",
+      id,
+      error: {
+        code: RPC_ERRORS.INVALID_PARAMS,
+        message: `logging/setLevel: level must be one of ${MCP_LOGGING_LEVELS.join(", ")}`,
+      },
+    };
+  }
+  return { jsonrpc: "2.0", id, result: {} };
+}
+
 export interface McpRouterContext {
   /** Token-pinned scope for every call. */
   buildScope(token: VerifiedToken, userId?: string): RequestScope;
@@ -303,7 +374,14 @@ export class McpRouter {
           return { jsonrpc: "2.0", id, result: {} };
         }
         case "notifications/initialized": {
+          // A notification has no answer. The transports never send this body —
+          // `isJsonRpcNotification` gates every write — and the router still
+          // returns one so a caller holding a `JsonRpcResponse` type (macro
+          // replay, stdio) needs no second shape.
           return { jsonrpc: "2.0", id, result: {} };
+        }
+        case "logging/setLevel": {
+          return loggingSetLevelResponse(id, req.params);
         }
         case "tools/list": {
           // Filter by token permission allowlist so a token only sees

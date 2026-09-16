@@ -140,6 +140,14 @@ export const EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS = Object.freeze([
   // name rather than swept up by a generated-artifact root.
   "docs/audits/win-268-mcp-store-ownership.json",
   "docs/audits/win-268-mcp-store-ownership.md",
+  // WIN-268 (M4.2). The MCP SDK 1.30.x candidate's compatibility result, ACCEPTED
+  // because it binds CURRENT truth and not a date: `scripts/mcp-sdk-candidate-
+  // compatibility.mjs --check` reruns every suite that asks the adopted SDK and
+  // the candidate the same questions, re-derives the file and requires it byte
+  // for byte in the `agent-tenancy-postgres` job, and it records no timestamp.
+  // Wholly generated, but pinned by name because its root holds hand-written
+  // registers the generated-artifact roots must not sweep up.
+  "docs/audits/win-268-mcp-sdk-candidate-compatibility.json",
   // WIN-269 (M4.3). The TOOL LIFECYCLE's ORM register, ACCEPTED for exactly the
   // reason its sibling above is and for one more of its own: as well as
   // re-deriving every site from the schema, the ownership map, the composition

@@ -13,7 +13,11 @@ function productionTypeScriptFiles(directory: string): string[] {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) return productionTypeScriptFiles(path);
     if (!entry.isFile() || !entry.name.endsWith(".ts")) return [];
-    if (/\.(?:test|spec)\.ts$/.test(entry.name) || entry.name.endsWith(".d.ts")) return [];
+    // `*.test-fixture.ts` never ships either: `tsconfig.build.json` excludes it with
+    // the test suffixes. The MCP conformance harness seeds its database through
+    // eight delegate calls, which are a suite building its fixture rather than
+    // production store reach, and counting them moved this census 808 -> 816.
+    if (/\.(?:test|spec|test-fixture)\.ts$/.test(entry.name) || entry.name.endsWith(".d.ts")) return [];
     return [path];
   });
 }

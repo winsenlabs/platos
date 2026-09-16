@@ -716,6 +716,24 @@ const expectedDifferentialConservationCommand = "pnpm test:differential-harness:
 // suite under either joins with no line to add.
 const agentTenancyPostgresJob = "agent-tenancy-postgres";
 const agentTenancyPostgresCommand = "pnpm test:agent-tenancy-postgres:integration";
+// WIN-268/WIN-269 (M4). Three suites under the walked roots — the MCP protocol
+// conformance matrix, the two-process legacy SSE suite and the tool-call parity
+// suite — need a real Redis as well as the database, and the SDK 1.30.x
+// candidate's compatibility result is re-derived in the same job, where both
+// services exist. Deleting the service, its URL or either command is exactly how
+// that evidence would stop being produced while the job stayed green, so each is
+// its own violation with its own control.
+const mcpSdkCandidateCommands = [
+  "node --test scripts/mcp-sdk-candidate-compatibility.test.mjs",
+  "node scripts/mcp-sdk-candidate-compatibility.mjs --check",
+];
+const agentTenancyRedisUrl = "redis://127.0.0.1:6379";
+const expectedAgentTenancyRedisService = {
+  image: "redis:7",
+  ports: ["6379:6379"],
+  options:
+    '--health-cmd "redis-cli ping" --health-interval 2s --health-timeout 5s --health-retries 30',
+};
 const expectedAgentTenancyPostgresScripts = new Map([
   [
     "test:agent-tenancy-postgres:integration",
@@ -1911,8 +1929,24 @@ function policyViolations(input) {
   const agentTenancyJob = ciJobs.get(agentTenancyPostgresJob);
   if (agentTenancyJob === undefined) {
     violations.push("CI must retain the agent tenancy real-PostgreSQL job");
-  } else if (countExact(normalizedRunCommands(agentTenancyJob), agentTenancyPostgresCommand) !== 1) {
-    violations.push("agent tenancy PostgreSQL job must run its suite walker exactly once");
+  } else {
+    const agentTenancyRuns = normalizedRunCommands(agentTenancyJob);
+    if (countExact(agentTenancyRuns, agentTenancyPostgresCommand) !== 1) {
+      violations.push("agent tenancy PostgreSQL job must run its suite walker exactly once");
+    }
+    for (const command of mcpSdkCandidateCommands) {
+      if (countExact(agentTenancyRuns, command) !== 1) {
+        violations.push(`agent tenancy PostgreSQL job must run ${command} exactly once`);
+      }
+    }
+    if (
+      JSON.stringify(agentTenancyJob.services?.redis) !== JSON.stringify(expectedAgentTenancyRedisService) ||
+      agentTenancyJob.env?.PLATOS_TEST_REDIS_URL !== agentTenancyRedisUrl
+    ) {
+      violations.push(
+        "agent tenancy PostgreSQL job must serve the exact Redis 7 its MCP and tool-call parity suites require"
+      );
+    }
   }
 
   // M4 finish — the non-browser completion evidence job. A separate job for the
@@ -3660,6 +3694,25 @@ test("CI policy controls fail under generated semantic source mutations", async 
           "        run: echo skipped"
         ),
     },
+    // WIN-268/WIN-269 (M4) — the candidate evidence and the Redis the suites
+    // need. Each deletion is a way the job stays green while the evidence stops.
+    ...mcpSdkCandidateCommands.map((command) => ({
+      name: `agent tenancy PostgreSQL job cannot stop running ${command}`,
+      expected: `agent tenancy PostgreSQL job must run ${command} exactly once`,
+      mutate: (input) => mutateFixture(input, "ci", `          ${command}\n`, "          echo skipped\n"),
+    })),
+    {
+      name: "agent tenancy PostgreSQL job cannot lose the Redis URL its suites read",
+      expected:
+        "agent tenancy PostgreSQL job must serve the exact Redis 7 its MCP and tool-call parity suites require",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `platos_agent_tenancy_ci?schema=public\n      PLATOS_TEST_REDIS_URL: ${agentTenancyRedisUrl}\n`,
+          "platos_agent_tenancy_ci?schema=public\n"
+        ),
+    },
     ...[...expectedAgentTenancyPostgresScripts].map(([name, target]) => ({
       name: `agent tenancy PostgreSQL script ${name} cannot be repointed`,
       expected: `package.json must wire exact agent tenancy PostgreSQL script ${name}: ${target}`,
@@ -5211,10 +5264,17 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   that smoke.
   // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 2 + 5 = 401. The
   // count is pinned rather than derived so that a control silently disappearing is a
+  //   MCP CONFORMANCE LANE, +3. The `agent-tenancy-postgres` job gains a Redis
+  //   service and the SDK 1.30.x candidate's re-derived compatibility result. TWO
+  //   for its commands — the derivation's own tests and the `--check` — and ONE for
+  //   the Redis URL the conformance, two-process SSE and tool-call parity suites
+  //   read. No setup-node step is added: it is the same job.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 2 + 5 + 3 = 404. The
+  // count is pinned rather than derived so that a control silently disappearing is a
   // failure rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    401,
+    404,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
@@ -5677,6 +5737,25 @@ const NEWLY_GATED_AGENT_SUITES = [
 ];
 
 /**
+ * WIN-268/WIN-269 (M4) — the three suites that tranche added under the walked
+ * roots, NAMED as well as walked.
+ *
+ * The walk is what RUNS them, and a new suite still joins this job by existing.
+ * What a walk cannot notice is one of ITS OWN suites going away: delete one of
+ * these files, or rename it out of `SUITE_SUFFIX`, and the job keeps passing with
+ * the evidence gone — which is the gate-darkness pattern this file exists to
+ * close, one turn later. Two of the three are also pinned by `SUITES` in
+ * `scripts/mcp-sdk-candidate-compatibility.mjs`, which asserts they exist and
+ * import both SDK builds; the tool-call parity suite was pinned by nothing at
+ * all, so its filename was one rename away from being dropped in silence.
+ */
+const M4_CONFORMANCE_AGENT_SUITES = [
+  "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+  "apps/agent/src/mcp-platform/mcp-sse-multi-node.integration.test.ts",
+  "apps/agent/src/tool-gateway/tool-call-parity.integration.test.ts",
+];
+
+/**
  * MEASURED, not intended: every `*.integration.test.ts` under `apps/agent/src`
  * that no CI job executes, with the reason each was left alone.
  *
@@ -5750,6 +5829,35 @@ test("the agent tenancy job's walker covers the suites that were dark, read from
       `${suite} ran in NO CI job before this job existed and must still be covered by it`
     );
   }
+  for (const suite of M4_CONFORMANCE_AGENT_SUITES) {
+    assert.ok(
+      gated.includes(suite),
+      `${suite} is the MCP conformance / tool-call parity evidence for M4 and the walker no longer ` +
+        "finds it: it was deleted, moved out of the walked roots, or renamed out of the suffix"
+    );
+  }
+});
+
+test("the named M4 conformance suites gate fails when one of them is renamed away", () => {
+  // THE NEGATIVE CONTROL for the loop above. The assertion is a membership test
+  // against a filesystem walk, so it is worth proving it can fail: the same walk
+  // with one of the three names missing must reject, naming that file.
+  const gated = discoverAgentTenancySuites().filter(
+    (suite) => suite !== M4_CONFORMANCE_AGENT_SUITES[2]
+  );
+  assert.equal(
+    gated.length,
+    discoverAgentTenancySuites().length - 1,
+    "the control removed nothing; the parity suite is not in the walk to begin with"
+  );
+  assert.throws(
+    () => {
+      for (const suite of M4_CONFORMANCE_AGENT_SUITES) {
+        assert.ok(gated.includes(suite), `${suite} is no longer found by the walker`);
+      }
+    },
+    /tool-call-parity\.integration\.test\.ts is no longer found by the walker/u
+  );
 });
 
 test("every apps/agent integration suite is gated or recorded as ungated, with a reason", async () => {
@@ -5992,6 +6100,24 @@ const M4_GATE_STEPS = Object.freeze([
     ],
     subjects: ["src/tool-gateway/mcp-transport/mcp-client-pool.service"],
     after: ["pnpm --filter @platos/tenancy-database build", "pnpm --filter @internal/workload-identity build"],
+    // A SECOND STEP FOR THE SAME CLAUSE, IN THE JOB THAT HAS THE STORES.
+    //
+    // The tool-call parity suite drives the SAME `McpConnectionPool` through the
+    // whole executor seam, so the subject join below puts it on this clause — but
+    // it composes the real application and needs PostgreSQL and Redis, which the
+    // `typecheck` job does not have. Naming it on the step above would make it
+    // SKIP, which is the one outcome this table exists to prevent, so the clause
+    // gets a step in `agent-tenancy-postgres` instead and both steps count as
+    // "this clause's step". Without this entry the suite reached CI only through
+    // `scripts/agent-tenancy-postgres-integration.mjs`'s directory walk plus the
+    // `.integration.test.ts` suffix: renaming the file dropped it from CI with
+    // nothing going red.
+    servicesStep: {
+      job: "agent-tenancy-postgres",
+      name: "WIN-269 tool-call parity across direct, Trigger and channel turns",
+      suites: ["src/tool-gateway/tool-call-parity.integration.test.ts"],
+      after: ["pnpm --filter @internal/workload-identity build", "pnpm --filter @internal/docs build"],
+    },
   },
   {
     job: "agent-tenancy-postgres",
@@ -6042,11 +6168,21 @@ function vitestFiles(command, prefix) {
 const agentVitestFiles = (command) => vitestFiles(command, AGENT_VITEST_PREFIX);
 const coreApiVitestFiles = (command) => vitestFiles(command, CORE_API_VITEST_PREFIX);
 
+/**
+ * The step specifications a gate declares: its own, and the services step it
+ * declares for the same clause when one of its suites needs real stores. Both are
+ * held to the same rules, and the subject join below accepts either.
+ */
+function gateStepSpecs(gate) {
+  const own = { job: gate.job, name: gate.name, suites: gate.suites, after: gate.after, coreApiSuites: gate.coreApiSuites };
+  return gate.servicesStep === undefined ? [own] : [own, { ...gate.servicesStep, coreApiSuites: undefined }];
+}
+
 function m4GateViolations(workflowText, readSuite) {
   const violations = [];
   const workflow = parseWorkflow(workflowText, ".github/workflows/ci.yml", violations);
   const jobs = workflowJobs(workflow);
-  for (const gate of M4_GATE_STEPS) {
+  for (const gate of M4_GATE_STEPS.flatMap(gateStepSpecs)) {
     const steps = workflowSteps(jobs.get(gate.job));
     const matching = steps.filter((step) => step.name === gate.name);
     if (matching.length !== 1) {
@@ -6147,8 +6283,14 @@ function agentSuitesOffTheirClauseStep(workflowText, readFile = readAgentSuite) 
   for (const suite of suitesImportingSubjects(AGENT_PACKAGE_ROOT, M4_GATED_SUBJECTS, readFile)) {
     const imported = subjectsImportedBy(suite, M4_GATED_SUBJECTS, readFile(suite));
     for (const gate of M4_GATE_STEPS.filter((candidate) => candidate.subjects.some((subject) => imported.includes(subject)))) {
-      const step = workflowSteps(jobs.get(gate.job)).find((candidate) => candidate.name === gate.name);
-      const named = typeof step?.run === "string" ? normalizedShellCommands(step.run).flatMap(agentVitestFiles) : [];
+      // NAMED ON EITHER OF THE CLAUSE'S STEPS. A clause with a services step has two
+      // — one in `typecheck` and one in the job with the stores — and a suite on
+      // either is on its clause's step. A suite on NEITHER is still a violation, and
+      // one named only by an unrelated step still counts as unnamed.
+      const named = gateStepSpecs(gate).flatMap((spec) => {
+        const step = workflowSteps(jobs.get(spec.job)).find((candidate) => candidate.name === spec.name);
+        return typeof step?.run === "string" ? normalizedShellCommands(step.run).flatMap(agentVitestFiles) : [];
+      });
       if (!named.includes(suite)) missing.push([suite, gate.name]);
     }
   }
@@ -6183,7 +6325,7 @@ const readAgentSuite = (suite) => readFileSync(path.join(repositoryRoot, AGENT_P
 const ciWorkflowText = () => readFileSync(path.join(repositoryRoot, ".github/workflows/ci.yml"), "utf8");
 
 test("M4 gates: the three dark clauses are each named by one fail-fast step, after their builds, with no skippable flag", () => {
-  for (const gate of M4_GATE_STEPS) {
+  for (const gate of M4_GATE_STEPS.flatMap(gateStepSpecs)) {
     for (const suite of gate.suites) {
       assert.ok(
         readdirSync(path.join(repositoryRoot, AGENT_PACKAGE_ROOT, path.posix.dirname(suite))).includes(path.posix.basename(suite)),
@@ -6291,6 +6433,39 @@ test("M4 gates: the checkers fail on the mutations they exist to catch", () => {
       ),
       expected: "no longer names core-api src/http/mcp-body-cap.test.ts",
     },
+    // THE SERVICES STEP IS HELD TO THE SAME RULES AS THE STEP IT STANDS BESIDE:
+    // renamed, emptied, allowed to fail, or with its `*_REQUIRED` flag dropped so
+    // an absent store could skip it green. Without these four the second step of
+    // the WIN-269 clause would be a line in this table nothing could falsify.
+    {
+      name: "the WIN-269 services step renamed",
+      text: pristine.replace(
+        "- name: WIN-269 tool-call parity across direct, Trigger and channel turns",
+        "- name: Tool call parity"
+      ),
+      expected: 'exactly one step named "WIN-269 tool-call parity across direct, Trigger and channel turns"',
+    },
+    {
+      name: "the parity suite dropped from the WIN-269 services step",
+      text: pristine.replace(
+        "run: pnpm --filter platos-agent exec vitest run src/tool-gateway/tool-call-parity.integration.test.ts",
+        "run: pnpm --filter platos-agent exec vitest run src/tool-gateway/tool-sync-ws.test.ts"
+      ),
+      expected: "no longer names src/tool-gateway/tool-call-parity.integration.test.ts",
+    },
+    {
+      name: "the WIN-269 services step allowed to fail",
+      text: pristine.replace(
+        "      - name: WIN-269 tool-call parity across direct, Trigger and channel turns\n",
+        "      - name: WIN-269 tool-call parity across direct, Trigger and channel turns\n        continue-on-error: true\n"
+      ),
+      expected: "must be unconditional and fail-fast",
+    },
+    {
+      name: "the parity gate flag removed from the WIN-269 services step",
+      text: pristine.replace('          TOOL_CALL_PARITY_REQUIRED: "1"\n', ""),
+      expected: "must set TOOL_CALL_PARITY_REQUIRED=1",
+    },
   ];
   for (const mutation of mutations) {
     assert.notEqual(mutation.text, pristine, `${mutation.name}: the mutation did not apply`);
@@ -6322,6 +6497,20 @@ test("M4 gates: the checkers fail on the mutations they exist to catch", () => {
   assert.ok(agentVitestFilesNamedAnywhere(elsewhere).has("src/tool-gateway/tool-sync-ws.test.ts"));
   assert.deepEqual(agentSuitesOffTheirClauseStep(elsewhere), [
     ["src/tool-gateway/tool-sync-ws.test.ts", "WIN-272 legacy SSE terminal-frame and duplicate tool-result suites"],
+  ]);
+
+  // BOTH STEPS OF THE SAME CLAUSE, AND NEITHER IS ENOUGH ON ITS OWN. With the
+  // parity suite renamed out of the services step, the subject join reports it
+  // against the clause even though the clause's OTHER step is untouched — so the
+  // services step is load-bearing rather than decorative, and the "either step"
+  // reading below is not a hole.
+  const parityDropped = pristine.replace(
+    "run: pnpm --filter platos-agent exec vitest run src/tool-gateway/tool-call-parity.integration.test.ts",
+    "run: pnpm --filter platos-agent exec vitest run src/tool-gateway/tool-sync-ws.test.ts"
+  );
+  assert.notEqual(parityDropped, pristine);
+  assert.deepEqual(agentSuitesOffTheirClauseStep(parityDropped), [
+    ["src/tool-gateway/tool-call-parity.integration.test.ts", "WIN-269 external MCP failure isolation against real remote MCP servers"],
   ]);
 
   // The suffix: a `.spec.ts` suite importing a gated subject is a suite like any

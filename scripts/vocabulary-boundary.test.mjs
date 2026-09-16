@@ -821,7 +821,19 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         only the diagnostic a reader is shown points at the wrong line. Re-keying
   //         them is a separate change, because `--write` moves every row it re-keys and
   //         that diff would bury whatever else it travelled with.
-  assert.equal(manifest.exceptions.length, 19448);
+  //
+  //         THE TOOL-CALL PARITY SUITE ADDS THREE, taking it to 19451, all in
+  //         `apps/agent/src/tool-gateway/tool-call-parity.integration.test.ts` and all
+  //         the external durable-runtime vendor's own names: the two environment
+  //         variables whose presence makes `TurnDispatchService.resolveMode` read an
+  //         agent's binding (the suite's durable arm needs that read), and the bridge
+  //         module's directory in the import of `InternalExecuteToolController`. The
+  //         suite's prose was rewritten around every other occurrence. Each row copies
+  //         the classification and owner of `turn-dispatch.service.spec.ts`'s vendor
+  //         rows, and its context digests are the gate's own computed values. The lane
+  //         pinned 19460 against a head with neither the sdk lane's eight removals nor
+  //         the two README ones in it; 19448 + 3 = 19451 is what THIS tree produces.
+  assert.equal(manifest.exceptions.length, 19451);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

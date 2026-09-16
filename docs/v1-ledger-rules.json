@@ -2135,37 +2135,37 @@
     ]
   },
   "expected": {
-    "totalFiles": 5366,
+    "totalFiles": 5377,
     "areaCounts": {
-      "apps-agent": 532,
+      "apps-agent": 539,
       "apps-core-api": 145,
       "apps-mcp-stdio": 8,
       "apps-webapp": 184,
-      "docs-content": 746,
+      "docs-content": 747,
       "internal-packages": 1174,
-      "packages": 2236,
-      "root-infra": 341
+      "packages": 2237,
+      "root-infra": 343
     },
     "kindCounts": {
       "asset": 155,
       "config": 326,
       "doc": 614,
       "fixture": 6,
-      "generated": 48,
+      "generated": 49,
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2200,
-      "test": 1104
+      "source": 2205,
+      "test": 1109
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1709,
-      "regenerate": 43,
-      "retain": 3605,
+      "move-refactor": 1718,
+      "regenerate": 44,
+      "retain": 3606,
       "unresolved": 2
     },
-    "protectedCount": 1642,
+    "protectedCount": 1643,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2174,8 +2174,8 @@
       "apps-agent.entry.process": 1,
       "apps-agent.generated.contract-artifacts": 2,
       "apps-agent.infra.container": 1,
-      "apps-agent.source.runtime": 281,
-      "apps-agent.test.suites": 216,
+      "apps-agent.source.runtime": 284,
+      "apps-agent.test.suites": 220,
       "apps-agent.tooling.scripts": 13,
       "apps-core-api.config.package": 8,
       "apps-core-api.doc.package": 1,
@@ -2212,7 +2212,7 @@
       "docs-content.evidence.adr": 3,
       "docs-content.evidence.audit-history": 13,
       "docs-content.evidence.audit-notes": 14,
-      "docs-content.evidence.audit-receipts": 23,
+      "docs-content.evidence.audit-receipts": 24,
       "docs-content.evidence.lifecycle-controls": 2,
       "docs-content.generated.audit": 2,
       "docs-content.governance.root-manifest": 2,
@@ -2265,7 +2265,7 @@
       "packages.config.build": 30,
       "packages.contexts.config": 37,
       "packages.contexts.doc": 17,
-      "packages.contexts.source": 734,
+      "packages.contexts.source": 735,
       "packages.contexts.test": 366,
       "packages.doc.package": 9,
       "packages.generated.release-history": 5,
@@ -2303,11 +2303,11 @@
       "root-infra.pin.submodule-index": 1,
       "root-infra.release.changesets": 19,
       "root-infra.test.harness": 74,
-      "root-infra.test.script-suites": 35,
+      "root-infra.test.script-suites": 36,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 126,
+      "root-infra.tooling.scripts": 127,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "25c03463781610aca9cadcebf03f3261c74030b2983f370bcbed3eba76da1a69"
+    "classificationSha256": "547a1221769f330d7379b36b98312fe556f6fdade243679a628df14441fe9db8"
   }
 }

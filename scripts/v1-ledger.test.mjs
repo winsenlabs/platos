@@ -606,7 +606,28 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `main.ts`, `mcp-client-pool.service.ts`, `tool-executor.service.ts`,
     // `entity-mcp-discovery.service.ts`, `tool-sync-ws.test.ts` and
     // `mcp-connected-entity.acceptance.test.ts` are EDITS and add no file.
-    "apps-agent": 18,
+    //
+    // MCP CONFORMANCE LANE 18 -> 24. SIX files, all under rules that already
+    // existed. On `apps-agent.source.runtime` (281 -> 284):
+    //   `mcp-platform/redis-subscriber.ts` — the READY-before-SUBSCRIBE subscriber
+    //   the legacy SSE sessions now use, which stopped losing `initialize` frames;
+    //   `mcp-platform/mcp-conformance.test-fixture.ts` and
+    //   `mcp-platform/mcp-sse-node.test-fixture.ts` — the real-socket harness for
+    //   the three MCP servers and the child agent process the two-node suite
+    //   starts (both excluded from `tsconfig.build.json`).
+    // On `apps-agent.test.suites` (216 -> 219): the MCP protocol conformance
+    // matrix, the two-process legacy SSE suite and the tool-call parity suite.
+    //
+    // THAT LANE'S ROUND-2 FIXES 24 -> 25. ONE file, on the same rule:
+    //   `shared/url-validator.test.ts` — the IPv4-mapped and IPv4-compatible IPv6
+    //   spellings the SSRF screen must refuse, lifted out of the service-gated
+    //   integration suite so the security fix is gated with no database, no Redis
+    //   and no network (`apps-agent.test.suites` 219 -> 220). Everything else that
+    //   round changed in THIS area is an EDIT. NO LEDGER RULE CHANGED.
+    //
+    // 25 IS RE-MEASURED ON THE MERGED TREE: the lane pinned 22 against a head with
+    // neither the gates lane's three files nor this merge in it; 18 + 7 = 25.
+    "apps-agent": 25,
     // WIN-272 (M4.6) 0 -> 1. `test/publicGuestBoundary.test.ts`: the public-guest
     // and embed boundary over two real `node:http` listeners with `fetch`
     // unstubbed. It is the FIRST file this programme has added under
@@ -1670,7 +1691,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // 1599 IS RE-MEASURED ON THE MERGED TREE: each lane added its own delta to
     // 1556, and 1556 + 13 + 9 + 21 = 1599 is what the four together produce.
-    packages: 1599,
+    //
+    // THE MCP CONFORMANCE LANE'S ROUND-2 FIXES — 1599 -> 1600. ONE file, on
+    // `packages.contexts.source`, a rule that already existed:
+    // `packages/contexts/tools/adapters/sdk-builds.test-fixture.ts`. It exists
+    // because of a BUDGET, not because of new behaviour — the module-identity joins
+    // that round added to `dispatch.integration.test.ts` took it from 487 to 535
+    // effective lines and past the 500 the ADR M0.3 §6 gate enforces, so the two SDK
+    // server builds, the entry points, the manifest reader and the store-path
+    // resolver moved out and the joins stayed. It declares no case and does not end
+    // in `.test.ts`, so the test-case census's file count for this package is
+    // unmoved. NO LEDGER RULE CHANGED.
+    //
+    // 1600 IS RE-MEASURED ON THE MERGED TREE: 1556 + 13 + 9 + 21 + 1 = 1600.
+    packages: 1600,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2028,7 +2062,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // decisions the founder delegated on 2026-09-15, filed beside ADR M0.3 and M0.4.
     // It lands on the existing `docs-content.evidence.adr` rule (2 -> 3) as a
     // `doc`/`retain`, under `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
-    "docs-content": 26,
+    // MCP SDK 1.30.x CANDIDATE 26 -> 27. ONE file:
+    // `docs/audits/win-268-mcp-sdk-candidate-compatibility.json`, the re-derived
+    // result of asking the adopted SDK and the candidate the same questions, on the
+    // existing `docs-content.evidence.audit-receipts` rule (23 -> 24), under
+    // `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
+    "docs-content": 27,
     // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
     // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
     // for the same reason T0's ledger took it — the blanket rule's verdict
@@ -2228,7 +2267,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `scripts/lib/core-api-config-schema.mjs`, which loads the core-api config
     // field tables so `audit-platos-build.mjs` refuses every schema-secret field in
     // an image layer. On `root-infra.tooling.scripts`; NO ROOT-INFRA RULE CHANGED.
-    "root-infra": 105,
+    //
+    // MCP SDK 1.30.x CANDIDATE — 105 -> 107. TWO files:
+    // `scripts/mcp-sdk-candidate-compatibility.mjs`, the derivation the
+    // `agent-tenancy-postgres` job reruns with `--check`, on
+    // `root-infra.tooling.scripts`, and its suite on
+    // `root-infra.test.script-suites`. NO LEDGER RULE CHANGED.
+    "root-infra": 107,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2560,7 +2605,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // `root-infra`. Re-measured on the integrated tree, not summed from the lane
   // report (which read 1813 against a tree with none of the five earlier lanes in
   // it): 18 + 1 + 134 + 4 + 10 + 1599 + 26 + 105 = 1897.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1897);
+  //
+  // AND THE MCP CONFORMANCE LANE, BOTH ROUNDS — 1897 -> 1908. ELEVEN files,
+  // itemised on their areas' deltas above: seven in `apps-agent` (six from the
+  // lane's own round, the service-free SSRF suite from its round 2), one in
+  // `packages` (the SDK-builds fixture the 500-line budget forced out of the
+  // dispatch suite), one in `docs-content` (the candidate compatibility receipt)
+  // and two in `root-infra` (the derivation and its suite). Re-measured on the
+  // integrated tree, not summed from the lane report (which read 1815 against a
+  // tree with none of the six earlier lanes in it):
+  // 25 + 1 + 134 + 4 + 10 + 1600 + 27 + 107 = 1908.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1908);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2884,7 +2939,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // AND THE CORE-API DEPLOYABILITY RESIDUE — 1888 -> 1897, moved in the same edit
     // as the total and both area deltas: eight core-api files and one root-infra
     // script, summed per area here.
-    rulesDocument.baseline.totalFiles + 1897
+    // AND THE MCP CONFORMANCE LANE, BOTH ROUNDS — 1897 -> 1908, moved in the same
+    // edit as the total and four area deltas: seven agent files, one packages
+    // fixture, one receipt and two scripts, summed per area here.
+    rulesDocument.baseline.totalFiles + 1908
   );
 });
 

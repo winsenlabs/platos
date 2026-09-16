@@ -23,18 +23,27 @@
 // `InMemoryToolDispatch` makes for the resolver ("assert the array is EMPTY, not
 // merely that the result was an error").
 
+import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { AddressInfo } from "node:net";
 import { randomUUID } from "node:crypto";
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import type { DispatchRequest, DispatchTarget } from "../application/ports/index.js";
 import type { McpTransport, ToolName } from "../domain/index.js";
 import { createToolDispatchAdapter, type ToolDispatchAdapter } from "./dispatch.js";
+import {
+  ADOPTED,
+  CANDIDATE,
+  installedSdk,
+  PACKAGE_ROOT,
+  resolvedStoreVersion,
+  SERVER_ENTRY_POINTS,
+  SSEServerTransport,
+  type SdkServerBuild,
+} from "./sdk-builds.test-fixture.js";
 
 // ---------------------------------------------------------------------------
 // FIXTURES
@@ -294,10 +303,74 @@ describe("the wire transport, against a real HTTP listener", () => {
 });
 
 // ---------------------------------------------------------------------------
+// THE TWO SDK SERVER BUILDS
+//
+// WIN-268 (M4.2). The two builds, the entry points each one is imported from,
+// the manifest reader and the store-path resolver all live in
+// `sdk-builds.test-fixture.ts` beside this file, which says why they are not
+// here: both files are under the 500-effective-line budget
+// `scripts/arch/max-file-lines.mjs` holds `packages/contexts/**` to, and this
+// suite was over it. The two cases below are the joins themselves, and they stay
+// where the table they protect is used.
+
+describe("the SDK builds this suite runs against", () => {
+  it("are two DIFFERENT installed versions: the adopted pin and a 1.30.x candidate, as the lockfile resolves them", () => {
+    const adopted = installedSdk(ADOPTED);
+    const candidate = installedSdk(CANDIDATE);
+    // An alias installs the REAL package under another directory name.
+    expect([adopted.name, candidate.name]).toEqual(["@modelcontextprotocol/sdk", "@modelcontextprotocol/sdk"]);
+    expect(adopted.version).toBe("1.26.0");
+    expect(candidate.version).toMatch(/^1\.30\.\d+$/u);
+
+    const lockfile = readFileSync(`${PACKAGE_ROOT}../../../pnpm-lock.yaml`, "utf8");
+    const start = lockfile.indexOf("\n  packages/contexts/tools:\n");
+    const importer = lockfile.slice(start, lockfile.indexOf("\n\n", start + 1));
+    expect(importer).toContain(`'@modelcontextprotocol/sdk':\n        specifier: ${adopted.version}\n        version: ${adopted.version}(`);
+    expect(importer).toContain(`'@modelcontextprotocol/sdk-candidate':\n        specifier: npm:@modelcontextprotocol/sdk@${candidate.version}\n        version: '@modelcontextprotocol/sdk@${candidate.version}(`);
+  });
+
+  it("are two DIFFERENT LOADED MODULE GRAPHS: the classes differ and each is its own specifier's export", async () => {
+    // The case above reads `node_modules` and `pnpm-lock.yaml`; it stays green
+    // when the candidate imports are repointed at the adopted SDK, which is
+    // exactly the collapse the table must not survive. These three joins fail.
+    for (const build of [ADOPTED, CANDIDATE]) {
+      const expected = installedSdk(build).version;
+      for (const entry of SERVER_ENTRY_POINTS) {
+        const specifier = `${build.directory}/${entry}`;
+        expect({ specifier, store: resolvedStoreVersion(specifier) }).toEqual({ specifier, store: expected });
+      }
+    }
+    expect(CANDIDATE.McpServer).not.toBe(ADOPTED.McpServer);
+    expect(CANDIDATE.StreamableHTTPServerTransport).not.toBe(ADOPTED.StreamableHTTPServerTransport);
+    expect(CANDIDATE.SSEServerTransport).not.toBe(ADOPTED.SSEServerTransport);
+
+    const [adoptedMcp, adoptedSse, adoptedHttp] = await Promise.all([
+      import("@modelcontextprotocol/sdk/server/mcp.js"),
+      import("@modelcontextprotocol/sdk/server/sse.js"),
+      import("@modelcontextprotocol/sdk/server/streamableHttp.js"),
+    ]);
+    const [candidateMcp, candidateSse, candidateHttp] = await Promise.all([
+      import("@modelcontextprotocol/sdk-candidate/server/mcp.js"),
+      import("@modelcontextprotocol/sdk-candidate/server/sse.js"),
+      import("@modelcontextprotocol/sdk-candidate/server/streamableHttp.js"),
+    ]);
+    expect(ADOPTED.McpServer).toBe(adoptedMcp.McpServer);
+    expect(ADOPTED.SSEServerTransport).toBe(adoptedSse.SSEServerTransport);
+    expect(ADOPTED.StreamableHTTPServerTransport).toBe(adoptedHttp.StreamableHTTPServerTransport);
+    expect(CANDIDATE.McpServer).toBe(candidateMcp.McpServer as never);
+    expect(CANDIDATE.SSEServerTransport).toBe(candidateSse.SSEServerTransport as never);
+    expect(CANDIDATE.StreamableHTTPServerTransport).toBe(candidateHttp.StreamableHTTPServerTransport as never);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // THE MCP TRANSPORT, AGAINST THE SDK'S OWN SERVER
 
 /** One real MCP server over streamable HTTP, stateless, on a real socket. */
-async function mcpServer(options: { failing?: boolean; slowMs?: number } = {}): Promise<{
+async function mcpServer(
+  sdk: SdkServerBuild,
+  options: { failing?: boolean; slowMs?: number } = {},
+): Promise<{
   url: string;
   requestCount: () => number;
   initializeCount: () => number;
@@ -324,7 +397,7 @@ async function mcpServer(options: { failing?: boolean; slowMs?: number } = {}): 
         // (`sessionIdGenerator: undefined`). It is the shape that lets this suite
         // count HTTP requests as the observable, which is what the pooling cases
         // below assert on.
-        const server = new McpServer({ name: "fixture", version: "1.0.0" });
+        const server = new sdk.McpServer({ name: "fixture", version: "1.0.0" });
         server.registerTool(
           "invoices.list",
           {
@@ -341,7 +414,7 @@ async function mcpServer(options: { failing?: boolean; slowMs?: number } = {}): 
             return { content: [{ type: "text" as const, text: `listed ${String(args.limit)}` }] };
           },
         );
-        const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+        const transport = new sdk.StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
         response.on("close", () => void transport.close());
         await server.connect(transport);
         await transport.handleRequest(request, response, parsed);
@@ -353,8 +426,8 @@ async function mcpServer(options: { failing?: boolean; slowMs?: number } = {}): 
 }
 
 describe("the MCP transport, against the SDK's own server over a real socket", () => {
-  it("completes the handshake, calls the tool, and returns what the server answered", async () => {
-    const fixture = await mcpServer();
+  it.each([ADOPTED, CANDIDATE])("completes the handshake, calls the tool, and returns what the $label SDK server answered", async (sdk) => {
+    const fixture = await mcpServer(sdk);
 
     const outcome = await adapter().dispatch(call(mcpTarget(fixture.url, "http")));
 
@@ -367,7 +440,7 @@ describe("the MCP transport, against the SDK's own server over a real socket", (
     expect(fixture.initializeCount()).toBe(1);
   });
 
-  it("carries the resolved credential to the server on the initialize request", async () => {
+  it.each([ADOPTED, CANDIDATE])("carries the resolved credential to the $label SDK server on the initialize request", async (sdk) => {
     const authorizations: (string | undefined)[] = [];
     const url = await listen((request, response) => {
       authorizations.push(request.headers.authorization);
@@ -375,11 +448,11 @@ describe("the MCP transport, against the SDK's own server over a real socket", (
       request.on("data", (chunk) => (body += String(chunk)));
       request.on("end", () => {
         void (async () => {
-          const server = new McpServer({ name: "fixture", version: "1.0.0" });
+          const server = new sdk.McpServer({ name: "fixture", version: "1.0.0" });
           server.registerTool("invoices.list", { inputSchema: {} }, async () => ({
             content: [{ type: "text" as const, text: "ok" }],
           }));
-          const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+          const transport = new sdk.StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
           response.on("close", () => void transport.close());
           await server.connect(transport);
           await transport.handleRequest(request, response, body === "" ? undefined : JSON.parse(body));
@@ -395,8 +468,8 @@ describe("the MCP transport, against the SDK's own server over a real socket", (
     expect(authorizations.filter((value) => value === "Bearer resolved-secret").length).toBeGreaterThan(0);
   });
 
-  it("enumerates the server's tools into the port's UNADMITTED intake shape", async () => {
-    const fixture = await mcpServer();
+  it.each([ADOPTED, CANDIDATE])("enumerates the $label SDK server's tools into the port's UNADMITTED intake shape", async (sdk) => {
+    const fixture = await mcpServer(sdk);
 
     const discovered = await adapter().discover({ target: mcpTarget(fixture.url, "http") });
 
@@ -412,8 +485,8 @@ describe("the MCP transport, against the SDK's own server over a real socket", (
     expect(tools[0]?.paramSchema).toMatchObject({ type: "object" });
   });
 
-  it("reads the protocol's own isError as failed, not as a success carrying an error", async () => {
-    const fixture = await mcpServer({ failing: true });
+  it.each([ADOPTED, CANDIDATE])("reads the protocol's own isError from the $label SDK server as failed, not as a success carrying an error", async (sdk) => {
+    const fixture = await mcpServer(sdk, { failing: true });
 
     const outcome = await adapter().dispatch(call(mcpTarget(fixture.url, "http")));
 
@@ -427,8 +500,8 @@ describe("the MCP transport, against the SDK's own server over a real socket", (
     });
   });
 
-  it("reads a slow tool as timeout, using the target's own budget", async () => {
-    const fixture = await mcpServer({ slowMs: 1_500 });
+  it.each([ADOPTED, CANDIDATE])("reads a slow tool on the $label SDK server as timeout, using the target's own budget", async (sdk) => {
+    const fixture = await mcpServer(sdk, { slowMs: 1_500 });
 
     const outcome = await adapter().dispatch(
       call(mcpTarget(fixture.url, "http", { timeoutMs: 150 })),
@@ -466,11 +539,77 @@ describe("the MCP transport, against the SDK's own server over a real socket", (
 });
 
 // ---------------------------------------------------------------------------
+// THE SSE TRANSPORT, AGAINST THE SDK'S OWN LEGACY SERVER
+//
+// WIN-268 (M4.2). `mcp-dispatch.ts` builds an `SSEClientTransport` for a target
+// whose transport is `sse`, and no case put a server on the far side of that
+// construction. The 2024-11-05 HTTP+SSE transport is the one the SDK itself
+// deprecates and the one a candidate upgrade is likeliest to move, so it is
+// asked of both builds' `SSEServerTransport`.
+
+/** One real MCP server over HTTP+SSE: a stream per session and a POST endpoint. */
+async function sseMcpServer(sdk: SdkServerBuild): Promise<{ url: string; sessionsOpened: () => number }> {
+  const sessions = new Map<string, InstanceType<typeof SSEServerTransport>>();
+  let opened = 0;
+  const base = await listen((request, response) => {
+    const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
+    if (request.method === "GET" && requestUrl.pathname === "/sse") {
+      opened += 1;
+      const transport = new sdk.SSEServerTransport("/messages", response);
+      sessions.set(transport.sessionId, transport);
+      response.on("close", () => sessions.delete(transport.sessionId));
+      const server = new sdk.McpServer({ name: "fixture", version: "1.0.0" });
+      server.registerTool("invoices.list", { description: "list invoices", inputSchema: { limit: z.number() } }, async (args: { limit: number }) => ({
+        content: [{ type: "text" as const, text: `listed ${String(args.limit)} over sse` }],
+      }));
+      void server.connect(transport);
+      return;
+    }
+    if (request.method === "POST" && requestUrl.pathname === "/messages") {
+      const transport = sessions.get(requestUrl.searchParams.get("sessionId") ?? "");
+      if (transport === undefined) return void response.writeHead(404).end();
+      let body = "";
+      request.on("data", (chunk) => (body += String(chunk)));
+      request.on("end", () => void transport.handlePostMessage(request, response, JSON.parse(body)));
+      return;
+    }
+    response.writeHead(404).end();
+  });
+  return { url: `${base}/sse`, sessionsOpened: () => opened };
+}
+
+describe("the SSE transport, against the SDK's own legacy server over a real socket", () => {
+  it.each([ADOPTED, CANDIDATE])("completes the handshake with the $label SDK server, calls the tool over sse and returns its answer", async (sdk) => {
+    const fixture = await sseMcpServer(sdk);
+
+    const outcome = await adapter().dispatch(call(mcpTarget(fixture.url, "sse")));
+
+    expect(outcome.ok && outcome.value.kind).toBe("succeeded");
+    const result = outcome.ok && outcome.value.kind === "succeeded" ? outcome.value.result : null;
+    expect(JSON.stringify(result)).toContain("listed 2 over sse");
+    // ONE stream: the adapter built an SSE session, not a Streamable HTTP one
+    // that happened to be answered.
+    expect(fixture.sessionsOpened()).toBe(1);
+  });
+
+  it.each([ADOPTED, CANDIDATE])("enumerates the $label SDK server's tools over sse into the UNADMITTED intake shape", async (sdk) => {
+    const fixture = await sseMcpServer(sdk);
+
+    const discovered = await adapter().discover({ target: mcpTarget(fixture.url, "sse") });
+
+    expect(discovered.ok).toBe(true);
+    const tools = discovered.ok ? discovered.value.tools : [];
+    expect(tools.map((tool) => tool.name)).toEqual(["invoices.list"]);
+    expect(tools[0]?.paramSchema).toMatchObject({ type: "object" });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // THE POOL, WHOSE KEY IS THE DOMAIN'S
 
 describe("the session pool, keyed on the value the domain computed", () => {
-  it("shares ONE session between two calls carrying the same pool key", async () => {
-    const fixture = await mcpServer();
+  it.each([ADOPTED, CANDIDATE])("shares ONE session between two calls carrying the same pool key ($label SDK server)", async (sdk) => {
+    const fixture = await mcpServer(sdk);
     const built = adapter();
     const target = mcpTarget(fixture.url, "http");
 
@@ -485,8 +624,8 @@ describe("the session pool, keyed on the value the domain computed", () => {
     expect(fixture.initializeCount()).toBe(before);
   });
 
-  it("opens a SECOND session for a different pool key, even on the same URL", async () => {
-    const fixture = await mcpServer();
+  it.each([ADOPTED, CANDIDATE])("opens a SECOND session for a different pool key, even on the same URL ($label SDK server)", async (sdk) => {
+    const fixture = await mcpServer(sdk);
     const built = adapter();
 
     await built.dispatch(call(mcpTarget(fixture.url, "http", { sessionKey: "credential-a" })));
@@ -499,8 +638,8 @@ describe("the session pool, keyed on the value the domain computed", () => {
     expect(built.liveMcpSessions).toBe(2);
   });
 
-  it("does not open two sessions when two calls on one key race", async () => {
-    const fixture = await mcpServer();
+  it.each([ADOPTED, CANDIDATE])("does not open two sessions when two calls on one key race ($label SDK server)", async (sdk) => {
+    const fixture = await mcpServer(sdk);
     const built = adapter();
     const target = mcpTarget(fixture.url, "http");
 
@@ -512,8 +651,8 @@ describe("the session pool, keyed on the value the domain computed", () => {
     expect(fixture.initializeCount()).toBe(1);
   });
 
-  it("closes every live session on close()", async () => {
-    const fixture = await mcpServer();
+  it.each([ADOPTED, CANDIDATE])("closes every live session on close() ($label SDK server)", async (sdk) => {
+    const fixture = await mcpServer(sdk);
     const built = createToolDispatchAdapter();
 
     await built.dispatch(call(mcpTarget(fixture.url, "http", { sessionKey: "a" })));

@@ -17,6 +17,7 @@ import {
   DELEGATE_OPERATIONS,
   DISPOSITIONS,
   MANIFEST,
+  NON_SHIPPING_SUFFIX,
   SURFACE_ROOTS,
   buildRegister,
   composedContexts,
@@ -173,6 +174,25 @@ test("contract methods are read from the contract file, and WIN-268's four route
   for (const name of ["resolvePermission", "listOrganizationPolicies", "listEntityToolPolicies"]) {
     assert.ok(tools.includes(name), `ToolsContract publishes ${name}`);
   }
+});
+
+test("only files the agent build excludes are left out of the register, and a real fixture is one of them", () => {
+  // THE JOIN. A suffix this register ignores must be one `nest build` never
+  // compiles, or an ORM call could ship inside a file the register was told to
+  // look away from.
+  const build = JSON.parse(readFileSync(`${root}apps/agent/tsconfig.build.json`, "utf8"));
+  const excluded = build.exclude.filter((pattern) => pattern.startsWith("src/**/*."));
+  for (const suffix of ["test", "spec", "test-fixture"]) {
+    assert.ok(excluded.includes(`src/**/*.${suffix}.ts`), `${suffix} is not excluded from the agent build`);
+    assert.ok(NON_SHIPPING_SUFFIX.test(`apps/agent/src/mcp-platform/x.${suffix}.ts`));
+  }
+  assert.ok(!NON_SHIPPING_SUFFIX.test("apps/agent/src/mcp-platform/mcp-platform.controller.ts"));
+  assert.ok(!NON_SHIPPING_SUFFIX.test("apps/agent/src/mcp-platform/test-fixture.ts"));
+  // NON-VACUITY: the conformance harness under a surface root really does hold
+  // ORM sites, so the exclusion is doing work rather than describing nothing.
+  const fixture = readFileSync(`${root}apps/agent/src/mcp-platform/mcp-conformance.test-fixture.ts`, "utf8");
+  assert.match(fixture, /prisma\.[a-zA-Z]+\.create\(/u);
+  assert.ok(!register.sites.some((site) => NON_SHIPPING_SUFFIX.test(site.file)));
 });
 
 test("every file with a site carries a disposition, and every disposition has a file", () => {

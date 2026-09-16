@@ -2797,7 +2797,15 @@ export const EXPECTED = Object.freeze({
   // +2 net in the rate-limit suites, whose fail-open pins were RE-RECORDED under D3
   // rather than deleted (fails closed with its own code; an unspent budget is
   // refused during an outage; a scope-less action still refuses).
-  "packages/contexts/identity-access": { files: 26, cases: 366 },
+  //
+  // 366 -> 368 cases, files UNMOVED at 26 (D-COOKIE, the core-api deployability
+  // residue). Both land in the existing `domain/session-cookie.test.ts`: a
+  // deployable's configured base name and SameSite mode are carried onto the shape
+  // while the `__Host-` prefix is still decided by TLS alone, and a configured base
+  // name that already smuggles the prefix is refused on a plain-HTTP shape. The
+  // lane that wrote them did not move this pin, so it moves here, on the merge that
+  // first runs this census over both trees.
+  "packages/contexts/identity-access": { files: 26, cases: 368 },
   "packages/contexts/jobs": { files: 16, cases: 386 },
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
@@ -2850,7 +2858,26 @@ export const EXPECTED = Object.freeze({
   //   transport this deployable has no client for and refuses under its own code.
   //
   // 366 + 8 + 26 = 400; 19 + 2 = 21.
-  "packages/contexts/tools": { files: 21, cases: 400 },
+  //
+  // WIN-268 (M4.2) SDK 1.30.x CANDIDATE: 400 -> 415, files UNCHANGED, all fifteen
+  // in `adapters/dispatch.integration.test.ts` (26 -> 41). NINE existing cases that
+  // put the SDK'S OWN SERVER on the far side of the adopted client become
+  // `it.each([ADOPTED, CANDIDATE])` — the handshake-and-call, the credential on
+  // `initialize`, enumeration, `isError`, the slow-tool timeout and the four pool
+  // cases — so each is asked of the 1.26.0 server and of the 1.30.0 candidate
+  // aliased as `@modelcontextprotocol/sdk-candidate`: +9. FOUR are new, the `sse`
+  // transport against both builds' `SSEServerTransport` (call and enumeration),
+  // which no case had put a server behind: +4. TWO hold the table to two builds:
+  // one joins the installed versions to `pnpm-lock.yaml` and requires them to
+  // differ, and one — added after a verifier repointed the candidate imports at
+  // the adopted SDK and every version assertion stayed green — requires the three
+  // LOADED classes to be different objects, each the export of the specifier it
+  // claims, each resolved inside its own version's pnpm store directory: +2. Only
+  // the second can fail when the table collapses into one build asked twice. The
+  // table is an array literal so this census counts its rows rather than refusing it.
+  //
+  // 400 + 9 + 4 + 2 = 415; 21 files.
+  "packages/contexts/tools": { files: 21, cases: 415 },
   // M2 INTEGRATION: kernel 3 + 1 + 2 = 6 files, 44 + 16 (the redactor's
   // two-sided suite) + 69 (retry and the transaction-outcome behaviour) = 129.
   //
@@ -3803,7 +3830,21 @@ export const EXPECTED = Object.freeze({
 // advanced by this directory, not closed.)
 //
 // INTEGRATED AND RE-MEASURED: 8359 + 47 + 110 = 8516 over 564 + 5 = 569 files.
-export const EXPECTED_RUNTIME_TOTAL = 8516;
+//
+// WIN-268 (M4.2) SDK 1.30.x CANDIDATE: +15 over the SAME 569 files. All fifteen
+// land in `packages/contexts/tools`, itemised on its row above; the contexts term
+// alone moves. The candidate is ALSO asked of Platos' own MCP servers — by
+// `apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts` and
+// the two-process SSE suite beside it — and `apps/agent` is outside
+// `PACKAGE_ROOTS`, so this census moves not one number for that half.
+//
+// AND D-COOKIE'S TWO SESSION-COOKIE CASES: +2 on `packages/contexts/identity-access`
+// (366 -> 368), files unmoved — itemised on that row above. The core-residue lane
+// added the cases and left this census alone, which is why the number moves on the
+// merge rather than on the lane.
+//
+// INTEGRATED AND RE-MEASURED: 8359 + 47 + 110 + 15 + 2 = 8533 over 564 + 5 = 569 files.
+export const EXPECTED_RUNTIME_TOTAL = 8533;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

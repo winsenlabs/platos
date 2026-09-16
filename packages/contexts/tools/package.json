@@ -38,5 +38,8 @@
     "@platos/context-providers": "workspace:*",
     "@modelcontextprotocol/sdk": "1.26.0",
     "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk-candidate": "npm:@modelcontextprotocol/sdk@1.30.0"
   }
 }

@@ -954,7 +954,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 142,
+      "line": 144,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "entity",
@@ -965,7 +965,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 171,
+      "line": 173,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "entity",
@@ -976,7 +976,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 212,
+      "line": 214,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "environment",
@@ -987,7 +987,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 354,
+      "line": 356,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "mcpAnonymousSession",
@@ -998,7 +998,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 415,
+      "line": 417,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "environment",
@@ -1009,7 +1009,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 510,
+      "line": 512,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "mcpOidcSession",
@@ -1020,7 +1020,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 525,
+      "line": 527,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "endUserIdentity",
@@ -1031,7 +1031,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 737,
+      "line": 786,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "mcpAnonymousSession",
@@ -1042,7 +1042,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 802,
+      "line": 851,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "environment",
@@ -1053,7 +1053,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 1313,
+      "line": 1368,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "environmentEntityTool",
@@ -1064,7 +1064,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 1358,
+      "line": 1413,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "entity",
@@ -1075,7 +1075,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 1392,
+      "line": 1447,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "entityMcpConfig",
@@ -1086,7 +1086,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 1448,
+      "line": 1503,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "entityMcpConfig",
@@ -1097,7 +1097,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 1464,
+      "line": 1519,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "entityMcpConfig",
@@ -1108,7 +1108,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 1490,
+      "line": 1545,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "entityMcpConfig",
@@ -1119,7 +1119,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 1522,
+      "line": 1577,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "entityMcpConfig",
@@ -1130,7 +1130,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 1538,
+      "line": 1593,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "entity",
@@ -1141,7 +1141,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 1548,
+      "line": 1603,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "entityMcpConfig",
@@ -1152,7 +1152,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 1579,
+      "line": 1634,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "entity",
@@ -1163,7 +1163,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-      "line": 1590,
+      "line": 1645,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "entityMcpConfig",

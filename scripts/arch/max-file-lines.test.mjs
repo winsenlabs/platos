@@ -976,7 +976,17 @@ test("the live selectors scan an exact nonzero source census", () => {
   // and `scripts/`, which no selector here names, so they are deliberately absent.
   //
   // ALL FOUR, RE-MEASURED ON THE MERGED TREE: 1653 + 2 + 20 + 18 + 3 = 1696.
-  assert.equal(result.fileCount, 1696);
+  //
+  // THE MCP CONFORMANCE LANE'S ROUND-2 FIXES, 1653 -> 1654 alone. ONE file, under
+  // `packages/contexts/**`: `contexts/tools/adapters/sdk-builds.test-fixture.ts`,
+  // which exists BECAUSE of this gate — the module-identity joins the verifier's
+  // collapse finding forced took `dispatch.integration.test.ts` from 487 to 535
+  // effective lines, past the 500 error threshold, and the two SDK builds moved
+  // out rather than the joins being shortened. Everything else that round touched
+  // is outside every selector here.
+  //
+  // ALL FIVE, RE-MEASURED ON THE MERGED TREE: 1653 + 2 + 20 + 18 + 3 + 1 = 1697.
+  assert.equal(result.fileCount, 1697);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -1091,6 +1101,14 @@ test("the live selectors scan an exact nonzero source census", () => {
       // THE CORE-API DEPLOYABILITY RESIDUE: `APPS-HTTP` 2 (`store-faults.ts` and its
       // suite) and `APPS-TRANSPORTS` 1 (`session-cookie-transport.test.ts`).
       2 + 1
+ +
+      // THE MCP CONFORMANCE LANE'S ROUND-2 FIXES: ONE, under
+      // `packages/contexts/tools/adapters/` -- `sdk-builds.test-fixture.ts`, the two
+      // SDK server builds and the store-path resolver, moved out of
+      // `dispatch.integration.test.ts` when its module-identity joins put it over
+      // the 500-line error threshold. Every other file that round touched is an
+      // EDIT, and the agent-side files it added are outside every selector here.
+      1
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1335,7 +1353,15 @@ test("the live selectors scan an exact nonzero source census", () => {
   //
   // ALL FOUR TOGETHER, RE-MEASURED ON THE MERGED TREE:
   // 30 + 1100 + 498 + 22 + 46 = 1696.
-  assert.equal(result.fileCount, 30 + 1100 + 498 + 22 + 46);
+  //
+  // THE MCP CONFORMANCE LANE'S ROUND-2 FIXES, +1, AND IT LANDS IN ONE TERM:
+  // CONTEXTS 1100 -> 1101, the SDK-builds fixture the 500-line budget forced out
+  // of `contexts/tools/adapters/dispatch.integration.test.ts`. `KERNEL`,
+  // `ADAPTERS`, `APPS-HTTP` and `APPS-TRANSPORTS` are flat.
+  //
+  // ALL FIVE TOGETHER, RE-MEASURED ON THE MERGED TREE:
+  // 30 + 1101 + 498 + 22 + 46 = 1697.
+  assert.equal(result.fileCount, 30 + 1101 + 498 + 22 + 46);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -1654,6 +1680,24 @@ test("the live selectors scan an exact nonzero source census", () => {
     {
       path: "packages/contexts/memory/contracts/index.test.ts",
       effectiveLines: 404,
+      severity: "warning",
+    },
+    {
+      // WIN-268 (M4.2), the MCP SDK 1.30.x candidate: 26 -> 41 cases asked of the
+      // adopted SDK's server AND the candidate's, over http and sse. Measured at 502
+      // on the first write, which this gate FAILED, and brought inside the budget by
+      // joining lines rather than by splitting the suite — a second file would have
+      // moved the test-case census's file pin for no change in what is asserted.
+      //
+      // 487 -> 535 -> 493. The module-identity joins the verifier's collapse finding
+      // forced are 48 more lines and put the file OVER the error threshold, which is
+      // this budget working: the joins are the last thing that should be shortened.
+      // The two builds, their entry points, the manifest reader and the store-path
+      // resolver moved to `adapters/sdk-builds.test-fixture.ts`, which declares no
+      // case and does not end in `.test.ts`, so the census's file pin for this
+      // package is unmoved and the fixture is far below the warning threshold.
+      path: "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      effectiveLines: 493,
       severity: "warning",
     },
     {

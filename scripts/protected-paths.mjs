@@ -154,10 +154,22 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // 3f422333: the 801 paths are exactly those 800 plus that one, with nothing
 // removed and nothing substituted.
 //
+// THE MCP SDK 1.30.x CANDIDATE'S COMPATIBILITY RESULT adds ONE, no removals and no
+// content substitutions, taking the set from 801 to 802:
+//   docs/audits/win-268-mcp-sdk-candidate-compatibility.json  (the adopted SDK and
+//                                                             the candidate asked
+//                                                             the same questions,
+//                                                             re-derived by --check)
+// It falls inside the existing `docs/**` selection rather than widening it, and the
+// difference was verified SET-WISE against the committed 801-path manifest at
+// 35d3aec1: `comm -13` names that one addition and `comm -23` names none.
+// `scripts/mcp-sdk-candidate-compatibility.mjs` is NOT added to SCRIPT_PREFIXES:
+// the selection protects the EVIDENCE a gate reads, not the gate.
+//
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "d86a13c0f8b707974e0c2b0ad05581aaff1de689ec5042f4e0c7936f3ecaf436";
+export const EXPECTED_PATH_SET_SHA256 = "6843a714bebfc38b3ef704271a108a43412e432bbf8c99e32b57aa0d2ea2be72";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",
