@@ -41,7 +41,21 @@ test("the committed result covers every suite constant, and each suite really as
   for (const suite of SUITES) {
     const file = path.join(root, suite.root, suite.file);
     assert.ok(existsSync(file), `${suite.file} is gone`);
-    const source = readFileSync(file, "utf8");
+    // THE SUITE PLUS THE LOCAL FIXTURES IT IMPORTS. A suite may hold its two
+    // builds in a sibling `*.test-fixture.ts` — `adapters/dispatch.integration
+    // .test.ts` does, because the module-identity joins took it past the
+    // max-file-lines budget — so reading the suite file alone would report "does
+    // not import the adopted SDK" about a suite that asks both builds on every
+    // case. The union is followed ONE level and only for relative specifiers, so
+    // a suite cannot satisfy this by importing some unrelated module that happens
+    // to name the SDK.
+    const sources = [readFileSync(file, "utf8")];
+    for (const [, specifier] of sources[0].matchAll(/from "(\.[^"]*\.test-fixture\.js)"/gu)) {
+      const fixture = path.join(path.dirname(file), specifier.replace(/\.js$/u, ".ts"));
+      assert.ok(existsSync(fixture), `${suite.file} imports ${specifier}, which is not in the tree`);
+      sources.push(readFileSync(fixture, "utf8"));
+    }
+    const source = sources.join("\n");
     assert.match(source, /from "@modelcontextprotocol\/sdk\//u, `${suite.file} does not import the adopted SDK`);
     assert.match(source, /from "@modelcontextprotocol\/sdk-candidate\//u, `${suite.file} does not import the candidate`);
     const questions = committed.questions.filter((row) => row.suite === `${suite.root}/${suite.file}`);

@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "c42e6737d855ce726e7523a28e77f56e1baf2d9627a0243e038d5cf220bfcfc4",
+  "evidenceSha256": "a0f0fd660fe41e4255ad3f321f55535edb8d01375317672530868ade8d19a3d8",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "21c1dcc6b3c5e0691f3cf796096aa920e266fab0ecf556eb49462163d0e34afc",
+    "aggregateSha256": "ed271636fb5ae92a11530e61b3cfbb6cc5e8d7e829c21238cfcfd426f3bd87b1",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -20643,7 +20643,7 @@
       },
       {
         "path": "scripts/mcp-sdk-candidate-compatibility.test.mjs",
-        "sha256": "ff2f9d3c08eba5da1ce65dedb9dafced0f096679db234c56174f91d4aecef566"
+        "sha256": "dd7332ea30901d4506a5be44cb16285899f7e205da4631292b10c6f334910e2d"
       },
       {
         "path": "scripts/mutations-win267-a3.json",
@@ -81658,7 +81658,7 @@
             {
               "from": "scripts/mcp-sdk-candidate-compatibility.test.mjs",
               "kind": "reference",
-              "line": 70
+              "line": 84
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -82021,7 +82021,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "da38403efb78043302d92fe4f80f44d7a67bc520d5b68d6c74311a16a7da2f19",
+      "evidenceSha256": "393432cc12c795e1da506692ad7a2712ca51050c0ea4cc83a903bf08df46f03f",
       "manifestSha256": "99b768afa8fa1895cec7656cf6a8b6888ce1acdd334157429a4af526a25975aa",
       "name": "@platos/context-tools",
       "ociImageClosure": {
